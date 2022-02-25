@@ -1,4 +1,4 @@
-## Redis的数据结构
+## 数据结构
 
 ### 1、SDS(Simple Dynamic String)，简单动态字符串
 
@@ -67,7 +67,7 @@ hash表扩展实际，没有执行bgsave时负载因子大于等于1，执行bgs
 
 有序集合的编码可以是ziplist、skiplist。
 
-## Redis的常用命令
+## 常用命令
 
 ### 1、字符串
 
@@ -212,7 +212,9 @@ brpop key1 [key2] timeout
 brpoplpush source destination timeout
 ```
 
-### 4、集合（string类型的无序集合，添加、删除、查找的时间复杂都是 O(1)）
+### 4、集合
+
+string类型的无序集合，添加、删除、查找的时间复杂都是 O(1)
 
 ```bash
 # 将一个或多个成员元素加入到集合中
@@ -340,8 +342,6 @@ zscan key cursor [MATCH pattern] [COUNT count]
 
 ### 6、键（key）
 
-## Redis的使用场景
-
 ```bash
 # 当 key 存在时删除 key
 del key1 [key2]
@@ -403,7 +403,87 @@ restore key ttl serialized-value
 scan cursor [MATCH pattern] [COUNT count]
 ```
 
-![image-20220216145403660](./picture/27.png)
+### 7、排序
+
+```bash
+# 对一个包含数字值的key进行排序
+sort <key>
+# 对一个包含字符串值的key进行排序
+sort <key> ALPHA
+# 升序排序
+sort <key> ASC
+# 降序排序
+sort <key> DESC
+# 使用 BY 模式匹配部分key进行排序
+sort <key> by *XXXX
+sort <key> by *XXXX ALPHA
+# 使用 LIMIT 返回已排序的一部分元素
+sort <key> ALPHA LIMIT <offset> <count>
+
+# 使用 sort 排序后的值为参数输入到GET，模式匹配Key，并取出Key的值
+sort <key> ALPHA GET *XXXX
+# 例如：SADD students "peter" "jack" "tom"
+#       SET peter-name "peter white"
+#       SET jack-name "jack snow"
+#       SET tom-name "tom smith"
+# SORT students ALPHA GET *-name 的结果为 "jack snow" "peter white" "tom smith"
+
+# 使用 STORE 将排序结果保存在指定键
+sort <key> ALPHA STORE <key>
+```
+
+sort 各选项的执行顺序：
+
+1. 排序，命令会使用 ALPHA、ASC、DESC、BY 选项对输入键进行排序。
+2. 限制排序结果集长度，命令会使用LIMIT。
+3. 获取外部键，命令会使用GET，根据排序结果集中的元素，已经GET指定的模式，查找并获取指定键的值，并用这些值作为新的结果集。
+4. 向客户端返回排序结果集。
+
+sort 的时间复杂度为O(n + m logm),n为要排序的列表，m表示要返回的元素个数,大数据量排序操作会严重影响性能。
+
+### 8、二进制位
+
+```bash
+# 在位数组指定偏移量 offset 上的二进制位设置值 0 或 1
+setbit <key> <offset> 0|1
+# 获取位数组指定偏移量上的二进制位的值
+getbit <key> <offset>
+# 获取二进制数组中，值为1的数量
+bitcount <key>
+# 对多个位数组进行位运算，与(and)、或(or)、异或(xor)、取反(not)
+bitop and and-result <key1> <key2> <key3> ...
+bitop or or-result <key1> <key2> <key3> ...
+bitop xor xor-result <key1> <key2> <key3> ...
+bitop not not-result <key>
+```
+
+二进制位数组是使用字符串对象SDS来表示的，SDS是用字节数组表示，一个字节包含8个bit，并且保存的位数组顺序和正常书写的顺序相反，方便setbit命令操作，当字节数组不够存储时需要扩展，扩展后不用移动位数组原来的位置。
+
+位置的计算：
+
+1. 计算保存在字节数组中索引的位置：byte = offset/8。
+2. 计算保存在字节中bit的位置：bit = (offset mod 8) + 1。
+
+bitcount实现：
+
+当位数低于128位使用查表法，每8位相加;高于128位，每次读入128进行4次汉明重量算法，结果相加。
+
+涉及两种算法：
+
+1. 0000 0000 到 1111 1111内使用查表法。
+2. 计算汉明重量算法。
+
+```java
+//计算汉明重量
+i = ( i & 0x55555555) + ((i >> 1) & 0x55555555);
+i = ( i & 0x33333333) + ((i >> 1) & 0x33333333);
+i = ( i & 0x0F0F0F0F) + ((i >> 1) & 0x0F0F0F0F);
+i = ( i *(0x01010101)) >> 24)
+```
+
+## 使用场景
+
+![image-20220216145403660](./assets/27.png)
 
 ### String
 
@@ -535,9 +615,9 @@ scan cursor [MATCH pattern] [COUNT count]
    }
    ```
 
-![Image_20220216155235](./picture/24.png)
+![Image_20220216155235](./assets/24.png)
 
-![Image_20220216155532](./picture/25.png)
+![Image_20220216155532](./assets/25.png)
 
 #### 2、计数器
 
@@ -889,7 +969,7 @@ scan cursor [MATCH pattern] [COUNT count]
 
 例如：
 
-![png](./picture/23.png)
+![png](./assets/23.png)
 
 ##### 1、匹配查询
 
@@ -931,7 +1011,9 @@ Redis毕竟只是key-value存储，所以有很多局限性。
 
 #### 3、点赞、踩、收藏
 
-#### 4、标签，给用户或者消息添加标签，把相同标签的推荐给关注的人
+#### 4、标签
+
+给用户或者消息添加标签，把相同标签的推荐给关注的人
 
 ### ZSet
 
@@ -951,7 +1033,21 @@ Redis毕竟只是key-value存储，所以有很多局限性。
 
 我们只需统计某个 `key `下在指定时间戳区间内的个数，就能得到这个用户滑动窗口内访问频次，与最大通过次数比较，来决定是否允许通过。
 
-## Redis的数据库
+### Bitmap
+
+#### 1、用户签到
+
+key = 年份:用户ID，offset = 今天是一年中的第几天。
+
+#### 2、统计活跃用户
+
+key = 日期，offset = 用户id。
+
+#### 3、统计用户是否在线
+
+key = 任意，offset = 用户id。
+
+## 单机数据库
 
 数据库都保存在 `redis.h/redisServer` 结构的 `redisDb *db` 数组中，同时使用 `int dbnum` 控制数据库的数量，默认值为 `16` 。默认情况下，客户端的默认目标数据库为 `0` 号数据库，可以通过     `select 0 `来进行切换。
 
@@ -976,7 +1072,7 @@ redis 是一个键值对数据库服务器，redisDb 中 dict 字典保存了数
 
 时期删除：每个一段时间执行一次删除过期键操作，并限制删除操作执行的时长和频率。难点在于确定执行删除操作执行的时长和频率。太频繁影响CPU，太少浪费内存。
 
-## Redis的持久化
+## 持久化
 
 ### RDB持久化
 
@@ -1113,7 +1209,7 @@ AOF 重写是使用子进程来执行的，因为服务器进程 (父进程) 依
 5. 停止 Redis，修改配置文件开启 AOF 持久化和 RDB 持久化；
 6. 启动 Redis，数据恢复和持久化配置完成。
 
-## Redis的事件
+## 事件
 
 Redis服务器是一个事件驱动程序，需要处理两类事件：文件事件、时间事件。
 
@@ -1155,11 +1251,11 @@ serverCron 默认100ms执行一次，可以通过 redis.conf 中 hz 来配置。
 
 服务器执行流程：
 
-![image.png](./picture/28.png)
+![image.png](./assets/28.png)
 
 文件事件的最大阻塞时间由最近的时间事件决定。
 
-## Redis的客户端与服务器
+## 客户端与服务器
 
 ### 客户端的关闭
 
@@ -1188,7 +1284,7 @@ serverCron 默认100ms执行一次，可以通过 redis.conf 中 hz 来配置。
 4. 还原数据库状态：载入 AOF 文件或者 RDB 文件。
 5. 执行事件循环。
 
-## Redis的复制(master/slave)
+## 复制(master/slave)
 
 复制的配置有两种方式：
 
@@ -1224,7 +1320,7 @@ serverCron 默认100ms执行一次，可以通过 redis.conf 中 hz 来配置。
 
 服务器ID：除了使用复制积压缓冲区来判断，slave上线master还会保存它的服务器ID，等slave再次上线时判断该slave是之前掉线的slave。
 
-## Redis的Sentinel模式
+## Sentinel模式
 
 Sentinel 用于监控 redis 集群中的 master,当master宕机后自动将master进入下线状态，并将下线服务器属下的某个从服务升级为新的master,是redis的高可用解决方案，实现故障自动转移，可以监控多组主从服务。
 
@@ -1276,7 +1372,7 @@ sentinel 会以每秒一次的频率向所有与它创建了命令连接的实�
 3. 当出现新的master后，sentinel向从服务器发送 `SLAVEOF ip port`命令，让从服务器去复制新的master。
 4. 将旧的主服务器在sentinel保存为从服务器，如果它重新上线，会向它发送 SLAVEOF 命令，让它变为新master的slave。
 
-## Redis的集群
+## 集群
 
 redis-cluster提供分布式方案，集群通过分片(sharding)来进行数据共享，并提供复制和故障转移功能。
 
@@ -1289,15 +1385,17 @@ Redis 集群通常由多个节点组成，刚开始每个节点都是相互独�
 cluster meet <ip> <port>
 # 查看集群中的节点
 cluster nodes
+# 设置从节点
+cluster replicate <node_id>
 ```
 
 ### 槽(slot)
 
 集群通过sharding的方式保存键值对：集群被分为 16384 个slot，每个键都属于这些slot中的一个，每个节点可以处理 0 个 或最多16384个slot。
 
-当 16384 个slot都在处理时，集群处于上线状态(ok),如果没有任何一个slot得到处理，则处于下线状态(fail)，可以通过`cluster info`命令查询。
+当 16384 个slot都在处理时，集群处于上线状态(ok),如果没有任何一个slot得到处理，则处于下线状态(fail)，可以通过 `cluster info`命令查询。
 
-可以通过` cluster addslots [slot ...]`来指派slot给当前节点负责，例如：
+可以通过 ` cluster addslots [slot ...]`来指派slot给当前节点负责，例如：
 
 ```bash
 # 将slot 0 - 5000 指派给节点 7001 负责
@@ -1305,6 +1403,43 @@ cluster nodes
 ```
 
 当 16384 个槽被指派，集群会进入上线状态。
+
+### 重新分片
+
+重新分片操作可以将任意数量已经指派节点的slot指派给其他节点，其相关slot所属的键值对也会从源节点移动到目标节点。重新分片可以在线进行，在此过程中，集群不需要下线，源节点和目标节点都可以继续处理命令请求。
+
+重新分片有redis-trib负责执行：
+
+1. redis-trib对目标节点发送 `cluster setslot <slot> importing <source_id>`,让目标节点准备好从源节点准备导入属于slot的键值对。
+2. redis-trib对源节点发送 `cluster setslot <slot> migrating <target_id>`,让源节点准备将属于slot的键值对迁移至目标节点。
+3. redis-trib向源节点发送 `cluster getkeysinslot <slot> <count> `,获得最多count个属于slot的键值对的key。
+4. redis-trib向源节点发送 `migrate <target_ip> <target_port> <key_name> 0 <timeout>`,将被选中的key原子地从源节点迁移到目标节点。
+5. redis-trib向集群中任意节点发送 `cluster setslot <slot> node <target_id>`，将槽指派给目标节点，指派信息会发送给整个集群。
+
+```bash
+# 打印每个节点负责的slot
+$ ./redis-trib.rb reshard 127.0.0.1:7000
+# 同时会询问我们需要迁移多少个slots
+How many slots do you want to move (from 1 to 16384)? 1000
+# 输入目标节点的ID
+What is the receiving node ID? 9991306f0e50640a5684f1958fd754b38fa034c9
+# 指定迁移的源节点ID，如果是all，则所有的主节点都会成为源节点，并从各源节点取一部分凑够数量
+Source node #1:all
+# 输入yes确认
+Do you want to proceed with the proposed reshard plan (yes/no)? yes
+```
+
+在重新分片期间，可能会存在这样一种情况，一部分键已经保存在目标节点，一部分键还在源节点，对应的slot仍然归源节点管理，
+
+当客户端向源节点发送与键相关的命令，恰好属于这部分键时：
+
+1. 源节点会先在自己的数据库查找，如果找到，则执行客户端命令。
+2. 否则，源节点向客户端发送 `ASK <slot> target_ip:port` 错误，指引客户端转向正在导入slot的目标节点。
+
+MOVE错误和ASK错误都会导致客户端转向，区别在于：
+
+1. MOVED错误代表slot的负责权以及转移到其他节点，客户端收到slot i的MOVED错误之后，之后每次slot i的命令都会直接转向。
+2. ASK错误只是迁移slot的临时措施，客户端收到slot i的ASK错误之后，只会在一次命令进行转向，除非ASK错误再次出现。
 
 ### 集群中执行命令
 
@@ -1327,4 +1462,179 @@ redis-cli -c -p 7000
 ### 计算key属于哪个slot
 
 1. 计算key的CRC-16校验和。
-2. 对上一步结果与16384进行取余运算(%)，也就转换成对16383进行取模运算(&)。
+2. 对上一步结果与 16384(2的14次方) 进行取余运算(%)，也就转换成对16383进行取模运算(&)。`a % b == a & (b - 1)`的前提是**2^n**。
+
+### 集群的故障转移
+
+#### 故障检测
+
+节点有在线、疑似下线、已下线三种状态。
+
+1. 集群中每个节点会定期向其他节点发送PING消息，如果在规定时间内没有收到节点的返回PONG消息，则会标记疑似下线(probable fail,PFAIL)。
+2. 各节点会通过互相发送消息的方式来交换节点状态信息。
+3. 如果集群中，半数以上负责处理slot的主节点都将某个节点报告为疑似下线，那么该节点被标记为已下线(FAIL),将节点标记为已下线的节点会向集群广播该节点已下线的消息。
+
+#### 故障转移
+
+当一个从节点发现自己正在复制的主节点进入了已下线状态，从节点将对下线主节点进行故障转移：
+
+1. 复制下线主节点的所有从节点里面，会有一个被选中，由选举产生。
+2. 被选中从节点执行 `SLAVEOF no one`,成为新的主节点。
+3. 新的主节点会撤销所有对已下线主节点的slot指派，并指派给自己。
+4. 新的主节点想集群广播消息，让其他节点知道该节点已经变为主节点，并且接管了原本已下线节点的slot。
+5. 新的主节点开始接受和之间相关slot的命令。
+
+#### 主节点的选举
+
+1. 集群的配置纪元是一个自增计数器，初始值为0，当某个节点开始一次故障转移，配置纪元会被加1。
+2. 对于每个配置纪元，每个负责处理slot的主节点都有一次投票机会，而第一个向主节点要求投票的从节点将获得主节点的投票。
+3. 当从节点发现自己正在复制的主节点下线，会向集群广播消息，要求收到消息具有投票权(正在处理slot)的主节点向这个从节点投票，如果该主节点尚未投票，将向该从节点发送投票消息。
+4. 收到投票消息过半数的从节点当选为新的主节点，如果没有从节点收集到足够的投票消息，则会进入新的配置纪元重新选举。
+
+### 集群的消息
+
+节点发送的消息有五种：
+
+1. MEET消息：将接收者加入到发送者的集群。
+2. PING消息：集群的每一个节点默认每隔一秒钟会从已知节点随机选出五个节点，然后对五个节点中最长时间没有PING过的节点发送PING，另外如果节点A最后一次收到节点B的PONG消息，距离现在时间超过了节点A的 `cluster-node-timeout`配置的一半也会发送，防止节点B长期不被选中。
+3. PONG消息：接受到MEET消息或者PING消息，或者故障转移成功之后都会发送。
+4. FAIL消息：当主节点A判断节点B进入FAIL状态时，节点A会向集群广播一条关于节点B的FAIL消息。
+5. PUBLISH消息：当节点收到一条PUBLISH命令时，节点会执行这个命令，并向集群广播一条PUBLISH消息。
+
+## 发布与订阅
+
+发布与订阅功能由PUBLISH、SUBSCRIBE、PSUBSCRIBE等命令组成。
+
+```bash
+# 订阅与退订频道(channel)
+subscribe "xxxxx"
+unsubscribe "xxxxx"
+# 订阅与退订模式(pattern)
+psubscribe "xxxx*"
+punsubscribe "xxxx*"
+# 发布消息到频道、模式
+psubscribe "xxxxx" "hello"
+# 返回服务器被订阅的频道，pattern参数可选
+pubsub channels [pattern]
+# 返回任意多个频道订阅者数量
+pubsub numsub [channel1 .... channel3]
+# 返回服务器被订阅模式的数量
+pubsub numpat
+```
+
+## 事务
+
+事务(transaction)由MULTI、EXEC、WATCH等命令组成。
+
+事务提供将多个命令请求打包，然后一次性、按顺序执行多个命令，并且事务执行期间服务器不会中断事务而改去执行其他客户端命令，只有等事务中所有命令都执行完毕，才会去处理其他客户端命令请求。
+
+```bash
+# 事务的示例,由multi开始，接着将多个命令放入事务，最后exec结束将事务commit给服务器执行
+multi
+set "name" "Lisp"
+get "name"
+set "author" "Peter"
+get "author"
+exec
+```
+
+### 事务的执行流程
+
+事务开始：
+
+multi命令将执行命令的客户端从非事务状态标记为事务状态。
+
+命令入队：
+
+客户端在非事务状态下，发送的命令会立即执行，但在事务状态下，服务器会根据不同的命令执行不同的操作。
+
+1. 如果客户端发送的是exec、discard、watch、multi四个命令中的一个，服务器会立即执行。
+2. 否则服务器会将命令放入事务对列，并返回queued回复。
+
+事务执行：
+
+当一个处于事务状态的客户端向服务器发送exec命令时，exec命令会立即执行，然后遍历事务队列执行并返回结果给客户端。
+
+### WATCH 命令
+
+watch 命令是一个乐观锁(optimistic lock),它可以在exec命令执行之前监视任意数量key,并在exec执行时，检查被监视的键是否至少有一个已经被修改过了，如果是，服务器拒绝执行事务，并返回空回复 nil。
+
+Redis保存着储存一个字典，字典的键是被watch命令监视的key，值是一个监视该键的所有客户端，所有对数据库进行修改的命令都会将key下的客户端标识为 REDIS_DIRTY_CAS,通过该字段在exec执行时可以判断key有没有被修改过。
+
+### 事务的ACID
+
+原子性(atomicity):要么命令全部执行，要么全部不执行。
+
+正常情况下命令会全部执行，如果命令错误，在命令入队的时候就会返回错误，当执行exec时会禁止执行。
+
+redis事务和传统数据库相比最大区别在于不支持回滚，即使执行期间出现错误，事务的后续命令也会执行，并且之前执行的命令也不会有影响。
+
+一致性(consistency):事务执行前后，数据符合定义和要求，不存在非法或无效错误数据。
+
+1. 命令入队错误：如果命令错误直接返回错误，禁止执行，不会产生错误数据。
+2. 执行错误：比如对key执行了错误类型的操作，出错命令不会对数据库修改，就不会产生错误数据。
+3. 服务器停机：如果服务器在无持久化模式下运行，重启数据库空白，数据一致;在 RDB 模式下运行，宕机可以根据现有的RDB文件恢复，数据一致;在 AOF 模式下运行，宕机可以根据现有的AOF 文件恢复，数据一致。
+
+隔离性(isolation):多个事务并发，事务之前不会互相影响，在并发状态下执行的事务和串行执行的事务产生结果完全相同。
+
+由于 redis 使用单线程执行事务，并且服务器保证事务期间事务不会中断，所以事务总是以串行的方式运行，保证隔离性。
+
+耐久性(durability):当事务执行完毕，结果永久保存，即使宕机结果不会丢失。
+
+1. 无持久化模式运行，不具有耐久性，停机丢失所有数据。
+2. RDB模式运行，不具有耐久性，因为BGSAVE在特定时间才会执行，并且异步执行的BGSAVE不能保证第一时间保存到硬盘。
+3. AOF模式运行，appendfsync设置为always，具有耐久性，每次执行命令都会写入文件并同步。但开启 `no-appendfsync-no-write`(AOF重写期间不会同步)，不具有耐久性。
+4. AOF模式运行，appendfsync设置为everysec或no，不具有耐久性，如果事务在同步周期内执行，并在此时停机，数据恰好丢失。
+
+## Lua脚本
+
+客户端可以使用Lua脚本，原子地执行多个Redis命令。
+
+redis全局变量函数：
+
+```lua
+# 调用 redis命令
+redis.call
+redis.pcall
+# 记录日志
+redis.log
+# 计算 SHA1校验和
+redis.sha1hex
+# 返回错误信息
+redis.error_reply
+redis.status_reply
+```
+
+Lua脚本中执行不确定性的命令，sinter、sunion、sdiff、smembers、hkeys、hvals、keys的结果进行排序，确保每次输出相同。
+
+Redis 服务器专门为 Lua 环境创建了一个伪客户端，负责处理 Lua 脚本中的 Redis 命令。
+
+![image.png](./assets/29.png)
+
+## 慢查询
+
+开启慢查询，redis.conf中配置：
+
+```properties
+# 超过多少微妙被记录为慢查询
+slow-log-slower-than
+# 最多保存多少条慢查询
+slow-log-max-len
+```
+
+或执行命令：
+
+```bash
+config set slowlog-log-slower-than 0
+config set slow-log-max-len 5
+# 查看慢查询日志
+slowlog get
+# 清楚慢查询日志
+slowlog reset
+```
+
+![image.png](./assets/30.png)
+
+## 监视器
+
+通过 moniter 命令，客户端可以将自己变为一个监视器，实时地接收并打印服务器当前处理的命令请求，尽量不在线上使用，长时间使用影响性能。

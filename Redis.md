@@ -1,10 +1,19 @@
+## 优势
+
+1. 基于键值对的NoSQL数据库。
+2. 拥有string、hash、list、set、zset、bitmaps等多种数据结构。
+3. 所有数据存放在内存，使用C语言，单线程架构放在多线程竞争，读写性能好，10万QPS。
+4. 另外可以将内存数据利用快照和日志的形式保存到硬盘，宕机时有效的保障了数据。
+5. 支持键过期、发布订阅、事务、流水线、lua脚本等功能。
+6. 提供简单的TCP协议，支持redis的客户端语言丰富。
+7. 提供主从复制功能，并提供高可用方案，保障节点故障发现和故障自动转移。
+
 ## 数据结构
 
 ### 1、SDS(Simple Dynamic String)，简单动态字符串
 
-
 | 数据结构   | 备注                                                   |
-| ------------ | -------------------------------------------------------- |
+| ---------- | ------------------------------------------------------ |
 | int len    | 已使用空间长度                                         |
 | int free   | 未使用空间长度                                         |
 | char[] buf | 保存的字符串，以空字符‘\0’结束，不计入已使用空间长度 |
@@ -15,7 +24,7 @@
 
 2、杜绝空间溢出，拼接字符串时，利用 free可以先检查是否有足够空间，可进行扩容后再拼接。
 
-3、减少修改字符串带来的内存分配，当增长字符串时，采用预分配，当长度小于1m时，会分配free=len，大于1m时，free= 1m；当缩减字符串时，惰性释放，增加free值，并不会立马回收 buf。
+3、减少修改字符串带来的内存分配，当增长字符串时，采用预分配，当长度小于1m时，会分配free=len，大于1m时，free= 1m；当缩减字符串时，惰性释放，增加free值，并不会立马回收 buf。值得注意的是应尽量减少字符串频繁修改操作如append、setrange，应改为set修改，降低预分配带来的内存浪费和内存碎片化。
 
 4、可以保存特殊字符，因为使用len确定字符长度，而不是'\0';
 
@@ -27,9 +36,8 @@
 
 ### 3、字典
 
-
 | 数据结构                      | 备注                                                                                                                                     |
-| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
 | dictEntry **table  哈希表数组 | 每个dictEntry就是一个节点，是一个链表，相同hash值的key存在同一个节点中，使用拉链法，没有链表尾部，所以新加入节点在链表头，时间复杂度O(1) |
 | size                          | 哈希表数组总大小                                                                                                                         |
 | sizemask                      | 哈希表数组总大小掩码，size-1                                                                                                             |
@@ -51,44 +59,55 @@ hash表扩展实际，没有执行bgsave时负载因子大于等于1，执行bgs
 
 一个数组，每个数组节点包含该节点的长度，这样既拥有了数组连续访问的优势，同时每个节点长度不一样，节约了空间。这里的压缩列表使用的是从尾部开始访问所以，保存的是前一个节点的长度。
 
+适合储存小对象和长度有限的数据。
+
 ### 7、对象
 
 使用对象来保存键和值，对象类型：
 
 字符串string、列表list、哈希hash、集合set、有序集合zset。
 
-字符串的编码可以是int，raw，embstr。
+字符串的编码可以是int，raw，embstr，8个字节的长整型使用int，小于等于39个字节的字符串使用embstr，大于39个字节的字符串使用raw。
 
-列表的编码可以是ziplist、linkedlist。
+列表的编码可以是ziplist、linkedlist，元素个数小于512并且每个元素值小于64字节使用ziplist,否则使用linkedlist。
 
-哈希的编码可以是ziplist，hashtable。
+哈希的编码可以是ziplist，hashtable，field个数大于512或value大于64字节时使用hashtable，否则使用ziplist。
 
-集合的编码可以是intset、hashtable。
+集合的编码可以是intset、hashtable，元素个数小于512并且集合元素全是整数使用intset,否则使用hashtable。
 
-有序集合的编码可以是ziplist、skiplist。
+有序集合的编码可以是ziplist、skiplist，元素个数小于128并且每个元素值小于64字节使用ziplist,否则使用skiplist。
 
 ## 常用命令
 
+redis中模式匹配通配符：
+
+`*`代表任意字符
+
+`.`代表匹配一个字符
+
+`[]`代表匹配部分字符,如[1,3]代表匹配1,3
+
+`\x`代表转义字符。
+
 ### 1、字符串
 
-
-| 命令                            | 例子                                             | 结果              | 描述                                                                                         |
-| --------------------------------- | -------------------------------------------------- | ------------------- | ---------------------------------------------------------------------------------------------- |
-| `set key value`                 | `set key hello`                                  | 成功返回`OK`      | 设置指定 key 的值                                                                            |
-| `get key`                       | `get key`                                        | 设置的值或`(nil)` | 获取指定 key 的值                                                                            |
-| `setnx key value`               | `setnx key "hello"`                              | 成功`1` 失败 `0`  | key 不存在时设值                                                                             |
-| `setex key seconds value`       | `setex key 60 "hello"`                           | 成功返回`OK`      | 设 key 值 过期时间为秒                                                                       |
-| `psetex key milliseconds value` | `psetex key 1000 "Hello"`                        | 成功返回`OK`      | 设 key 值 过期时间为毫秒                                                                     |
-| `getset key value`              | `getset key hello1`                              | 返回旧值          | 设新 key 返回旧 key 值                                                                       |
-| `mget key1 [key2]`              | `mget key1 key2 key3`                            | 返回列表值        | 批量获取值                                                                                   |
-| `mset key value [key value]`    | `mset key1 "hello1" key2 "hello2" key3 "hello3"` | 成功返回`OK`      | 批量设置值，原子操作，用户不会看到有些 key 值被修改，而另一些 key 值没变，不会有这一中间过程 |
-| `msetnx key value [key value]`  | `msetnx key1 "Hello" key2 "there"`               | 成功`1` 失败 `0`  | 批量设置值 key 都不存在才能成功，即使有一个可以存在，都全部不成功，原子操作                  |
-| `incr key`                      | `incr key1`                                      | `1`               | 累加 1 默认 0                                                                                |
-| `decr key`                      | `decr key1`                                      | `-1`              | 累减 1 默认 0                                                                                |
-| `incrby key increment`          | `incrby key 2`                                   | `2`               | 累加指定值 默认 0                                                                            |
-| `decrby key decrement`          | `decrby key 2`                                   | `-2`              | 累减指定值 默认 0                                                                            |
-| `incrbyfloat key increment`     | `incrbyfloat key 0.2` `incrbyfloat key -0.2`     | `0.2` `-0.2`      | 浮点计算                                                                                     |
-| `append key value`              | `append key 123`                                 | 字符串长度`3`     | 追加数据                                                                                     |
+| 命令                              | 例子                                               | 结果                  | 描述                                                                                         |
+| --------------------------------- | -------------------------------------------------- | --------------------- | -------------------------------------------------------------------------------------------- |
+| `set key value`                 | `set key hello`                                  | 成功返回 `OK`       | 设置指定 key 的值                                                                            |
+| `get key`                       | `get key`                                        | 设置的值或 `(nil)`  | 获取指定 key 的值                                                                            |
+| `setnx key value`               | `setnx key "hello"`                              | 成功 `1` 失败 `0` | key 不存在时设值                                                                             |
+| `setex key seconds value`       | `setex key 60 "hello"`                           | 成功返回 `OK`       | 设 key 值 过期时间为秒                                                                       |
+| `psetex key milliseconds value` | `psetex key 1000 "Hello"`                        | 成功返回 `OK`       | 设 key 值 过期时间为毫秒                                                                     |
+| `getset key value`              | `getset key hello1`                              | 返回旧值              | 设新 key 返回旧 key 值                                                                       |
+| `mget key1 [key2]`              | `mget key1 key2 key3`                            | 返回列表值            | 批量获取值                                                                                   |
+| `mset key value [key value]`    | `mset key1 "hello1" key2 "hello2" key3 "hello3"` | 成功返回 `OK`       | 批量设置值，原子操作，用户不会看到有些 key 值被修改，而另一些 key 值没变，不会有这一中间过程 |
+| `msetnx key value [key value]`  | `msetnx key1 "Hello" key2 "there"`               | 成功 `1` 失败 `0` | 批量设置值 key 都不存在才能成功，即使有一个可以存在，都全部不成功，原子操作                  |
+| `incr key`                      | `incr key1`                                      | `1`                 | 累加 1 默认 0                                                                                |
+| `decr key`                      | `decr key1`                                      | `-1`                | 累减 1 默认 0                                                                                |
+| `incrby key increment`          | `incrby key 2`                                   | `2`                 | 累加指定值 默认 0                                                                            |
+| `decrby key decrement`          | `decrby key 2`                                   | `-2`                | 累减指定值 默认 0                                                                            |
+| `incrbyfloat key increment`     | `incrbyfloat key 0.2` `incrbyfloat key -0.2`   | `0.2` `-0.2`      | 浮点计算                                                                                     |
+| `append key value`              | `append key 123`                                 | 字符串长度 `3`      | 追加数据                                                                                     |
 
 ### 2、哈希
 
@@ -145,6 +164,8 @@ hscan key cursor [MATCH pattern] [COUNT count]
 ```
 
 ### 3、列表
+
+最多储存2^32-1个元素，索引下标从左到右分别是 0 -> N-1 , 从右到左分别是 -1 -> -N。
 
 ```bash
 # 将一个或多个值插入到列表头部
@@ -214,7 +235,7 @@ brpoplpush source destination timeout
 
 ### 4、集合
 
-string类型的无序集合，添加、删除、查找的时间复杂都是 O(1)
+string类型的无序集合，添加、删除、查找的时间复杂都是 O(1)。
 
 ```bash
 # 将一个或多个成员元素加入到集合中
@@ -369,13 +390,16 @@ pexpireat key milliseconds-timestamp
 # 禁止使用
 keys pattern
 
+# 返回当前数据键总数，时间 O(1)
+dbsize
+
 # 将当前 key 移动到指定数据库中
 move key db
 
 # 移除 key 的过期时间，key 将不会过期删除。
 persist key
 
-# 查询当前 key 的剩余生存时间，单位秒
+# 查询当前 key 的剩余生存时间，单位秒, -1:Key没有设置过期时间 -2:键不存在
 ttl key
 
 # 查询当前 key 的剩余生存时间，单位毫秒
@@ -390,7 +414,7 @@ rename key newkey
 # 修改 key 名称，仅当 newkey 不存在时才会成功。
 renamenx key newkey
 
-# 返回当前 key 的数据类型
+# 返回当前 key 的数据类型,不存在返回none
 type key
 
 # 序列化 key（取出redis值，以字符串形式保存）
@@ -479,6 +503,149 @@ i = ( i & 0x55555555) + ((i >> 1) & 0x55555555);
 i = ( i & 0x33333333) + ((i >> 1) & 0x33333333);
 i = ( i & 0x0F0F0F0F) + ((i >> 1) & 0x0F0F0F0F);
 i = ( i *(0x01010101)) >> 24)
+```
+
+### 9、客户端命令
+
+```bash
+# 登陆
+redis-cli -h <ip> -p <port>
+redis-cli -h <ip> -p <port> <command>
+# 关闭
+redis-cli shutdown <nosave|save>
+# redis-cli 参数
+# -r 执行多次命令
+# -i 每隔几秒执行一次命令，必须和 -r 一起使用
+# -c 连接 cluster节点使用
+# --slave 可以把当前客户端模拟成当前redis节点的从节点
+# --rdb 请求redis生成并发送rdb文件保存到本地
+# --pipe 将命令封装成redis通信协议定义的数据格式，批量发送给redis执行，并不是原子的
+# --bigkeys 使用scan命令对redis的键进行采样，从中找到内存占用比较大的键值
+# --eval 用于指定lua脚本
+# --latency 测试客户端到目标redis的网络延迟 --latency-history 每 15 秒输出一次，可以通过 -i 参数控制间隔时间  --latency-dist 使用统计图表输出
+# --stat 实时获取redis的统计信息
+# --no-raw 返回结果为原始格式 --raw 返回格式化后的结果
+
+# 登陆之后执行
+
+# 查询与服务端相连的所有客户端连接信息
+client list
+# id: 客户端标识
+# addr: ip、port
+# fd：socket文件描述符，如果fd=-1，表示redis的伪客户端
+# name：客户端名称
+# flag：客户端类型，详细信息如下图。
+
+# 输入缓冲区
+# qbuf：输入缓冲区总容量 qbuf-free：输入缓冲区剩余容量 要求每个客户端输入缓冲区大小不能超过1G，否则将客户端关闭
+# 输出缓冲区
+# obl：固定缓冲区古长度  oll：动态缓冲区的长度  omem：使用字节数
+# 客户端的存活状态
+# age：当前客户端已经连接时间 idle：最近一次的空闲时间
+
+# 设置最大客户端连接数,默认10000
+config set maxclients <count>
+# 设置连接的最大空闲时间，默认为 0
+config set timeout <count 秒>
+
+#主动杀死客户端
+client kill <ip:port>
+```
+
+![image.png](./assets/31.png)
+
+#### 输入缓冲区
+
+输入缓冲区不受maxmemory控制，例如：
+
+```bash
+127.0.0.1：6390 > info memory
+
+used_memory_human: 5G
+
+max_memory_human: 4G
+```
+
+输入缓冲区过大存在严重危害，主要原因是处理速度跟不上输入速度：
+
+1. 进入输入缓冲区的命令包含了大量的bigkey。
+2. redis发送阻塞，短期不能处理命令。
+
+监控的方法：
+
+通过info clients，找到最大的输入缓冲区 client_biggest_input_buf ，超过限制就报警，然后再使用执行client list，收集 qbuf、qbuf-free，找到异常客户端。
+
+防范的方法：
+
+减少bigkey，减少阻塞操作，合理的监控警报。
+
+#### 输出缓冲区
+
+可以通过 client-output-buffer-limit 来设置，可以为不同的客户端设置不同的缓冲区：普通客户端、发布订阅客户端、slave客户端。
+
+```bash
+# <class> : normal、slave、pubsub
+# <hard limit> ：如果大于直接关闭
+# <soft limit>和<soft seconds> ： 如果大于并持续多少秒则关闭
+client-output-buffer-limit <class> <hard limit> <soft limit> <soft seconds>
+
+# 默认配置：
+client-output-buffer-limit normal 0 0 0
+client-output-buffer-limit slave 256mb 64mb 60
+client-output-buffer-limit pubsub 32mb 8mb 60
+```
+
+输出缓冲区不受maxmemory控制，分成固定缓冲区(16kb)和动态缓冲区：
+
+固定缓冲区：返回比较小得执行结果。
+
+动态缓冲区：返回比较大的结果，例如大的字符串、hgetall、smembers等。
+
+防范的方法：
+
+1. 限制不同客户端缓冲区。
+2. 适当增大slave的输出缓冲区，如果master节点写入较大，slave客户端的输入缓冲区可能会比较大，一旦slave被kill，会造成复制重连。
+3. 限制让输出缓冲区增大的命令，如moniter。
+4. 通过info clients，找到最大的输入缓冲区 client_longest_output_list ，超过限制就报警，然后再使用执行client list，收集obl、oll、omem，找到异常客户端。
+
+### 10、HyperLogLog
+
+内存占用小，但统计数据存在误差。
+
+```bash
+# 添加元素
+pfadd <key> [element...] 
+# 计算总数，不准确，存在0.81%误差
+pfcount <key>
+# 合并
+pfmerge <destkey> <sourcekey>
+```
+
+### 11、geo
+
+使用zset数据结构。
+
+```bash
+# 增加
+geoadd key [<longitude> <latitude> <member>  ...]
+# 获取
+geopos key <member>
+# 获取两个地理位置的距离,<unit> 表示单位，m、km、mi(英里)、ft(尺)
+geodist key <member1> <member2> <unit>
+# 获取指定范围的地理信息的位置集合
+# 可选参数：
+# withcoord:返回结果包含经纬度。
+# withdist:返回结果包含离中心节点距离。
+# withhash:返回包含geohash。
+# count <count>:返回结果数量。
+# asc|desc:返回结果按照离中心节点距离做升序或者降序。
+# store <key>:返回结果保存到指定键。
+# storedist <key>:将返回结果离中心节点距离保存到指定键。
+georadius key <longitude> <latitude> <radiusm|km|ft|mi> 
+# 获取geohash,由二维经纬度转换成一纬字符，两个字符串越相似，距离越近，长度越长精度越高，9位精度在2米左右
+geohash key [member...]
+# 删除地理位置信息
+zrem key member
 ```
 
 ## 使用场景
@@ -1076,9 +1243,20 @@ redis 是一个键值对数据库服务器，redisDb 中 dict 字典保存了数
 
 ### RDB持久化
 
+RDB持久化分为手动触发和自动触发。
+
+RDB 文件保存地址：
+
+```bash
+config set dir <dir>
+config set dbfilename <filename>
+# 当磁盘写满的情况下可以在线通过切换路径后执行bgsave进行磁盘切换
+# 如果redis拒绝启动加载损坏的RDB文件，可以使用redis-check-dump来修复。
+```
+
 #### RDB文件的创建与载入
 
-生成RDB文件有两种方式：`SAVE `、 `BGSAVE`。
+手动触发生成RDB文件有两种方式：`SAVE `、 `BGSAVE`。
 
 `SAVE `会阻塞 Redis 服务器进程，直到 RDB 文件创建完毕为止，在服务器进程阻塞期间，服务器不能处理任何命令请求。
 
@@ -1086,7 +1264,12 @@ redis 是一个键值对数据库服务器，redisDb 中 dict 字典保存了数
 
 另外：BGSAVE 执行期间，服务器处理 `SAVE `、`BGSAVE `、 `BGREWRITEAOP `三个命名和平时不同，`SAVE `、`BGSAVE `会被拒绝，`BGREWRITEAOP `会被延迟到 `BGSAVE `执行完再执行，而 `BGREWRITEAOP `执行期间 `BGSAVE `会被拒绝。
 
-可以通过设置服务器配置的 save 选项，让服务器每隔一段时间自动执行一次 `BGSAVE` 命令，并且可以设置多个条件，只要其中一个条件被满足，服务器都会执行。
+自动触发有四种情况：
+
+1. 从节点执行全量复制操作，主节点自动执行bgsave生成RDB文件。
+2. debug reload命令重新加载Redis时，也会触发save操作。
+3. 默认情况下执行shutdown时，如果没有开启AOF则自动执行bgsave。
+4. 可以通过设置服务器配置的 save 选项，让服务器每隔一段时间自动执行一次 `BGSAVE` 命令，并且可以设置多个条件，只要其中一个条件被满足，服务器都会执行。
 
 ```bash
 比如：
@@ -1120,6 +1303,16 @@ rdbcompression yes
 rdbchecksum yes
 ```
 
+bgsave执行流程：
+
+![image.png](./assets/32.png)
+
+1. 判断当前是否存在正在执行的子进程，如 RDB/AOF 子进程，如果存在，bgsave直接返回。
+2. 父进程fork创建子进程，fork过程中会阻塞父进程，通过 info stats 可以查看latest_fork_usec,获取最近一个fork的耗时，单位微秒。
+3. 父进程fork完成后不在阻塞，可以继续响应其他命令。
+4. 子进程创建RDB文件，完成后对原有文件进行原子替换。lastsave 可以获取最后一次生成 RDB 的世界，对应 info 统计的rdb_last_save_time。
+5. 进程发送信号给父进程表示完成，父进程更新统计信息。
+
 ### AOF(Append Only File)持久化
 
 与 RDB 持久化通过保存数据库中的键值对来记录数据库状态不同，AOF 持久化是通过保存 Redis 服务器所执行的写命令来记录数据的状态的。
@@ -1150,10 +1343,9 @@ Redis 的服务器进程就是一个事件循环，在这个循环中文件事�
 
 `flushAppendOnlyFile `的行为由服务器配置的 `appendfsync`选项来决定：
 
-
-| appendfsync的值 | 备注                                                                                                                                                                         | 对比                                                              |
-| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------- |
-| always          | `flushAppendOnlyFile `每次触发都会写入并同步到 AOF 文件                                                                                                                      | 效率最慢，安全性最高，宕机时只会丢失一个事件循环中所产生的命令    |
+| appendfsync的值 | 备注                                                                                                                                                                           | 对比                                                              |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------- |
+| always          | `flushAppendOnlyFile `每次触发都会写入并同步到 AOF 文件,普通硬盘只支持几百TPS写入                                                                                            | 效率最慢，安全性最高，宕机时只会丢失一个事件循环中所产生的命令    |
 | everysec        | 默认选项，`flushAppendOnlyFile `每次触发都会写入到 AOF 文件，<br />但同步操作需要与上次同步 AOF 文件的时间距离超过一秒钟，<br />并且同步操作由一个线程执行，不会有并发问题。 | 效率足够快，宕机时丢失一秒钟的命令数据                            |
 | no              | `flushAppendOnlyFile `每次触发都会写入到 AOF 文件，<br />但不会对AOF进行同步操作，何时同步由操作系统来决定                                                                   | 效率最高，单次同步时间最长，宕机时丢失上次同步AOF文件之后所有命令 |
 
@@ -1164,6 +1356,12 @@ Redis 的服务器进程就是一个事件循环，在这个循环中文件事�
 
 #### AOF 的重写
 
+重写有两种情况：
+
+1. 手动触发，直接调用bgrewriteaof。
+2. 自动触发，根据 auto-aof-rewrite-min-size （默认64MB） 和 auto-aof-rewrite-percentage （代表当前AOF文件空间[aof_current_size] 和 上一次重写后AOF文件空间[aof_base_size]的比值,可以通过info persistence查询）确定。
+   自动触发的时机 = aof_current_size > auto-aof-rewrite-min-size && (aof_current_size-aof_base_size)/aof_base_size >= auto-aof-rewrite-percentage
+
 随着服务器运行，AOF 文件的体积会越来越大，如果不加以控制，AOF 文件可能会对宿主机造成影响，并且进行数据还原所需的时间也越多。为了解决文件膨胀的问题，会创建一个新的 AOF 来替代现有的 AOF 文件，新旧两个 AOF 文件保存的数据库状态相同，但新的文件不会包含任何浪费空间的冗余命令
 
 ##### 重写的实现原理
@@ -1172,21 +1370,32 @@ AOF 重写不需要对现有的 AOF 文件进行读取、分析或者写入，�
 
 首先从数据库中读取键现在的值，然后用一条命令去记录键值对，代替之前记录这个键值对的多条命令。
 
-在实际情况中，重写程序在处理列表、哈希表、集合、有序集合可能会带有多个元素的键时，会检查键锁包含的元素个数，如果数量超过了 REDIS_AOF_REWRITE_ITEMS_PER_CMD （该值默认为64）时，则会用多条命令来记录键的值。
+在实际情况中，重写程序在处理列表、哈希表、集合、有序集合可能会带有多个元素的键时，会检查键所包含的元素个数，如果数量超过了 REDIS_AOF_REWRITE_ITEMS_PER_CMD （该值默认为64）时，则会用多条命令来记录键的值。
 
 AOF 重写是使用子进程来执行的，因为服务器进程 (父进程) 依然可以处理命令，另外子进程带有服务器进程的数据副本，使用子进程而不是线程，可以避免使用锁而且保证数据安全。
 
 服务器存在 AOF 重写缓冲区，在创建完子进程之后AOF 重写期间可以使用，服务器执行完写命令之后会同时将写命令发送到 AOF 缓冲区 和 AOF 重写缓冲区，当 AOF 重写完成后，会想父进程发送信号， 父进程会将 AOF 重写缓冲区的内容追加到新的AOF文件中，并对新的 AOF 文件改名，原子地覆盖现有 AOF 文件，这样就解决了 AOF 重写期间数据不一致的问题。
 
+重写流程：
+
+![image.png](./assets/33.png)
+
+1. 如果当前有进程在AOF重写，请求不执行，如果正在执行bgsave，重写命令延迟到bgsave完成之后再执行。
+2. 父进程执行fork创建子进程，开销等同于bgsave过程。
+3. 主进程fork操作完成后，继续响应其他命令,所有修改命令依然写入到 aof_buf。由于子进程只能读取fork操作时的内存数据，但父进程继续响应命令，所有写入 aof_buf 同时写入 aof_rewrite_buf 防止重写期间 AOF 丢失这部分数据。
+4. 子进程根据内存快照，按照命令合并规则写入新的AOF文件，单次批量写入硬盘数据由 aof-rewrite-incremental-fsync 控制，默认 32MB，防止单次刷盘数据过多造成硬盘阻塞。
+5. 新AOF文件写入完成后，子进程发送信号给父进程，父进程更新统计信息，然后将 aof_rewrite_buf 写入到新的AOF文件，最后使用 新AOF文件替换老文件。
+
 ### 对比
 
-
-| 持久化类型 | 优势                                                                                                                                                                                                                                                                                        | 劣势                                                                                                                                                                                                                                                |
-| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| RDB        | 1.快照生成的RDB文件是压缩的二进制文件，易于网络传输和备份保存，<br />  一旦出现系统灾难性故障时，非常容易恢复到某一历史时刻。<br />2.性能最大化，对于服务进程而言，开始持久化是唯一需要做的就是fork子进程，<br />  避免服务进程IO<br />3.相比于AOF，如果数据集很大，RDB的启动效率会更高。 | 1.数据一致性低，宕机会丢失当前时间到上一次生成快照的所有数据。<br />2.如果数据集较大，fork子进程时可能导致服务停止几百毫秒甚至一秒。                                                                                                                |
-| AOF        | 1.数据一致性高。<br />2.日志采用append模式，宕机不会影响已经写入的数据，如果写入过程出现宕机，<br />可以使用 `redis-check-aof --fix appendonly.aof `来修复，修复RDB文件使用 `redis-check-dump file.rdb`。<br />3.如果日志过大，Redis 自动启用重写机制。<br />4.文件格式更清晰、容易理解。   | 1.对于相同数量的数据集而言，AOF文件通常要大于RDB文件,<br />  RDB 在恢复大数据集时的速度比 AOF 的恢复速度要快。<br />2.根据同步策略的不同，AOF在运行效率上往往会慢于RDB。<br />  总之，每秒同步策略的效率比较高，同步禁用策略的效率和RDB一样高效。 |
+| 持久化类型 | 优势                                                                                                                                                                                                                                                                                                                            | 劣势                                                                                                                                                                                                                                                |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| RDB        | 1.快照生成的RDB文件是压缩的二进制文件，易于网络传输和备份保存，<br />一旦出现系统灾难性故障时，非常容易恢复到某一历史时刻。<br />2.性能最大化，对于服务进程而言，开始持久化是唯一需要做的就是fork子进程，避免服务进程IO<br />3.相比于AOF，如果数据集很大，RDB的启动效率会更高。                                                 | 1.数据一致性低，宕机会丢失当前时间到上一次生成快照的所有数据。<br />2.如果数据集较大，fork子进程时可能导致服务停止几百毫秒甚至一秒。                                                                                                                |
+| AOF        | 1.数据一致性高。<br />2.日志采用append模式，宕机不会影响已经写入的数据，如果写入过程出现宕机，<br />可以使用 `redis-check-aof --fix appendonly.aof `来修复，修复后使用diff-u对比数据差异<br />修复RDB文件使用 `redis-check-dump file.rdb`。<br />3.如果日志过大，Redis 自动启用重写机制。<br />4.文件格式更清晰、容易理解。 | 1.对于相同数量的数据集而言，AOF文件通常要大于RDB文件,<br />  RDB 在恢复大数据集时的速度比 AOF 的恢复速度要快。<br />2.根据同步策略的不同，AOF在运行效率上往往会慢于RDB。<br />  总之，每秒同步策略的效率比较高，同步禁用策略的效率和RDB一样高效。 |
 
 ### 持久化方式选择
+
+![image.png](./assets/34.png)
 
 如果对数据安全性要求极高，应该同时使用两种持久化方式。
 
@@ -1208,6 +1417,42 @@ AOF 重写是使用子进程来执行的，因为服务器进程 (父进程) 依
 4. 等待 Redis 将内存中的数据写入 appendonly.aof 文件，此时 RDB 和 AOF 数据已同步；
 5. 停止 Redis，修改配置文件开启 AOF 持久化和 RDB 持久化；
 6. 启动 Redis，数据恢复和持久化配置完成。
+
+### Fork操作
+
+做RDB和AOF重写时，会执行fork操作，fork创建子进程不需要拷贝父进程的物理内存空间，但是会复制父进程的空间内存页表，10GB的redis大约需要20MB的内存页。
+
+耗时问题定位：
+
+1. 优先使用物理机或者高效支持fork操作的虚拟化技术，避免使用Xen。
+2. 控制Redis实例最大可用内存，fork耗时跟内存量成正比，线上建议单例控制在10GB以内。
+3. 合理配置Linux内存分配策略，避免物理内存不足导致fork失败。
+4. 降低fork操作频率，如适度放宽AOF自动触发时机，避免不必要的全量复制。
+
+子进程运行过程中涉及CPU、内存、硬盘三部分：
+
+1. CPU：Redis属于CPU密集型服务，子进程负责把进程内的数据分批写入文件，也属于CPU密集操作，通常子进程对单核利用率接近90%。所以不要和其他CPU密集型服务部署在一起，造成CPU竞争，如果部署多个redis实例，尽量保证同一时刻只有一个子进程执行重写工作。
+2. 内存：子进程通过fork产生，占用内存大小等同于父进程，理论需要2倍内存来操作，但Linux使用写时复制机制，父子进程共享相同的物理内存页，当父进程写请求时会把要修改的页创建副本，而子进程在fork操作过程中共享整个父进程内存快照。所以如果部署多个redis实例，尽量保证同一时刻只有一个子进程执行工作，另外避免在大量写入时做子进程重写操作，这样将导致父进程维护大量页副本，造成内存消耗。
+3. 硬盘：根据redis重写AOF/RDB 的数据量，结合sar、iostat、iotop来分析，所以不要和其他高硬盘负载的服务部署在一起。如储存服务、消息队列服务等;AOF 重写期间会消耗大量的硬盘IO，可以开启配置 no-appendfsync-no-rewrite，极端情况下可能丢失AOF重写期间所有数据，默认关闭，表示在AOF重写期间不做fsync操作;另外开启AOF功能的Redis用于高流量写入场景时，如果使用普通机械磁盘，写入吞吐一般在100MB/s,这时瓶颈主要在硬盘上;最后单击配置多个redis实例时，可以配置不同实例分盘存储AOF文件，分摊硬盘压力。
+
+### AOF追加阻塞
+
+![image.png](./assets/35.png)
+
+当AOF持久化，使用everysec策略时，当硬盘资源繁忙时，会造成主线程阻塞，阻塞流程分析：
+
+1. 主线程负责写AOF缓冲区、AOF负责每秒执行一次同步磁盘操作，并记录最近一次同步时间。
+2. 主线程负责对比上一次AOF同步时间，如果距上次同步成功在2秒内，主线程直接返回，如果超过2秒，主线程会阻塞知道同步操作完成。
+
+由此可见：everysec最多可能丢失2秒数据，如果系统fsync缓慢，将会导致主线程阻塞。
+
+定位方法：
+
+1. 查看redis日志，（AOF fsync is taking too long）。
+2. 每当发生阻塞事件是，info persistence 中 aof_delayed_fsync会累加。
+3. iotop查看硬盘负载。
+
+优化办法：优化系统硬盘负载，同fork操作硬盘优化方法。
 
 ## 事件
 
@@ -1257,6 +1502,30 @@ serverCron 默认100ms执行一次，可以通过 redis.conf 中 hz 来配置。
 
 ## 客户端与服务器
 
+序列化协议：
+
+```bash
+*<参数数量> CRLF
+<参数1的字节数量> CRLF
+<参数1> CRLF
+...
+<参数N的字节数量> CRLF
+<参数N> CRLF
+
+例如：
+set hello world 
+
+*3
+$3
+SET
+$5
+hello
+$5
+world
+
+*3\r\n$3\r\nSET\r\n$5\r\nhello\r\n$5\r\nworld
+```
+
 ### 客户端的关闭
 
 1. 客户端进程退出或者被杀死。
@@ -1265,6 +1534,28 @@ serverCron 默认100ms执行一次，可以通过 redis.conf 中 hz 来配置。
 4. 如果服务器设置了 timeout ，那么客户端空转时间超过 timeout 的值。
 5. 客户端发送的命令请求的大小超过了输入缓冲区的限制大小(默认1GB)。
 6. 发送给客户端的命令回复的大小超过了输出缓冲区的限制大小。
+
+### 客户端常见异常
+
+无法从连接池获取连接：
+
+1. 连接池过小。
+2. 操作完成，没有释放连接。
+3. 存在慢查询。
+4. 服务端阻塞。
+
+客户端读写超时：
+
+1. 读写超时时间设置过短。
+2. 命令本身较慢。
+3. 网络不正常。
+4. 服务器发生阻塞。
+
+客户端连接超时：
+
+1. 连接超时时间设置过短。
+2. redis阻塞，造成tcp-backlog已满，造成新的连接失败。tcp-backlog 是 tcp 三次握手后，放入队列，队列的大小，默认511。
+3. 网络不正常。
 
 ### 命令的执行过程
 
@@ -1286,10 +1577,22 @@ serverCron 默认100ms执行一次，可以通过 redis.conf 中 hz 来配置。
 
 ## 复制(master/slave)
 
-复制的配置有两种方式：
+复制的配置有三种方式：
 
 1. SLAVEOF ip port 命令。
 2. redis.conf 配置 slaveof。
+3. 在redis-server启动命令后加入 --salveof ip port。
+
+主从节点创建成功后，可以使用info replication命令查看。另外slaveof命令不但可以建立复制，还可以在从节点执行slaveof no one来断开复制关系，升为主节点，断开复制后不会抛弃原有数据，只是无法再获取主节点上的数据变化。除此之外 SLAVEOF new-ip new-port还可以切换主节点，切换后从节点会清空之前所有的数据。
+
+如果主节点设置了requirepass密码，意味着所有客户端访问必须使用auth命令进行校验，从节点与主节点复制是通过一个特殊标识的客户端完成的，因此需要配置从节点的masterauth，默认情况下从节点为只读模式。
+
+repl-disable-tcp-nodelay 用于控制是否关闭 TCP_NODELAY,默认关闭：
+
+1. 当关闭时，主节点产生的命令数据无论大小都会及时地发送给从节点，延迟变小，网络带宽消耗变大。适用于主从网络良好场景。
+2. 当开启时，主节点会合并较小的TCP数据包从而节省带宽。默认发送时间间隔取决于Linux内核，一般默认40毫秒。节省了带宽但增大主从延迟。适用于主从网络环境复杂或带宽紧张。
+
+同机架或同机房关闭，低延迟，同城跨机房开启，高容灾。
 
 复制功能分为两步：
 
@@ -1320,6 +1623,22 @@ serverCron 默认100ms执行一次，可以通过 redis.conf 中 hz 来配置。
 
 服务器ID：除了使用复制积压缓冲区来判断，slave上线master还会保存它的服务器ID，等slave再次上线时判断该slave是之前掉线的slave。
 
+### 拓扑结构：
+
+一主一从：
+
+当写命令并发较高且需要持久化时，可以只在从节点开启AOF，注意的是当主节点宕机后自动重启后数据集为空，如果从节点这时候复制会导致从节点数据清空，应该关闭主节点自动重启，宕机后从节点执行slaveof no one 断开复制关系，再重启主节点。
+
+一主多从：
+
+实现读写分离，在读占比较大的场景，把读命令发送到从节点来分担主节点压力，但对于写并发量较高场景，多从节点会导致主节点写命令的多次发送消耗网络带宽。
+
+树状主从：
+
+![image.png](./assets/36.png)
+
+有效降低主节点复制压力。
+
 ## Sentinel模式
 
 Sentinel 用于监控 redis 集群中的 master,当master宕机后自动将master进入下线状态，并将下线服务器属下的某个从服务升级为新的master,是redis的高可用解决方案，实现故障自动转移，可以监控多组主从服务。
@@ -1329,15 +1648,26 @@ Sentinel 用于监控 redis 集群中的 master,当master宕机后自动将maste
 redis-sentinel sentinel.conf
 # 或
 redis-server sentinel.conf --sentinel
+# 查看节点状态
+sentinel masters
+sentinel master <master name>
+sentinel slaves <master name>
+sentinel sentinels <master name>
+# 对节点强制进行故障转移
+sentinel failover <master name>
 ```
 
 Sentinel 本质上是一个运行在特殊模式下的 Redis 服务器;
 
 同时将成为 master 和 slave 的客户端，以每10秒一次的频率发送INFO命令来获取master和slave的当前信息;
 
-另外还会和主从服务器创建订阅连接，当一个sentinel向订阅连接里发送消息，所有的sentinel将会收到这条消息，用于更新sentinel对被监视服务器的认知;
+另外还会和主从服务器创建订阅连接，当一个sentinel向订阅连接里发送消息，所有的sentinel将会收到这条消息，用于更新sentinel对被监视服务器的认知,每隔2秒一次;
 
 当sentinel发现新的sentinel时，就会和新的sentinel创建命令连接，但不会创建订阅连接，这样sentinel之间形成互通的网络。
+
+每隔1秒，每个sentinel会向主节点、从节点、其他sentinel节点发送ping做心跳检测。
+
+部署各节点的机器时间要尽量同步，否则日志的时序性会混乱，可添加ntp服务来同步时间。
 
 ### 下线状态的判定
 
@@ -1376,6 +1706,8 @@ sentinel 会以每秒一次的频率向所有与它创建了命令连接的实�
 
 redis-cluster提供分布式方案，集群通过分片(sharding)来进行数据共享，并提供复制和故障转移功能。
 
+每个节点会单独开辟一个TCP通道，用于节点间通信，在基础端口上加10000。
+
 ### 节点
 
 Redis 集群通常由多个节点组成，刚开始每个节点都是相互独立的，它们处于一个只包含自己的集群中，要组建真正的集群需要将各个节点连接起来，服务器在启动时通过redis.conf中cluster-enabled是否为yes来决定是否开启集群模式,并且节点只能使用0号数据库。
@@ -1403,6 +1735,14 @@ cluster replicate <node_id>
 ```
 
 当 16384 个槽被指派，集群会进入上线状态。
+
+### 功能限制
+
+1. mset、mget等批量操作只支持具有相同slot值得key。
+2. 当多个key分布在不同的节点上时无法使用事务功能。
+3. 不能将一个大的键值对象，如hash、list映射到不同节点。
+4. 只能使用db0。
+5. 复制结构只支持一层，从节点只能复制主节点，不支持树状复制结构。
 
 ### 重新分片
 
@@ -1503,7 +1843,7 @@ redis-cli -c -p 7000
 
 ## 发布与订阅
 
-发布与订阅功能由PUBLISH、SUBSCRIBE、PSUBSCRIBE等命令组成。
+发布与订阅功能由PUBLISH、SUBSCRIBE、PSUBSCRIBE等命令组成，无法消息堆积和回溯。
 
 ```bash
 # 订阅与退订频道(channel)
@@ -1590,6 +1930,17 @@ redis事务和传统数据库相比最大区别在于不支持回滚，即使执
 
 客户端可以使用Lua脚本，原子地执行多个Redis命令。
 
+```bash
+# 加载 lua 脚本到内存,返回SHA1
+script load "${cat lua_get.lua}"
+# 判断 SHA1 是否已经加载
+script exists <sha1>
+# 清楚redis已经加载的所有脚本
+script flush
+# 杀掉正在执行的lua脚本
+script kill
+```
+
 redis全局变量函数：
 
 ```lua
@@ -1613,10 +1964,16 @@ Redis 服务器专门为 Lua 环境创建了一个伪客户端，负责处理 Lu
 
 ## 慢查询
 
+在高并发场景下如果执行时间在1毫秒以上，那么redis最多可支撑ops不到1000，所以慢查询在高ops下建议设置为1毫秒。
+
+慢查询纪录命令执行时间，并不包括命令排队和网络传输时间。如果客户端出现超时，需要检查该时间点是否有对应的慢查询，从而分析是否为慢查询导致的命令级联阻塞。
+
+慢查询日志是一个先进先出的队列，如果慢查询较多，可能丢失部分慢查询命令，可以定期执行slow get命令将慢查询日志持久化到其他储存。
+
 开启慢查询，redis.conf中配置：
 
 ```properties
-# 超过多少微妙被记录为慢查询
+# 超过多少微妙被记录为慢查询，如果该值为0则会记录所有的命令，如果小于0则任何命令不会记录，默认值为10毫秒
 slow-log-slower-than
 # 最多保存多少条慢查询
 slow-log-max-len
@@ -1638,3 +1995,193 @@ slowlog reset
 ## 监视器
 
 通过 moniter 命令，客户端可以将自己变为一个监视器，实时地接收并打印服务器当前处理的命令请求，尽量不在线上使用，长时间使用影响性能。
+
+## 阻塞
+
+监控：
+
+当redis阻塞时，应用最新感知到，当应用放收到大量redis超时异常时，加入异常统计，并通过邮件等方式报警，何时触发报警一般根据应用的并发量决定，可以使用日志系统的appender收集专门统计异常和触发报警。
+
+内在原因：
+
+1. API或数据结构使用不合理：尽量避免使用超过O(n)的命令，缩减大对象或把大对象拆分为多个小对象，使用redis-cli -h `<ip>` -p `<port>` bigkeys 查找大对象。
+2. CPU饱和：可以使用redis-cli -h `<ip>` -p `<port>` --stat获取当前使用情况，这时候需要做集群来分摊压力。
+3. 持久化阻塞：fork阻塞、AOF刷盘阻塞、HugePage写操作阻塞（子进程在执行重写期间利用linux写时复制技术降低内存开销，对于开启 Transparent HugePages的操作系统，每次写命令引起的复制内存页单位由4k变为2MB，拖慢写操作执行时间）。
+
+外在原因：
+
+1. CPU竞争：多个CPU密集型服务部署在一起；一台机器上部署了多个实例时，使用绑定redis进程到CPU上，降低上下线切换的开销，正常情况下没问题，但子进程存在时会和父进程共享一个CPU，子进程重写时对单核CPU使用率通常在90%一次，父子进程竞争，所以开启了持久化不建议绑定CPU。
+2. 内存交换：redis保证高性能的前提是所有数据在内存中，如果操作系统把redis部分内存换出到硬盘，将会极大影响性能。
+   识别的方法：先找到redis的进程号 pid，在使用 cat /proc/`<pid>`/smaps |grep Swap,如果交换量都是0KB或者个别是4KB，都是正常现象，说明redis进程内存没有被交换。
+   预防的办法：保证内存充足；确保所有Redis设置maxmemory，防止极端情况内存不可控增长；降低系统使用swap优先级。
+3. 网络原因：超过maxclients（默认10000）连接拒绝；backlog队列（默认511）溢出。
+
+## 内存
+
+info memory内存相关字段：
+
+![image.png](./assets/image.png)
+
+需要重点关注的有：used_memory_rss、used_memory和它们的比值mem_fragmentation_ratio。
+
+1. mem_fragmentation_ratio>1时，说明used_memory_rss比used_memory多出的部分内存并没有用于数据储存，而是被内存碎片消耗。
+2. mem_fragmentation_ratio<1时，说明操作系统把redis内存交换到硬盘，性能急剧下降。
+
+redis进程消耗内存 = 自身内存 + 对象内存 + 缓存内存 + 内存碎片。
+
+![image.png](./assets/38.png)
+
+其中对象内存是占用最大的一块，包含key对象和value对象。
+
+缓冲内存包含：客户端缓冲、复制积压缓冲区、AOF缓冲区，客户端输入缓冲最大1G,无法控制，输出缓冲区通过 `client-output-buffer-limit`控制，复制积压缓冲区根据repl-backlog-size参数控制默认1MB，所有从节点共享此缓冲区，可以设置较大的缓冲空间，如100MB，AOF缓冲区无法由用户控制，取决于AOF重写时间和写入命令量，通常不大。
+
+内存碎片是因为内存分配器按固定的内存块单位分配，当分配8kb的块给5kb的对象时，剩下3kb未使用不能分配给其他对象存储，就成为了内存碎片。在 频繁更新操作和大量过期键删除 场景下可能会导致碎片率上升。解决办法如下：
+
+1. 尽量做到数据对齐，采用数字类型或者固定长度字符串等。
+2. 重启节点可以做到内存碎片重新整理，因此可以 利用高可用架构，将碎片率过高的主节点切换为从节点，进行安全重启。
+
+子进程内存消耗不需要父进程1倍，根据实际写入命令量消耗，需要设置sysctl vm.overcommit_memory = 1 允许内核可以分配所有的物理内存，防止fork时因剩余内存不足而失败，排查当前系统是否支持开启THP（HugePage），如果开启建议关闭，防止copy-on-write期间内存过渡消耗。
+
+内存管理：
+
+1. 设置内存最大值maxmemory，用于缓存场景，超过上限使用LRU剔除，防止所有内存超过物理内存，内存碎片的存在实际内存可能大于maxmemory，需要预留好空间，比如一台24G服务器，为系统预留4G，预留4G给其他进程或fork进程，剩下16G可以部署4个maxmemory=4G的redis。
+2. 通过config set maxmemory 动态设置内存上限。
+3. 内存回收：删除过期键对象，超过上限使用LRU剔除。
+
+maxmemory-policy策略：
+
+1. noeviction：默认策略，不会删除任何数据，达到上限后拒绝写入。
+2. volatile-lru：根据LRU算法删除设置了超时的键，直到腾出足够空间，如果没有可删除的键回退到noeviction，redis禁止使用共享对象。
+3. allkeys-lru：根据LRU算法删除，不管数据有没有设置超时属性，redis禁止使用共享对象。
+4. allkeys-random：随机删除所有键。
+5. volatile-random：随机删除过期键。
+6. volatile-ttl：根据键值对象的ttl属性，删除最近将要过期数据，如果没有回退到noeviction。
+
+可以通过info stats中evicted_keys查看已剔除的键数量。
+
+内存优化：
+
+1. 对于值对象是字符串且长度<=39字节的数据，内部编码为embstr类型，字符串sds和redisobject一起分配，从而只需要一次内存操作，高并发场景下，字符串控制在39字节以内。
+2. 缩减key-value的长度，精简业务对象，去掉不必要的属性，甚至可以把业务对象系列化成二进制数组放入redis，或者使用压缩算法压缩json再存储，比如Snappy。
+3. 使用整数对象池，redis内部维护[0-9999]的整数对象池，在满足需求的前提下，尽量使用整数对象，但是使用maxmemory和LRU淘汰策略后无法共享对象，对于ziplist编码的值对象也无法使用。
+4. 尽量减少字符串频繁修改操作如append、setrange，应改为set修改，降低预分配带来的内存浪费和内存碎片化。
+5. 控制编码类型，编码类型转换在redis写入数据时完成，只能从小内存编码转向大内存编码。对于性能要求高的场景使用ziplist，建议长度不超过1000，每个元素控制在512字节内。使用intset编码时，尽量保持整数范围一致，防止个别大证书触发集合升级操作，产生内存浪费。
+6. 控制键的数量，利用redis数据结构降低外层键的数量，如把大量键分组映射到多个hash结构降低键数量。
+
+## Linux配置优化
+
+vm.overcommit_memory:该值设为1可以让fork操作能在低内存下也执行成功。
+
+![image.png](./assets/39.png)
+
+vm.swappiness：如果linux>3.5,为1，否则为0，从而实现内存充足的时候redis足够快，内存不足时避免redis死掉，如果在高可用状态下，死掉比阻塞更好。
+
+![image.png](./assets/40.png)
+
+THP：开启THP特性，支持大内存页2MB分配，当开启时可以减少fork子进程时间，fork操作后每个内存页由4kb变为2mb，会增大重写期间父进程内存消耗。
+
+OOM killker：当内存不足时强制杀死一些用户进程。每个进程的权值放在/proc/pid/oom_score，这个值受/proc/pid/oom_adj控制，当设置为最小值时，不会被杀掉，如果在高可用状态下，死掉比阻塞更好。
+
+NTP：使用ntp使各实例时间同步。
+
+ulimit：ulimit -a 包含open files参数，是单个用户同时打开的最大文件个数，该值应设置为 maxclients + 32，因为redis内部最多使用32个文件描述符。
+
+tcp backlog：redis默认tcp-backlog为511，需要设置linux的tcp-backlog大于该值。
+
+## 安全
+
+redis.conf可以配置 requirepass 来设置密码，访问需要 redis-cli -a `<password>`来访问。
+
+使用rename-command来修改命令关键字，屏蔽危险命令，如keys、flushall/flushdb。
+
+使用防火墙限制外网访问。
+
+redis.conf中bind字段指的是和那个网卡绑定，不是只接受某个网段的ip。绑定那个网卡就只能从哪个网卡的ip进行访问。bind可以设置多个值，0.0.0.0表示不限制网卡访问，如果没有配置默认127.0.0.1，只允许来自本机的访问。
+
+不使用默认端口。
+
+使用非root用户启动。
+
+## bigkey
+
+危害：
+
+1. 内存空间不均匀。
+2. 超时阻塞。
+3. 网络阻塞。
+
+发现：使用redis-cli --bigkeys查看分布,然后使用 scan + debug object `<key>`查看序列化后的value字节数，该值小于实际值，找到对应的bigkey进行相应的处理和报警。
+
+可以利用从节点执行，并利用pipeline机制。
+
+删除：删除bigkey可能会造成阻塞。
+
+string：一般不会产生阻塞。
+
+hash、list、set、zset：使用对应的scan命令，分批次删除value，最后删除key。
+
+## 统计命令
+
+info:
+
+![image.png](./assets/1646295374486-image.png)
+
+info server:
+
+![image.png](./assets/42.png)
+
+info clients:
+
+![image.png](./assets/43.png)
+
+info memory:
+
+![image.png](./assets/44.png)
+
+info persistence:
+
+![image.png](./assets/45.png)
+
+info stats:
+
+![image.png](./assets/46.png)
+
+info replication:
+
+![image.png](./assets/47.png)
+
+info cpu:
+
+![image.png](./assets/48.png)
+
+info commandstats:
+
+![image.png](./assets/49.png)
+
+redis配置：
+
+![image.png](./assets/50.png)
+
+![image.png](./assets/51.png)
+
+![image.png](./assets/52.png)
+
+![image.png](./assets/53.png)
+
+![image.png](./assets/54.png)
+
+![image.png](./assets/55.png)
+
+![image.png](./assets/56.png)
+
+![image.png](./assets/57.png)
+
+![image.png](./assets/image.png)
+
+
+
+
+
+
+
+1

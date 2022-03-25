@@ -2020,7 +2020,7 @@ slowlog reset
 
 info memory内存相关字段：
 
-![image.png](./assets/image.png)
+![image.png](./assets/44.png)
 
 需要重点关注的有：used_memory_rss、used_memory和它们的比值mem_fragmentation_ratio。
 
@@ -2176,12 +2176,6 @@ redis配置：
 
 ![image.png](./assets/57.png)
 
-![image.png](./assets/image.png)
-
-
-
-
-
-
+![image.png](./assets/58.png)
 
 1

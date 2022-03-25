@@ -1,3 +1,11 @@
+## Kafka使用场景
+
+角色：
+
+1. 消息系统：具有系统解耦、冗余存储、流量削峰、异步通信等，还提供消息顺序性保障和回溯功能。
+2. 存储系统：拥有持久化功能和多副本机制，只需要把对应的数据保留策略设置为永久，即可作为长期的数据存储来使用。
+3. 流式处理平台：提供可靠的消息和流式处理类库。
+
 ## KafKa相关名词
 
 消息：Kafka的数据单元
@@ -20,6 +28,10 @@ broker:一个独立的Kafka服务器，broker接收来自生产者的消息，�
 
 保留消息：broker保留消息的策略有两种，一种是保留一段时间，一种是保留消息达到一定大小的字节数，当达到这些上限时，旧消息就会被删除。可以配置主题为紧凑型日志，只有最后一个带有特定键的消息会被留下来。
 
+![image.png](./assets/1003.png)
+
+高水位：一个特定的偏移量(ISR中的最小LEO)，消费者只能拉取到这个偏移量之前的消息，即已经复制到所有ISR的消息。
+
 ## Kafka的优点
 
 1. 支持多个生产者，比如多个前端系统收集数据，并以同一个格式对外提供数据。
@@ -32,6 +44,9 @@ broker:一个独立的Kafka服务器，broker接收来自生产者的消息，�
 
 ```bash
 # 创建主题
+# 可以在日志目录查看，文件名为 <topic>-<partition-num>,也可以通过 zookeeper 查看
+# --replica-assignment, 可以指定分区 格式 partition1-broker-num,partition2-broker-num,partition3-broker-num  例如 2:0,0:1,1:2,2:1 表示有4个分区，分别分布在这些broker
+# --config 可以覆盖配置
 kafka-topics.sh --create --zookeeper <ip:port> --replication-factor <num> --partitions <num> --topic <topic-name>
 
 # 增加分区，分区无法减少，如果一定要减少分区数量，只能删除整个主题，然后重新创建
@@ -96,8 +111,6 @@ kafka-console-consumer.sh --bootstrap-server <ip1:port1>,<ip2:port2> --topic <to
 删除每个broker的分区目录，这些目录可能叫 TOPICNAME-NUM , NUM指的是分区的ID
 重启所有broker
 ```
-
-![image.png](./assets/1003.png)
 
 ## Kafka的配置
 
@@ -185,6 +198,28 @@ message.max.bytes
 1. 可重试错误：连接错误、no leader错误等。
 2. 不可重试错误：消息太大等。
 
+### 架构
+
+![image.png](./assets/1005.png)
+
+生产者由两个线程协调运行，分别是主线程和Sender线程(发送线程)，主线程由 KafkaProducer 创建消息，然后可能通过拦截器、序列化器、分区器，再缓存到消息累加器(RecordAccumulator)，发送线程负责从RecordAccumulator中获取消息并将其发送到kafka中。
+
+RecordAccumulator 缓存的大小可以通过生产者客户端参数buffer.memory配置，默认33554432B，即32MB，当生产者发送消息的速度超过发送到服务器的速度，会导致生产者空间不足，这时要么阻塞，要么抛出异常，取决于max.block.ms,默认 60000，即60秒。
+
+主线程发送的消息会被追加到 RecordAccumulator 的某个双端队列(Deque)中,在其内部为每个分区都维护了一个双端队列，即 `Deque<ProducerBatch>`,消息写入缓存时，追加到尾部，Sender读取时从头部读取。一个 ProducerBatch 包含多个 ProducerRecord。
+
+消息在网络以字节传输，在发送之前需要创建一块内存区域来保存对应的消息，kafka 中使用 java.io.ByteBuffer来进行消息内存的创建和释放，另外 RecordAccumulator 中还有一个BufferPool ，用来实现 ByteBuffer 的复用，BufferPool 只针对特定大小 ByteBuffer 进行管理，该值有 batch.size 来指定，默认16384B，即16KB。
+
+当一条消息流入 RecordAccumulator 时，会先寻找与消息分区对应的双端队列，再从队列尾部获取一个ProducerBatch，查看 ProducerBatch 是否还可以写入ProducerRecord，如果不可以则需新建一个ProducerBatch，新建时会对消息大小进行评估，如果消息大小小于 batch.size 则以该值创建 ProducerBatch ，若大于则以评估值创建，但该段内存不会被复用。
+
+Sender 获取消息后会将 `<分区,Deque<ProducerBatch>>`转换为 `<Node,List<ProducerBatch>>`,再进行封装为 `<Node,Request>`,对于生产者主线程关注的是向哪个分区发送消息，Sender线程关注的是向哪个 broker 发送消息，Request 对应的是相应的协议数据。
+
+Sender 在发送之前还会保存到 InFlightRequest 中，其中保存的是已经发出去但还没收到响应的请求，其数据结构为 `Map<NodeId,Deque<Request>`，该值可以通过 max.in.flight.requests.per.connection 来控制，默认为5，即每个连接最多只能缓存5个未响应的请求。
+
+通过 InFlightRequest 可以判断 Node 的负载情况，找到最小的leastLoadedNode,当需要更新元数据时会挑选出 leastLoadedNode 来获取元数据。
+
+发送消息时，如果客户端没有能够使用的元数据或超过 metadata.max.age.ms（默认300000 即5分钟）时间没有更新元数据则会引起元数据的更新。
+
 ### 生产者配置
 
 ```yaml
@@ -218,7 +253,7 @@ max.in.flight.requests.per.connection
 timeout.ms
 # broker等待同步副本返回消息确认的时间，与 asks 相匹配，如果在指定时间内没有收到同步副本的确认，broker会返回错误。
 request.timeout.ms
-# 生产者在发送数据时等待服务器返回响应的时间。
+# 生产者在发送数据时等待服务器返回响应的时间，应当比broker端 replica.lag.time.max.ms（判定副本非同步状态时间） 大。
 metadata.fetch.timeout.ms
 # 生产者获取元数据等待服务器响应的时间。
 compression.type
@@ -273,11 +308,43 @@ ProducerRecord 包含主题、键、值。键有两个用途：作为消息的�
 
 除了默认分区器外，可用实现 Partitioner 接口自定义分区。
 
+#### 分区数量的选择
+
+kafka 提供 kafka-producer-perf-test.sh 和 kafka-consumer-perf-test.sh 测试生产者和消费者性能。
+
+`kafka-producer-perf-test.sh --topic <topic-name> --num-records <1000000> --record-size <1024> --producer-props bootstrap.server=<ip:port> acks=1`
+
+`kafka-consumer-perf-test.sh --topic <topic-name> --messages <1000000> --broker-list <ip:port>`
+
+--num-records:生产的消息总条数。
+
+--record-size:消息大小，单位B。
+
+--messages:消费的消息总条数
+
+![image.png](./assets/1007.png)
+
+可以通过改变分区数量，对比对吞吐量的影响。
+
+当分区变多后，若某个节点宕机，将会有大量的分区需要同时进行leader选举，同时会增加日志清理的耗时，被删除时也会消耗更多的时机。
+
+### 拦截器
+
+通过实现 ProducerInterceptor 来使用，包含三个方法:onSend,onAcknowledgement,close。三个方法中抛出异常都会直接捕获并记录日志。
+
+可以用来在消息发送之前做一些准备工作，比如添加消息前缀，进行消息数量统计等，但一般不修改topic、key、partition等，否则会如修改key影响分区的计算等。 onAcknowledgement() 优先于用户设定的 Callback 之前执行，由于方法在生产者的 I/O 线程中执行，逻辑应越简单越好。
+
 ## 消费者
 
 一个群组的消费者订阅同一个主题，每个消费者接收一部分分区的消息，如果消费者数量超过分区数量，那么有一部分消费者就会被闲置，不会接收任何消息。不同群组互不影响，都会接收到所有消息。
 
-一个消费者应当使用一个线程。
+KafkaProducer 线程安全，但 KafkaConsumer 非线程安全，一个消费者应当使用一个线程。
+
+#### 消息结构
+
+![image.png](./assets/1006.png)
+
+其中 timestampType 有两种类型：CreateTime(消息的创建时间戳)、LogAppendTime(消息追加到日志的时间戳)。poll方法的返回值为ConsumerRecords,该类提供 partitions（获取返回值的所有分区）、records(TopicPartition)（获取某个分区消息）、records(String topic)（根据主题进行取数据）。
 
 #### 分配分区
 
@@ -292,6 +359,14 @@ ProducerRecord 包含主题、键、值。键有两个用途：作为消息的�
 当分区被重新分配给另一个消费者时，消费者当前的读取状态会丢失，可能还需要去重新获取元数据，在它重新恢复状态之前会拖慢应用程序。
 
 消费者通过向被指派为群组协调器的broker（不同的群组可以有不同的协调器）发送心跳来维持它们和群组的从属关系、以及它们对分区的所有权关系。只有消费者以正常的时间间隔发送心跳，才会被认为是活跃的，如果消费者停止发送心跳的时间足够长，会话就会过期，或者消费者通知协调器它将要离开群组，群组协调器会认为它已经死亡，并触发再均衡。消费者会在轮询消息或者提交偏移量时发送心跳。
+
+### 拦截器
+
+通过实现 ConsumerInterceptor 接口使用，包含3个方法：onConsume，onCommit，close。
+
+KafkaConsumer会在调用 poll 方法返回前调用 onConsume 方法，可以对消息进行修改或者过滤，如通过判断消息中的时间戳来判断消息是否过期，如果过期就将消息直接过滤。
+
+onCommit会在提交完偏移量后调用，可以使用这个方法来跟踪所提交的位移信息。
 
 ### 订阅
 
@@ -318,7 +393,9 @@ comsumer.subscribe(Collections.singletonList("xxxx"));
 
 ```yaml
 fetch.min.bytes
-# 消费者从服务器获取记录的最小字节数，broker 收到消费者的数据请求时，如果可用的数据量小于 fetch.min.bytes 指定大小，会等到有足够的可用数据时才会返回，这样可以减低CPU负载。
+# 默认1B，消费者从服务器获取记录的最小字节数，broker 收到消费者的数据请求时，如果可用的数据量小于 fetch.min.bytes 指定大小，会等到有足够的可用数据时才会返回，这样可以减低CPU负载。
+fetch.max.bytes
+# 默认50MB，该值并不是绝对的最大值，如果在第一个非空分区中拉取的第一个消息大于该值，那么该消息将仍然返回。
 fetch.max.wait.ms
 # 指定broker等待足够可用数据的最大等待时间，默认500ms，什么时候返回取决于该值和fetch.min.bytes谁先满足。
 max.partition.fetch.bytes
@@ -366,11 +443,13 @@ receive.buffer.bytes 和 send.buffer.bytes
 
 可以使用组合提交，循环中使用 `commitAsync()` 保证效率、最后 finally 块使用 `commitSync() ` 保底，另外可以使用 `commitAsync()` 分阶段提交，参入偏移量参数。
 
+值得注意的是：如果x表示某次拉取操作中此分区的最大偏移量，那么提交的偏移量为x+1。
+
 当分区再均衡时，需要在这之前提交偏移量，在 subscribe() 传入 ComsumerRebalanceListener 的实现，有两个方法：
 
 onPartitionsRevoked：在再均衡之前、消费者停止读取消息之后调用，可以在这里提交偏移量。
 
-ononPartitionsAssigned：会在重新分配分区之后和消费者开始读取消息之前被调用。
+onPartitionsAssigned：会在重新分配分区之后和消费者开始读取消息之前被调用。
 
 如果需要从特定的偏移量读取消息，可以使用 ` seekToBeginning(Collection<TopicPartition> tp)`和 `seekToEnd(Collection<TopicPartition> tp)`方法。
 
@@ -390,7 +469,7 @@ ononPartitionsAssigned：会在重新分配分区之后和消费者开始读取�
 
 控制器broker还额外负责分区首领的选举，集群里第一个启动的broker在Zookeeper里创建一个临时节点/controller让自己成为控制器，其他节点启动时，也会尝试创建该节点，但会收到节点已存在的异常，然后在控制器节点上创建 Zookeeper watch对象，当控制器节点发送变更时，可以收到变更通知。
 
-如果控制器被关闭或者与Zookeeper断开连接，控制器节点就会消失，集群中的其他节点通过 watch 对象得到控制器节点消失的通知，它们会尝试让自己成为新的控制器，最先成功创建控制器节点的broker就会成为新的而控制器，其他节点收到节点已存在的异常，然后在新的控制器节点上创建watch对象，每个新选出的控制器通过递增操作获得一个全新的、数值更大的 controller epoch，其他broker在知道当前 controller epoch后，如果收到控制器发出的包含较旧 epoch消息时就会忽略。
+如果控制器被关闭或者与Zookeeper断开连接，控制器节点就会消失，集群中的其他节点通过 watch 对象得到控制器节点消失的通知，它们会尝试让自己成为新的控制器，最先成功创建控制器节点的broker就会成为新的而控制器，其他节点收到节点已存在的异常，然后在新的控制器节点上创建watch对象，每个新选出的控制器通过递增操作在/controller_epoch获得一个全新的、数值更大的 controller epoch，其他broker在知道当前 controller epoch后，如果收到控制器发出的包含较旧 epoch消息时就会忽略。
 
 当控制器发现一个broker加入集群时，它会使用broker ID来检查新加入的broker是否包含现有分区的副本，如果有，控制器就把变更通知发送给新加入的broker和其他broker，新broker上的副本开始从首领那里复制消息。
 
@@ -414,7 +493,7 @@ kafka使用Zookeeper的临时节点来选举控制器，并在节点加入集群
 
 一个跟随者副本会依次请求消息1、消息2、消息3，在收到3个请求的响应之前，不会发送第4个消息，如果跟随者发送了消息4，那么首领就知道它收到了前面3个消息的响应，通过查看每个跟随者请求的最新偏移量，首领就会知道每个跟随者复制的进度，如果跟随者在10s内没有请求任何消息，或者10s内没有请求最新数据，那么它会被认为不同步，相反称为同步副本，在首领失效时，只有同步副本才有可能选为首领。成为不同步副本之前的时间通过replica.lag.time.max.ms来设置。
 
-每个分区都有一个首选首领，即创建主题时选定的首领就是分区的首选首领，因为在创建分区时，选择的分区首领在broker间的负载是均衡的，默认情况下 auto.leader.rebalance.enable = true，它会检查首选首领是不是当前首领，如果不是，并且首选首领副本是同步的，就会触发首领选举，让首选首领成为当前首领。
+每个分区都有一个首选首领，即创建主题时选定的首领就是分区的首选首领，因为在创建分区时，选择的分区首领在broker间的负载是均衡的，默认情况下 auto.leader.rebalance.enable = true，它会检查首选首领是不是当前首领，如果不是，并且首选首领副本是同步的，就会触发首领选举，让首选首领成为当前首领，该值在生产环境应该关闭，否则会导致首选首领选举时间不可控，在关键时候由于换首领，导致分区不可用，可使用kafka-preferred-replica-election.sh手动触发。
 
 所以当手动分配副本时，需要确保负载均衡，第一个指定的副本就是首选副本。
 
@@ -474,7 +553,7 @@ kafka 使用零拷贝技术向客户端发送消息：直接从Linux文件缓存
 在创建主题时，需要进行合理的分区分配：
 
 1. broker间均匀分布副本。
-2. 同一个分区的副本分布在不同的broker上，最好是不同机架的broker。
+2. 同一个分区的副本分布在不同的broker上，最好是不同机架的broker，即在broker端配置broker.rack。
 3. 不同分区的首选首领副本均衡分布在broker上。
 
 为分区和副本选好合适的broker后，需要决定这些分区使用的目录：计算每个目录的分区数量，新的分区总是被添加到分区个数最小的目录。
@@ -483,13 +562,24 @@ kafka 使用零拷贝技术向客户端发送消息：直接从Linux文件缓存
 
 保留数据是kafka的基本特性，kafka不会一直保留数据，也不会等到所有消费者都读取消息之后才会删除。
 
-一个分区会分成若干个日志片段，默认情况下，每个片段包含1GB或者一周数据，以较小的哪个为准，在broker往分区写入数据时，如果达到片段上限，就关闭当前文件，并打开一个新文件。
+一个分区会分成若干个日志片段，默认情况下，每个片段包含1GB(log.segment.bytes)或者一周数据(log.roll.hours)，以较小的哪个为准，在broker往分区写入数据时，如果达到片段上限，就关闭当前文件，并打开一个新文件。
 
-当前正在写入的片段是活跃片段，活跃片段永远不会删除。
+每个日志片段都会包含日志文件、偏移量索引文件、时间戳索引文件。每个日志片段第一条消息的偏移量叫做基准偏移量 BaseOffset，日志文件和索引文件名词都是以 BaseOffset来命名。
 
-log.cleanup.policy 默认值为 delete，也就是删除策略，还可以设置为 compact，也就是 日志不会被删除，会被去重清理，对于同一个key只保留最后的那个key，同样的，compact也只针对不活跃的segment
+##### 日志清理
 
-##### 清理(compact)
+当前正在写入的片段是活跃片段，活跃片段永远不会清理。
+
+log.cleanup.policy 默认值为 delete，也就是删除策略，还可以设置为 compact，也就是 日志不会被删除，会被去重清理，对于同一个key只保留最后的那个key，同样的，compact也只针对不活跃的segment。
+
+###### 删除(retention)
+
+执行删除操作时，先从 Log 对象所维护日志分段中移除待删除的日志分段，以保证没有线程对这些日志分段进行读取操作，然后在对应的日志分段添加上".deleted"的后缀，最后由"delete-file"的任务延迟删除这些文件，延迟时间通过file.delete.delay.ms 来控制，默认为1分钟。
+
+1. 基于时间，以 log.retention.ms > log.retention.minutes > log.retention.hours 的优先级执行保留策略。
+2. 基于日志大小，当前日志大小超过 log.retention.bytes 的部分执行删除。
+
+###### 压缩(compact)
 
 每个日志片段分为两部分：
 
@@ -514,7 +604,41 @@ kafka-run-class.sh kafka.tools.DumpLogSegmets 可以查看片段的内容，--de
 
 每个分区都维护了一个偏移量映射到日志片段、日志片段中偏移量的位置的索引，这样broker可以快速定位到偏移量的位置。
 
+索引文件采用的是稀疏索引，每当写入一定量(log.index.interval.bytes，默认4096)，增加一个索引。
+
 索引也被分成片段，在删除消息时，也可以删除相应的索引，kafka并不维护索引，如果索引损坏，kafka会重新读取消息并录制偏移量和位置来重新生产索引，当删除索引后，kafka会自动重新生产索引。
+
+##### 偏移量索引
+
+每个索引项包含8个字节，前4个字节(RelativeOffset)是基于 BaseOffset 的相对偏移量，后4个字节(Position)是基于 文件对应物理地址 的相对物理位置，也就是说索引文件一条数据的物理位置为0。
+
+对于任意一个偏移量，先根据 BaseOffset 定位到所在的日志分段，再计算相对偏移量RelativeOffset = 偏移量 - BaseOffset，通过二分法在索引文件找到不大于 RelativeOffset的最大索引项，然后根据此索引项顺序查找到目标偏移量。
+
+##### 时间戳索引
+
+每个索引项包含12个字节，前8个字节(timestamp)是当前日志分段最大的时间戳，后4个字节(RelativeOffset)是时间戳对应的消息的相对偏移量。每个追加的 timestamp 必须大于之前的 timestamp，两个索引文件增加索引项的操作是同时进行的，但relativeOffset并不一定是同一个值。
+
+#### 使用磁盘存储会不会造成性能问题？
+
+1. kafka在设计时采用文件追加的方式来写入消息，即只能在日志文件尾部追加新的信息，并且也不允许修改已写入的消息，这是典型的顺序写盘，即使使用磁盘，吞吐量也不可小觑。
+2. 页缓存：
+   页缓存是操作系统的设计，当一个进程准备读取磁盘上的文件内容时，操作系统先查看待读取的数据所在页是否在页缓存中，如果存在则之间返回，如果没有命中，操作系统会向磁盘发起读取请求并将读取的数据页页缓存，并且会预读出一些相邻的块放入页缓存中，当写入数据时，操作系统会检查数据对应页是否存在页缓存中，如果不存在则会先在页缓存中添加相应的页，最后将数据写入对应的页，被修改的页成为脏页，操作系统会根据一定规则来将脏页写回磁盘，可以通过操作系统配置参数来设置如:vm.dirty_background_ratio 指定脏页数据占总内存的百分比。
+
+   kafka大量使用页缓存，文件不可避免的直接或间接的使用页缓存（如 FileChannel.write() 需要先写入java heap，在从java heap 拷贝到 jvm 堆外内存，再由jvm进行系统调用write，拷贝到内核内存中，然后再写入pagebuffer，再由操作系统决定刷盘时机）java中直接使用页缓存的使用主要是通过mmap将文件映射到进程虚拟地址空间(对应具体的方法为FileChannel.map()得到MappedByteBuffer，然后对MappedByteBuffer进行put操作，以及force操作要求操作系统刷盘，**不过需要注意的是MappedByteBuffer的释放**)，kafka中可以通过 log.flush.interval.messages 、 log.flush.interval.ms 等参数控制刷盘时机，另外由于Linux当内存不够是会将内存换出到 swap分区，可以将vm.swappiness = 0 ，限制内存换出操作，建议设置为1。
+3. 零拷贝：
+   将数据从磁盘文件直接复制到网卡设备，对操作系统而言依赖于底层的sendfile()方法，对应java而言，FileChannel.transferTo()方法的底层实现就是sendfile()。
+
+   正常情况下，数据发送到网卡需要经历4次复制：
+
+   * 应用程序调用read，用户态切换到内核态，DMA将数据复制到内核read内存。
+   * 内核将内核内存复制到应用程序内存，内核态切换用户态。
+   * 应用程序调用write，用户态切换到内核态，数据复制到内核socket内存。
+   * DMA从socket内存复制到网卡设备，内核态切换用户态。
+
+   使用零拷贝技术，只需要经历2次复制：
+
+   * 应用程序调用sendfile，用户态切换到内核态，DMA将数据读取到内核内存。
+   * DMA将数据从内核内存复制到网卡设备，内核态切换用户态。
 
 ## 可靠性
 

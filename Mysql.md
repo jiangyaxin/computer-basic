@@ -61,7 +61,7 @@ INSERT INTO <table1>( <column1>, <column2>, <column3>, <column4> ) SELECT <colum
 UPDATE <table> SET <column1> = <value1>, <column2> = <value2> WHERE <column3> = <value3>;
 # 删除数据
 DELETE FROM <table> where <column> = <value>;
-# 创建表，Mysql会在数据目录内创建 .idb 文件 123123
+# 创建表，Mysql会在数据目录内创建 .idb 文件
 CREATE TABLE <table>( <column1> <type1>, <column2> <type2>, <column3> <type3>, <column4> <type4>)ENGINE = InnoDB CHARACTER SET = utf8mb4;
 # 修改表
 ALTER TABLE <table> ADD <column> <type>;

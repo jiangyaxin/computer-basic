@@ -311,7 +311,7 @@ InnoDB储存引擎有多个内存块，它们组成一个大的内存池，并�
 
 PurgeThread 和 PageCleanerThread 是后面加入的，分担 MasterThread 的部分工作。
 
-#### 内存
+#### 内存(缓冲池、重做日志缓冲)
 
 1. 缓冲池：一块内存区域，InnoDB是基于磁盘存储，并将其中的记录按照页(默认16KB)的方式进行管理，由于CPU和磁盘速度差距较大，所有使用缓冲池来提高性能，通过 innodb_buffer_pool_size 来配置，包含索引页、数据页、undo页、插入缓冲（insert buffer）、自适应哈希索引、锁信息、数据字典信息，缓存池可以存在多个，每个页根据哈希值平均分配到不同缓冲池，减少资源竞争，可通过 innodb_buffer_pool_instances 来配置，默认为1。
 
@@ -331,9 +331,17 @@ PurgeThread 和 PageCleanerThread 是后面加入的，分担 MasterThread 的�
    * 每个事务提交时刷新。
    * 缓冲空间小于1/2时刷新。
 
+##### LSN
+
+有三个含义：
+
+* 重做日志写入的总量，如当前重做日志LSN为1000，事务1写入100个字节，那么LSN变为1100。
+* checkpoint的位置。
+* 页的版本，表示该页最后刷新时的LSN的大小。
+
 ##### Checkpoint
 
-在某些条件下将最早一部分或者全部脏页刷新到磁盘。
+在某些条件下将最早一部分或者全部脏页刷新(write+flush)到磁盘。
 
 InnoDB使用LSN(log Sequence Number)来标记版本，LSN是8字节的数字，LSN存在于页、redolog、Checkpoint中，页中的LSN记录该数据页最后被修改的日志序列位置，如果服务重启时页中的LSN小于redo log的LSN说明数据页中缺失了一部分数据，MySQL将会使用redolog在该LSN的数据进行回放恢复，可使用 `SHOW ENGINE INNODB STATUS;`来查看。
 
@@ -578,14 +586,42 @@ MySQL 启动后会将自己进程ID写入pid文件，默认文件名为 `<host_n
 
 ##### 重做日志文件
 
-![image.png](./assets/image.png)
+![71.png](./assets/71.png)
 
 默认情况下，存在于数据目录中 ib_logfile0 和 ib_logfile1,每个InnoDB储存引擎至少存在一组重做日志，每组存在两个重做日志文件，组中每个redolog 大小一致，并以循环写入的方式运行。从重做日志缓冲刷新到磁盘时，按扇区大小写入，也就是512B，扇区是磁盘的最小物理单位，写入必定成功。
 
 与 binlog 区别：
 
-1. 记录内容不同，binlog 记录的是关于一个事务的具体操作内容，是逻辑日志，redolog记录的是每个页更改的情况，是物理日志。
+1. 记录内容不同，binlog 记录的是关于一个事务的具体操作内容，是逻辑日志，redolog记录的是每个页更改的情况，是物理日志，恢复数据时是幂等的。
 2. 写入时间不同，binlog只会在事务提交前进行一次写入，redolog会在整个事务进行过程中不断多次写入。
+
+binlog 只用于归档，没有 crash-safe 能力，但只有redo log 也不行，因为 数据落盘后会覆盖掉，因此需要同时存在才能保证数据库发送宕机时，数据不会丢失。
+
+redo log两阶段提交：
+
+在事务中有数据修改时，会先修改redo log cache和binlog cache，然后刷盘形成redo log文件，但是写入文件的redolog被标记为 prepare 状态，等事务提交成功后 binlog 写入文件后才将redo log的prepare状态标记为commit状态。
+
+为什么需要两阶段提交：
+
+如果不使用两阶段提交，不管是谁先写谁后写，宕机后都会存在redolog和binlog不一致的问题。
+
+如：
+
+先写binlog，再写redo log
+
+当前事务提交后，写入binlog成功，之后主节点崩溃。在主节点重启后，由于没有写入redo log，因此不会恢复该条数据。
+
+而从节点依据binlog在本地回放后，会相对于主节点多出来一条数据，从而产生主从不一致。
+
+先写redo log，再写binlog
+
+当前事务提交后，写入redo log成功，之后主节点崩溃。在主节点重启后，主节点利用redo log进行恢复，就会相对于从节点多出来一条数据，造成主从数据不一致。
+
+Crash Recovery恢复：
+
+* binlog有记录，redolog状态为commit：正常完成的事务，不需要恢复。
+* binlog有记录，redolog状态为prepare：在binlog写完提交事务之前的crash，使用提交事务恢复。
+* binlog无记录，redolog状态为prepare：在binlog写完之前的crash，使用redolog恢复undo log，然后使用undo log进行回滚数据回滚事务恢复。
 
 redolog 相关配置参数：
 
@@ -607,11 +643,13 @@ InnoDB 支持事务，MyISAM不支持事务。
 
 原子性：所有SQL要么全部成功，要么全部失败。
 
-一致性：事务只能以允许的方式改变受影响的数据。
+一致性：事务只能以允许的方式改变受影响的数据，从一种一致状态变为另一种一致状态，比如对对于唯一字段，不能因为提交事务，使字段变成不唯一的。
 
 隔离性：同时发生的事务互不影响。
 
 持久性：数据库是否故障，已经保存的数据不会丢失。
+
+事务的隔离性是通过锁来实现，原子性、一致性、持久性通过 redo log 和 undo log 来完成。redo log 保证事务的持久性，是物理日志，记录页的物理修改操作，undo log保证事务的一致性和原子性，帮助事务回滚以及MVCC，是逻辑日志，根据每行记录进行记录，需要进行随机读写。
 
 ```bash
 # 开启、回滚、提交一个事务
@@ -623,14 +661,80 @@ SAVEPOINT <savepoint>;
 ROLLBACK TO <savepoint>;
 ```
 
-#### 隔离级别
+### redo
+
+重做日志包含两部分：重做日志缓冲(易失的) 和 重做日志文件(持久的)。
+
+在事务提交时，必须先将该事务的所有重做日志写入文件进行持久化，待事务的提交操作完成才算完成，每次将重做日志缓冲写入文件后都会调用fsync操作，因此磁盘的性能影响事务提交的性能，可以 通过改变 innodb_flush_log_at_trx_commit 来改变fsync操作时机。
+
+重做日志以 512B 储存，意味着重做日志缓存、重做日志文件都是以 块(block) 进行保存，由于块的大小和磁盘扇区大小一致，因此日志的写入可以保证原子性，不需要doublewrite，日志头占用12字节、日志尾占用8字节，实际储存492字节。
+
+### undo
+
+undo 存放在数据库内部的一个特殊段中，称为 undo 段，undo 段位于共享表空间中，undo 是逻辑日志，只能将数据库逻辑地恢复到原来的样子，但是数据页在回滚前后可能大不相同。
+
+例如：对于每个Insert，回滚时会完成一个Delete；每个Delete，会完成一个Insert；对于Update则会执行相反的Update。
+
+除回滚外，undo还完成MVCC，当用户读取一行记录时，若该记录被其他事务占用，当前事务可以通过undo读取之前的行版本信息。
+
+另外，undo页 存在于缓冲区中，undo log 也会产生 redo log。
+
+分类：
+
+* insert undo log：因为是insert操作的记录，只对当前事务可见，对其他事务不可见，所以在事务提交后直接删除，不需要 purge操作。
+* update undo log：记录delete和update操作产生的undo log，该undo log可能需要提供MVCC机制，因此不能在事务提交的时候删除，而是放入一个链表中，等待 purge 线程进行删除。
+
+当事务提交后，对于 undo log 会做两件事：
+
+* 将 undo log 放入列表中，以供之后的 purge 操作。
+* 判断 undo log 所在页是否可以重用，若使用空间小于3/4,可以分配给下个事务使用。
+
+事务提交后不能马上删除 undo log，因为可能还有其他事务需要通过 undo log 来得到行记录之前的版本，所以事务提交时将 undo log 放入一个链表中，是否可以最终删除 undo log 由purge线程来判断。
+
+undo + redo 事务过程：
+
+例如：如果存在两个数据 A = 1，B = 2，开始一个事务，事务的操作内容为：把 1 修改为 3，把 2 修改为 4，过程如下：
+
+1. 事务开始。
+2. 记录A=1 记录到 undo log。
+3. 将 undo页 记录到 redo log。
+4. 修改 A=3。
+5. 记录A=3 记录到 redo log.
+6. 记录B=2 记录到 undo log.
+7. 将 undo页 记录到 redo log。
+8. 修改B=4。
+9. 记录B=4 记录到 redo log。
+10. 将redo log写入磁盘。
+11. 事务提交。
+
+undo页存在于缓冲池中，跟随checkpoint刷新(write+flush)磁盘。
+
+相关配置：
+
+innodb_undo_directory：用于 设置 undo段文件 的路径，意味着 undo段 可以存放在共享表空间之外的位置。
+
+innodb_rollback_segments：设置 undo段 的个数，默认128。
+
+innodb_undo_tablespaces：用来设置 undo段文件 的数量，默认为2，这样 undo段 可以较均匀的分布在多个文件。
+
+innodb_max_undo_log_size：控制 undo tablespace 最大值大小，默认1G
+
+innodb_undo_log_truncate：当启动该字段时，如果 undo tablespace 超过 innodb_max_undo_log_size 会尝试 truncate。
+
+### 隔离级别
 
 1. 读取未提交(read uncommitted)：当前事务可以读取由另一个未提交事务写入的数据(脏读 dirty read)。
 2. 读提交(read committed)：当前事务只能读取另一个事务提交数据(不可重复读取 non-repeatable read)，事务A读取数据a，另一个事务修改数据a并提交，事务A再次读取数据a，两次读取数据a不一样，叫不可重复读。
 3. 可重复读取(repeatable read)：InnoDB默认级别，在同一个事务内的查询都是事务开始时刻一致的，事务A只能在事务B修改数据并提交后，自己也提交事务后，才能读取到事务B修改的数据，有一种特殊情况就是事务A可以读取到自己修改的数据,不能避免幻读(例如：事务A事务期间查询某数据返回3行，事务B在此期间插入1行，事务A在提交之后再次查询该数据发现存在4行)。
-4. 序列化：事务顺序执行。
+4. 序列化：在每个SELECT操作后自动加上 LOCK IN SHARE MODE，事务顺序执行。
 
 ## 备份
+
+HotBackup：在数据库运行时备份，对正在运行的数据库操作没有任何影响。
+
+ColdBackup：在数据库停止时备份，备份 frm 文件、共享表空间文件、独立表空间文件、重做日志文件。
+
+WarmBackup：在数据库运行时备份，但会对数据库操作有影响，如加一个全局读锁以保证备份数据一致性。
 
 ### mysqldump
 
@@ -660,6 +764,12 @@ grant replication slave,replication client on *.* to <user>@<ip> identified by <
 ```
 
 ## 复制
+
+步骤：
+
+1. master将记录写入 binlog 中。
+2. slave 中 IO线程 把 master 的binlog 复制到 自己的中继日志 relaylog 中。
+3. slave 中 SQL线程 重做 relaylog，把更改应用到自己的数据库上。
 
 查看 SLAVE 状态：`SHOW SLAVE STATUS`，需要关注的属性如下：
 
@@ -950,7 +1060,7 @@ SELECT * FROM TABLE WHERE a = 'xxxx' AND b = 'xxxx' ORDER BY c;
 
 如果确定辅助索引查询更快可是使用 `FORCE INDEX(索引)` 来强制使用某个索引。
 
-另外如果索引较多，可以使用索引提示 `[USE|FORCE|IGNORE] INDEX(索引) ` 来提示优化器，避免优化器在选择执行计划时间上花费过多时间,使用`USE`关键字时，如果优化器觉得全表扫描代价更低的话，仍然会使用全表扫描。
+另外如果索引较多，可以使用索引提示 `[USE|FORCE|IGNORE] INDEX(索引) ` 来提示优化器，避免优化器在选择执行计划时间上花费过多时间,使用 `USE`关键字时，如果优化器觉得全表扫描代价更低的话，仍然会使用全表扫描。
 
 ### Multi-Range Read优化
 
@@ -992,7 +1102,6 @@ where 可以过滤的条件是使用辅助索引，并且条件是索引可以�
 
 可以通过 SHOW PROCESSLIST; 来查询会话的状态。
 
-
 InnoDB中行锁存在两种标准：
 
 1. 共享锁(S Lock),允许事务读一行数据。
@@ -1009,15 +1118,15 @@ InnoDB中的意向锁不会阻塞除全表扫描以外的任何请求。
 
 ![image.png](./assets/76.png)
 
-可以通过`SELECT * FROM information_schema.INNODB_TRX;`查看事务状态。
+可以通过 `SELECT * FROM information_schema.INNODB_TRX;`查看事务状态。
 
 ![image.png](./assets/77.png)
 
-可以通过`SELECT * FROM information_schema.INNODB_LOCKS;`或`SELECT * FROM performance_schema.DATA_LOCKS;`(8.0版本)查看锁状态。
+可以通过 `SELECT * FROM information_schema.INNODB_LOCKS;`或 `SELECT * FROM performance_schema.DATA_LOCKS;`(8.0版本)查看锁状态。
 
 ![image.png](./assets/78.png)
 
-可以通过`SELECT * FROM information_schema.INNODB_LOCK_WAITS;`或`SELECT * FROM performance_schema.DATA_LOCK_WAITS;`(8.0版本)查看锁状态。
+可以通过 `SELECT * FROM information_schema.INNODB_LOCK_WAITS;`或 `SELECT * FROM performance_schema.DATA_LOCK_WAITS;`(8.0版本)查看锁状态。
 
 ![image.png](./assets/79.png)
 
@@ -1041,19 +1150,79 @@ SELECT ... LOCK IN SHARE MODE (S锁)
 
 ### 行锁的算法
 
-行锁有三种算法：
+行锁都是加在索引上。
+
+行锁三种算法：
 
 1. Record Lock：单个行记录上的锁。
-2. Gap Lock：锁定一个范围但不包含记录本身。
+2. Gap Lock：锁定一个范围但不包含记录本身，
+
+> Insert Intention Lock：插入意向锁，不是意向锁，只是 Gap Lock的一种特殊类型，在多事务同时insert不同数据至同一间隙时候产生，只要不是相同位置就不需要等待其他事务完成，不会发生锁等待。例如：假设有一个记录索引包含键值4和7，不同的事务分别插入5和6，每个事务都会产生一个加在4-7之间的插入意向锁，再获取插入行上的排它锁，但是不会被互相锁住。
+
 3. Next-Key Lock：锁定一个范围并且锁定记录本身。
 
 锁定一个范围是指执行 SELECT 语句时，符合where条件的范围都会被锁住，例如 `SELECT * FROM t WHERE a > 2 FOR UPDATE`锁定的范围是(2,正无穷) 。
 
 范围的划分如下：例如一个索引有10，11，13，20四个值，范围被分为 (负无穷,10]  (10,11]  (11,13]  (13,20]  (20,正无穷）
 
+当事务A上锁后，事务B能否在某个范围加锁：
+
+
+| 事务B\事务A      | Gap | Insert Intention | Record | Next-Key |
+| ------------------ | ----- | ------------------ | -------- | ---------- |
+| Gap              | 是  | 是               | 是     | 是       |
+| Insert Intention | 否  | 是               | 是     | 否       |
+| Record           | 是  | 是               | 否     | 否       |
+| Next-Key         | 是  | 是               | 否     | 否       |
+
+所以：
+
+* Insert 操作不同数据不会有冲突。
+* Gap、Next-Key 会阻止 Insert Intention。
+* Gap 和 Record、NextKey 不冲突。
+* Record 和 Record、Next-Key之间相互冲突。
+* 已有的 Insert Intention 不会阻止任何准备加锁的操作。
+
+不同操作的加锁机制：
+
+* Insert：对范围加Insert Intention，对行对应的索引记录加一个 Record Lock，当发生唯一键冲突时，会在冲突键前后加上 Next-Key Lock。
+* Update：如果记录存在，需要 Record Lock，如果记录不存在，需要Record Lock + Gap Lock。
+* Delete：如果记录存在，需要 Record Lock，如果记录不存在，需要Record Lock + Gap Lock。
+* Select：正常情况不存在锁，除非使用 lock in share mode 或者 for update，在所有索引扫描范围的索引记录上加上 Next-key，如果是唯一索引，只需要在相应记录上加 Record Lock。
+
 在默认的 REPEATABLE READ 模式下，InnoDB 采用 Next-Key Lock 来解决不可重复读的问题，指在同一事物下，连续执行两次同样的SQL语句可能导致不同的结果，第二次的SQL语句可能返回之前不存在的行，这些行由其他事务新插入。
 
 当where条件是point类型查询，查询唯一键值，Next-Key Lock 会降级为Record Lock。
+
+### 死锁
+
+死锁是指两个或两个以上的事务在执行过程中，因争夺锁资源而造成的一种互相等待的现象。
+
+死锁的条件：
+
+* 互斥条件：同一时刻只能有一个事务持有这把锁。
+* 请求和保持条件：存在两个或两个以上事务，每个事务都已经持有锁并且申请新的锁，新锁被另一个事务占有。
+* 不剥夺条件：其他的事务需要在这个事务释放锁之后才能获取锁，而不可以强行剥夺。
+* 环路等待条件：当多个事务形成等待环路。
+
+如何避免死锁：
+
+* 操作多张表时，尽量以相同的顺序来访问。
+* 批量操作单张表数据的时候，先对数据进行排序。
+* 在并发较高的系统中，不显式加锁。
+* 调整SQL执行顺序，避免 Update/Delete 长时间持有锁的SQL在事务前面。
+* 尽量使用索引访问数据，避免没有 where 条件的操作，避免锁表。
+* 使用等值查询而不是范围查询查询数据，命中记录，避免间隙锁对并发的影响。
+* 更新、删除操作时先校验数据是否存在。
+
+案例：
+
+1. Insert 唯一键冲突，造成 Next-key。
+   ![image.png](./assets/80.jpg)![image.png](./assets/81.jpg)
+2. 先 Update 再 Insert，Gap 和 Gap 之间不冲突，但 Gap 阻止 Insert Intention。
+   ![image.png](./assets/82.jpg)
+   表中无数据。
+   ![image.png](./assets/83.jpg)
 
 ### 锁的问题
 
@@ -1070,6 +1239,14 @@ SELECT ... LOCK IN SHARE MODE (S锁)
 
 ## 性能优化
 
+### 硬件
+
+CPU：OLTP 是IO密集型操作，OLAP 是CPU密集型操作。多核CPU可以通过修改 innodb_read_io_threads 和 innodb_write_io_threads 来增大IO线程。
+
+内存：根据数据量的大小决定内存大小，mysql对缓冲池的利用较多，大内存对性能有关键性影响。
+
+硬盘：对于机械硬盘两个指标是：寻道时间、转速，对于固态硬盘可以增加 innodb_io_capacity 参数，并选择关闭邻接页刷新。
+
 ### Explain
 
 可以使用 EXPLAIN 来验证MySQL的执行计划，EXPLAIN FORMAT = JSON 可得到详细信息，`EXPLAIN <connection-id>`可以为正在运行的会话执行explain计划，可以使用 `SELECT CONNECTION_ID()`来获取connection ID。
@@ -1082,6 +1259,22 @@ SELECT ... LOCK IN SHARE MODE (S锁)
 
 `mysqlslap -u <user> -p<pass> --create-schema=<employees> --query=<"SELECT e.emp_no, salary FROM salaries s JOIN employees e ON s.emp_no=e.emp_no WHERE (first_name='Adam');"> -c <1000>  i 100` 表示 将查询sql用1000个并发和100个迭代执行。
 
+#### 如何执行关联查询
+
+先在一个表中循环取出单条数据，然后再嵌套循环到下一个表中寻找匹配的行，依次下去，直到找到所有表中匹配的行为止。然后根据各个表匹配的行，返回查询中需要的各个列。如果mysql在最后一个关联表无法找到更多的行，它将返回上一层关联表，看看能否找到更多的匹配记录，以此类推迭代执行。
+
+所以应该使用小表驱动大表，另外一半不要使用leftjoin。
+
+数据量小使用内存排序，数据量大(max_length_for_sort_data)使用文件排序，关联查询时的文件排序：
+
+* 如果 order by 子句中的所有列都来自关联的第一个表，那么在处理第一个表时就会进行文件排序，Extra字段为 Using filesort。
+* 如果不是上面情况，Mysql会将结果放在临时表中，然后再所有关联结束后，再进行文件排序，Extra字段为 Using temporary;Using filesort。
+
+#### 优化关联查询
+
+1. 在关联字段加上索引。
+2. GROUP BY 和 ORDER BY确保只涉及一个表中的列。
+
 ### 控制查询优化器
 
 一条查询的成本包括：从磁盘访问数据、从内存访问数据、创建临时表、在内存中对结果进行排序。
@@ -1091,6 +1284,18 @@ SELECT ... LOCK IN SHARE MODE (S锁)
 optimizer_search_depth：告诉优化器对于每个未完成的"未来的"方案，应查看多深，以评估是否应对它进一步扩大。按照阿里规范中，禁止超过3个表的JOIN。
 
 optimizer_switch：包含启多个优化器行为，用逗号分隔，可以启用或禁用某些优化器行为，参数可以作用于session或全局，不建议使用该方案，应使用优化器提示。
+
+查询优化器能够处理的优化类型：
+
+1. 重新定义关联表的顺序。
+2. 将外连接转换成内连接。
+3. 使用等价变换规则。
+4. 优化COUNT()、MIN()、MAX()。
+5. 转化为常数表达式。
+6. 覆盖索引扫描。
+7. 子查询优化。
+8. 提前终止查询。
+9. 等值传播。
 
 ### 使用提示
 
@@ -1112,11 +1317,51 @@ optimizer_switch：包含启多个优化器行为，用逗号分隔，可以启�
 
 ### 优化索引
 
-删除重复索引(相同的列、相同的列顺序、相同的键顺序)和冗余索引(部分最左边的列重复)。
+1. 使用独立的列，将索引列单独放在符号一侧，不要进行运算或者函数调用。
+2. 对于字符串，某个前缀的选择性足够高，可以使用前缀索引。
+3. 对于联合索引，优化索引列顺序，通常选择性最高的列放在前面，同时要考虑where查询条件分支数据基数的大小,将需要做范围查询的列放在索引后面。
+4. 使用索引顺序扫描来排序，如果 EXPLAIN 的 type 列值为 index，则说明使用了索引扫描来排序。
+   使用索引排序的条件：
+   * 当索引的列顺序和order by 子句的顺序完全一致，并且所有列的排序方向都一样。
+   * 如果查询需要关联多张表，order by子句 引用字段全部为第一个表。
+   * 对于联合索引，满足索引的最左前缀要求，或者前导量为常量。例如：表A存在索引(a,b,c),查询 `select * from A where a = '1' order by b,c;`
+5. 删除重复索引(相同的列、相同的列顺序、相同的键顺序)和冗余索引(部分最左边的列重复)。
 
 ### 慢查询日志分析
 
 使用PerconaToolkit工具中 pt-query-digest 命令生成摘要统计，如 `pt-query-digest mysql-slow.log > query_dest`
+
+可以在查询语句后使用 `SHOW STATUS LIKE 'Last_query_cost';`来查询优化器认为需要从多少个数据页进行查找。
+
+SHOW PROCESSLIST，线程状态：
+
+* Sleep：等待客户端发送新请求。
+* Query：正在执行查询。
+* Locked：在等待表锁。
+* Analyzing and statistics：生成查询的执行计划。
+* Copying to tmp table：将结果集复制到临时表，可能是 group by，文件排序，UNION操作。
+* Sorting result：对结果集进行排序。
+
+优化：
+
+1. 是否请求了不需要的数据，使用LIMIT限制，比如查询大量结果，获取N行后返回，使用 LIMIT 分页时，加上 where id > 上一页的id最大值。
+2. 是否扫描了额外的记录，扫描的类型分为 全表扫描、索引扫描、范围扫描、唯一索引查询、常数索引。
+   where条件的处理方式，效率从好到坏：
+
+   * 在索引中使用WHERE条件过滤不匹配记录，在储存引擎完成。
+   * 使用覆盖索引扫描(Extra中出现Using index)返回记录，直接从索引中过滤不需要的记录并返回命中结果，在服务层完成，不需回表查询。
+   * 从数据表中返回数据，然后过滤不满足条件的记录(Extra中出现Using where)，在服务层完成，先从数据表读取记录再过滤。
+
+   当发现扫描了大量数据值返回少数的行时，可以进行下面操作：
+
+   * 使用索引覆盖扫描。
+   * 改变表结构，如冗余数据、使用汇总表等。
+   * 重写复杂查询。
+
+#### 重写复杂查询
+
+1. 切分查询：例如删除旧数据，将一个大的DELETE语句切分成小的语句，比如一次删除一万行。
+2. 分解关联查询：将关联查询分解为单表查询。
 
 #### PerconaToolkit安装
 
@@ -1140,3 +1385,9 @@ pt-query-digest --help
 4. 优先选择整数类型而非字符串类型。
 5. 对字符串可以尝试利用前缀索引。
 6. 在读多写少的情况下，可以尝试使用InnoDB压缩。
+
+范式：
+
+* 第一范式：1NF是对属性的原子性，要求属性具有原子性，即列不可再分解。
+* 第二范式：2NF是没有包含在主键中的列必须完全依赖于主键，而不能只依赖于主键的一部分。
+* 第三范式：3NF是任何非主属性不依赖于其它非主属性,3NF是2NF的子集。它们的区别是2NF：非主键列是否完全依赖于主键，还是依赖于主键的一部分；3NF：非主键列是直接依赖于主键，还是直接依赖于非主键列。

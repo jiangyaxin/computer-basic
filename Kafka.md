@@ -102,6 +102,9 @@ kafka-reassign-partitions.sh --zookeepr <ip:port> --verify --reassignment-json-f
 # --from-beginning 从最旧的偏移量读取消息
 kafka-console-consumer.sh --bootstrap-server <ip1:port1>,<ip2:port2> --topic <topic-name>
 
+#关闭kafka
+kafka-server-stop.sh
+
 # 移动集群控制器
 手动删除zookeeper中的/controller节点将会进行新的控制器选举
 
@@ -298,6 +301,8 @@ try{
 }
 ```
 
+生产者使用完成后需要调用 close 关闭。
+
 ### 分区
 
 ProducerRecord 包含主题、键、值。键有两个用途：作为消息的附加信息、决定消息被写到主题的哪个分区。
@@ -350,6 +355,28 @@ KafkaProducer 线程安全，但 KafkaConsumer 非线程安全，一个消费者
 
 当消费者加入群组时，它会向群组协调器发送一个JoinGroup请求，第一个加入群组的消费者将会成为消费者协调器的leader，他负责给每个消费者分配分区，他使用一个实现PartitionAssignor接口的类来决定哪些分区该被分配给那个消费者，分配完成后，消费者leader负责把分配情况发送给群组协调器，群组协调器再把这些信息发送给所有消费者，每个消费者只能看到自己的分配信息，只有leader知道群组里所有消费者的分配信息。
 
+通过 partition.assignment.stragetegy 来设置消费者与订阅主题之间的分区分配策略，默认情况下采用 RangeAssignor 策略。
+
+RangeAssignor 会将消费组内所有订阅这个主题的消费者按照名词的字典序排序，然后为每个消费者划分固定的分区范围，如果不够平均分配，那么字典序靠前的消费者会被多分配一个分区。
+
+RoundRobinAssignor 会将 消费组内所有的消费者以及消费者订阅的所有主题的分区按照字典序排序，然后通过轮询方式逐个将分区依次分配给每个消费者。例如消费组C0-C2订阅3个主题的 t0p0、t1p0、t1p1、t2p0、t2p1、t2p2，最后的分配结果为：C0：t0p0  |  C1：t1p0  |  C2：t1p1、t2p0、t2p1、t2p2
+
+StickyAssignor 有两个原则：分区的分配要尽可能均匀；分区的分配尽可能与上次分配保持相同，当两者发生冲突时，以前面的原则为准。该策略会减少不必要的分区移动，即剥离之前的消费者，转而分配给另一个消费者。
+
+##### 消费者协调器和组协调器
+
+多个消费者之间的分区分配时通过协调器来协同的。
+
+每个消费者组在服务端都有一个 组协调器(GroupCoordinator)来对消费者分区进行管理，在每个消费者客户端中都一个 消费者协调器(ConsumerCoordinator) 来与 组协调器 进行交互，每个broker节点启动时，都会创建一个组协调器实例。
+
+消费者协调器和组协调器 主要的职责就是负责消费者的再均衡操作，分区分配的工作也是在再均衡的过程中完成，触发再均衡的时机：
+
+1. 有新的消费者加入消费组。
+2. 有消费者宕机下线，并不一定需要真正下线，例如网络延迟导致 组协调器 为收到心跳等情况。
+3. 有消费者主动退出消费组。
+4. 消费组对应的 组协调器 节点发生变更。
+5. 消费组内订阅的主题的分区数量变化。
+
 ### 分区再均衡
 
 分区的所有权从一个消费者转移到另一个消费者称为再均衡，例如一个新的消费者加入，它读取原本由其他消费者读取的消息;或者一个消费者被关闭或发送崩溃，它就离开群组，原本由他读取的分区将由群组里其他消费者读取;或者主题添加了新的分区等都会发生分区重分配。
@@ -359,6 +386,17 @@ KafkaProducer 线程安全，但 KafkaConsumer 非线程安全，一个消费者
 当分区被重新分配给另一个消费者时，消费者当前的读取状态会丢失，可能还需要去重新获取元数据，在它重新恢复状态之前会拖慢应用程序。
 
 消费者通过向被指派为群组协调器的broker（不同的群组可以有不同的协调器）发送心跳来维持它们和群组的从属关系、以及它们对分区的所有权关系。只有消费者以正常的时间间隔发送心跳，才会被认为是活跃的，如果消费者停止发送心跳的时间足够长，会话就会过期，或者消费者通知协调器它将要离开群组，群组协调器会认为它已经死亡，并触发再均衡。消费者会在轮询消息或者提交偏移量时发送心跳。
+
+再均衡的阶段：
+
+1. FIND_COORDINATOR：消费者需要确定它所对应的组协调器的broker，如果已经创建连接，则进行第二阶段，否则向 leastLoadedNode 发送 FindCoordinatorRequest请求，请求中包含 groupId，每个groupId在 __consumer_offsets 中都可以找到一个分区记录它的偏移量信息，计算规则为Utils.abs(groupId.hashCode) % groupMetadataTopicPartitionCount,groupMetadataTopicPartitionCount对应 __consumer_offsets 分区的个数，可由 offsets.topic.num.partitions 配置，默认50，找到该分区后，该分区leader副本 所在broker即为 组协调器的位置，这个broker节点 扮演 组协调器、保存分区分配方案、保存组内消费者偏移量 的角色。
+2. JOIN_GROUP：消费者向组协调器发起 JoinGroupRequest 请求，请求中包含自己支持的分区分配策略，即 partition.assignment.strategy ，然后等待组协调器响应，组协调器首先会选出消费者leader，第一个加入消费组的消费者即为消费者leader，并且为消费者选举分配策略，然后返回响应给客户端。
+   选举分区分配策略：
+   * 收集各个消费者支持的所有分配策略，组成候选集。
+   * 每个消费从候选集中找出第一个自身支持的策略，为策略投票。
+   * 计算候选集中各个策略的选票数，选票最多的即为消费组的分配策略，如果有消费者不支持选出的分配策略，抛出 Member does not support protocol。
+3. SYNC_GROUP：leader消费者根据第二阶段选举的分配策略实施具体的分配，然后通过 组协调器 将方案转发给各消费者。
+4. HEARTBEAT：进入这个阶段后，消费组处于正常工作状态。消费者只要以正常的时间间隔发送心跳，就被认为是活跃的。
 
 ### 拦截器
 
@@ -376,6 +414,8 @@ comsumer.subscribe(Collections.singletonList("xxxx"));
 ```
 
 没有群组的消费者需要使用 ` consumer.assign(Collection<TopicPartition> partitions)` 给自己分配分区，可以使用 `consumer.partitionsFor("topics")`来获取分区信息，新增分区需要重新获取。
+
+消费者使用完成后需要调用 close 关闭。
 
 ### 轮询
 
@@ -405,10 +445,10 @@ max.partition.fetch.bytes
 # 该值需要大于broker能够接受的最大消息字节数(max.message.size)，防止生产者发送大于消费者能消费的最大消息。
 # 如果该值太大，获取数据过多，消费者需要更多时间来处理，可能无法进行下一次轮询来避免会话过期。
 session.timeout.ms
-# 消费者在被认为死亡之前可以与服务器断开连接的时间，默认3秒，如果消费者没有在该时间内发送心跳给群组协调器，则被认为死亡。
-# heartbeat.interval.ms 指定 poll() 方法向协调器发送心跳的频率，需要比该值小，一般是该值得三分之一。
+# 消费者在被认为死亡之前可以与服务器断开连接的时间，默认10秒，如果消费者没有在该时间内发送心跳给群组协调器，则被认为死亡。
+# heartbeat.interval.ms 指定 poll() 方法向协调器发送心跳的频率，需要比该值小，一般是该值得三分之一，默认3s。
 auto.offset.reset
-# 消费者在读取一个没有偏移量的分区或者偏移量无效的分区(消费者长时间失效，offset超过7天)时该如何处理，默认是latest，即消费者从它启动之后的最新记录开始读取数据。另一个值是 earliest，从起始位置读取分区记录。设置为none,不会进行重置，抛出OffsetOutOfRangeException异常，可以避免重置问题，但增加分区时需要人工区设置offset并消费。
+# 消费者在读取一个没有偏移量的分区或者偏移量无效的分区(消费者长时间失效，offset超过7天，该值由 offsets.retention.minutes 决定)时该如何处理，默认是latest，即消费者从它启动之后的最新记录开始读取数据。另一个值是 earliest，从起始位置读取分区记录。设置为none,不会进行重置，抛出OffsetOutOfRangeException异常，可以避免重置问题，但增加分区时需要人工区设置offset并消费。
 enable.auto.commit
 # 默认值为 true，消费者自动提交偏移量，可以通过 auto.commit.interval.ms来控制提交的频率，默认5秒。为了避免重复数据和数据丢失，可以设为false，自己控制何时提交偏移量。
 partition.assignment.strategy
@@ -467,17 +507,26 @@ onPartitionsAssigned：会在重新分配分区之后和消费者开始读取消
 
 ### 控制器
 
-控制器broker还额外负责分区首领的选举，集群里第一个启动的broker在Zookeeper里创建一个临时节点/controller让自己成为控制器，其他节点启动时，也会尝试创建该节点，但会收到节点已存在的异常，然后在控制器节点上创建 Zookeeper watch对象，当控制器节点发送变更时，可以收到变更通知。
+集群里第一个启动的broker在Zookeeper里创建一个临时节点/controller让自己成为控制器，其他节点启动时，也会尝试创建该节点，但会收到节点已存在的异常，然后在控制器节点上创建 Zookeeper watch对象，当控制器节点发送变更时，可以收到变更通知。
 
-如果控制器被关闭或者与Zookeeper断开连接，控制器节点就会消失，集群中的其他节点通过 watch 对象得到控制器节点消失的通知，它们会尝试让自己成为新的控制器，最先成功创建控制器节点的broker就会成为新的而控制器，其他节点收到节点已存在的异常，然后在新的控制器节点上创建watch对象，每个新选出的控制器通过递增操作在/controller_epoch获得一个全新的、数值更大的 controller epoch，其他broker在知道当前 controller epoch后，如果收到控制器发出的包含较旧 epoch消息时就会忽略。
+如果控制器被关闭或者与Zookeeper断开连接，控制器节点就会消失，集群中的其他节点通过 watch 对象得到控制器节点消失的通知，它们会尝试让自己成为新的控制器，最先成功创建控制器节点的broker就会成为新的而控制器，其他节点收到节点已存在的异常，然后在新的控制器节点上创建watch对象，每个新选出的控制器通过递增操作在/controller_epoch获得一个全新的、数值更大的 controller epoch，其他broker在知道当前 controller epoch后，如果收到控制器发出的包含较旧 epoch消息时就会忽略，控制器使用 epoch 来避免脑裂。
 
-当控制器发现一个broker加入集群时，它会使用broker ID来检查新加入的broker是否包含现有分区的副本，如果有，控制器就把变更通知发送给新加入的broker和其他broker，新broker上的副本开始从首领那里复制消息。
+kafka使用Zookeeper的临时节点来选举控制器，并在其他节点加入集群或退出集群时通知控制器，分区首领退出集群后由控制器进行分区首领选举。
 
-kafka使用Zookeeper的临时节点来选举控制器，并在节点加入集群或退出集群时通知控制器。
+控制器的作用：
 
-控制器负责在节点加入或离开集群时进行分区首领选举。
+1. 管理主题，完成对主题的增减、删除。
+2. 监听分区的变化，处理kafka-reassign-partitions.sh的分区重分配动作、处理ISR集合的变更、处理kafka-preferred-replica-election.sh的首选副本选举、负责分区首领的选举。
+3. 监听broker的变化，当控制器发现一个broker加入集群时，它会使用broker ID来检查新加入的broker是否包含现有分区的副本，如果有，控制器就把变更通知发送给新加入的broker和其他broker，新broker上的副本开始从首领那里复制消息。
+4. 管理集群的元数据。
+5. 当 auto.leader.rebalance.enable 设为true，负责维护分区首选副本的平衡。
 
-控制器使用 epoch 来避免脑裂。
+### 分区首领选举
+
+1. 选举的策略为 OfflinePartitionLeaderElectionStrategy ，按照 AR 集合中副本的顺序查找第一个存活的副本，并且该副本在ISR集合中。如果 ISR 集合中没有可用副本，那么检查 unclean.leader.election.enable，若为true，进行不完全的首领选举，从 AR 列表找到一个存活的副本 即为 leader。只要不发送重分配的情况，AR 集合内部副本的顺序保持不变。
+2. 当分区进行重分配时也需要执行 leader 的选举动作，对应的策略为 ReassignPartitionLeaderElectionStrategy,即从重分配的AR列表中找到第一个存活的副本，且这个副本在目前的ISR中。
+3. 当发生首选副本选举时，直接将首选副本设置为leader，策略为 PreferredReplicaPartitionLeaderElectionStrategy,AR 中第一个副本即为优先副本。
+4. 当某节点 kafka-server-stop.sh 使用执行 ControlledShutdown 时，位于这个节点上leader副本都会下线，对此执行的选举策略为 ControlledShutdownPartitionLeaderElectionStrategy,即在 AR 中找到第一个存活、在 ISR 中、不处于被关闭节点上的副本。
 
 ### 复制
 
@@ -785,6 +834,31 @@ RemoteTime：请求处理完毕之前，用于等待跟随者的时间。
 ResponseQueueTime：响应被发送给请求者之前停留在队列里的时间。
 
 ResponseSendTime：实际用于发送响应的时间。
+
+## 消息中间件选型
+
+1. 功能维度：是否最大程度实现开箱即用，进而缩短项目周期，降低成本。
+   * 优先级队列
+   * 延时队列
+   * 死信队列
+   * 消费模式，推模式和拉模式
+   * 广播消息
+   * 回溯消息
+   * 消息堆积+持久化
+   * 消息轨迹
+   * 消息审计
+   * 消息过滤
+   * 多租户
+   * 多协议
+   * 跨语言
+   * 流量控制
+   * 消息顺序性
+   * 安全机制
+   * 消息幂等性
+   * 事务性消息
+2. 性能维度：吞吐量、时效性、可靠性
+3. 运维管理：异常检测、故障转移、告警、容灾、部署
+4. 生态
 
 ## 构建数据管道
 

@@ -417,7 +417,7 @@ mybatis.mapper-locations=classpath*:com/open/**/dao/*.xml
 
 ###### 动态SQL
 
-* if：test使用 OGNL 表达式
+* if：test使用 OGNL 表达式，property ！= null and property != '' 用于字符串判断不为空。
 
   ```xml
   <select id="findActiveBlogLike"

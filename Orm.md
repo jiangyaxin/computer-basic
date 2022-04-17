@@ -736,3 +736,324 @@ public interface UserMapper{
 <mapper namespace="tk.mybatis.simple.mapper.UserMapper">
 </mapper>
 ```
+
+2. MyBatis 编程步骤
+
+* 创建 SqlSessionFactory 对象。
+* 通过 SqlSessionFactory 获取 SqlSession 对象。
+* 通过 SqlSession 获得 Mapper 代理对象。
+* 通过 Mapper 代理对象，执行数据库操作。
+* 执行成功，则使用 SqlSession 提交事务。
+* 执行失败，则使用 SqlSession 回滚事务。
+* 最终，关闭会话。
+
+3. 通常一个 XML 映射文件，都会写一个 Mapper 接口与之对应。请问，这个 Mapper 接口的工作原理是什么？Mapper 接口里的方法，参数不同时，方法能重载吗？
+
+Mapper 接口，对应的关系如下：
+
+* 接口的全限名，就是映射文件中的 `"namespace"` 的值。
+* 接口的方法名，就是映射文件中 MappedStatement 的 `"id"` 值。
+* 接口方法内的参数，就是传递给 SQL 的参数。
+
+  Mapper 接口是没有实现类的，当调用接口方法时，接口全限名 + 方法名拼接字符串作为 key 值，可唯一定位一个对应的 MappedStatement 。举例：`com.mybatis3.mappers.StudentDao.findStudentById` ，可以唯一找到 `"namespace"` 为 `com.mybatis3.mappers.StudentDao` 下面 `"id"` 为 `findStudentById` 的 MappedStatement 。
+
+  总结来说，在 Mybatis 中，每一个 `<select />`、`<insert />`、`<update />`、`<delete />` 标签，都会被解析为一个 MappedStatement 对象。
+
+  另外，Mapper 接口的实现类，通过 MyBatis 使用 **JDK Proxy** 自动生成其代理对象 Proxy ，而代理对象 Proxy 会拦截接口方法，从而“调用”对应的 MappedStatement 方法，最终执行 SQL ，返回执行结果。整体流程如下图：
+
+  ![image.png](./assets/88.png)
+* 其中，SqlSession 在调用 Executor 之前，会获得对应的 MappedStatement 方法。例如：`DefaultSqlSession#select(String statement, Object parameter, RowBounds rowBounds, ResultHandler handler)` 方法，代码如下：
+
+  ```java
+  // DefaultSqlSession.java
+
+  @Override
+  public void select(String statement, Object parameter, RowBounds rowBounds, ResultHandler handler) {
+      try {
+          // 获得 MappedStatement 对象
+          MappedStatement ms = configuration.getMappedStatement(statement);
+          // 执行查询
+          executor.query(ms, wrapCollection(parameter), rowBounds, handler);
+      } catch (Exception e) {
+          throw ExceptionFactory.wrapException("Error querying database.  Cause: " + e, e);
+      } finally {
+          ErrorContext.instance().reset();
+      }
+  }
+  ```
+
+  Mapper 接口里的方法，是不能重载的，因为是**全限名 + 方法名**的保存和寻找策略。
+
+4. Mapper 接口绑定有几种实现方式,分别是怎么实现的?
+
+   接口绑定有三种实现方式：
+
+   * 第一种，通过 **XML Mapper** 里面写 SQL 来绑定。在这种情况下，要指定 XML 映射文件里面的 `"namespace"` 必须为接口的全路径名,推荐这种方式。
+   * 第二种，通过**注解**绑定，就是在接口的方法上面加上 `@Select`、`@Update`、`@Insert`、`@Delete` 注解，里面包含 SQL 语句来绑定。
+   * 第三种，是第二种的特例，也是通过**注解**绑定，在接口的方法上面加上 `@SelectProvider`、`@UpdateProvider`、`@InsertProvider`、`@DeleteProvider` 注解，通过 Java 代码，生成对应的动态 SQL 。
+5. Mybatis 的 XML Mapper文件中，不同的 XML 映射文件，id 是否可以重复？
+
+   不同的 XML Mapper 文件，如果配置了 `"namespace"` ，那么 id 可以重复；如果没有配置 `"namespace"` ，那么 id 不能重复。
+
+   原因就是，`namespace + id` 是作为 `Map<String, MappedStatement>` 的 key 使用的。如果没有 `"namespace"`，就剩下 id ，那么 id 重复会导致数据互相覆盖。如果有了 `"namespace"`，自然 id 就可以重复，`"namespace"`不同，`namespace + id` 自然也就不同。
+6. ## 如何获取自动生成的(主)键值?
+
+   不同的数据库，获取自动生成的(主)键值的方式是不同的。
+
+   MySQL 有两种方式，需要 **自增主键** ：
+
+
+   ```xml
+   // 方式一，使用 useGeneratedKeys + keyProperty 属性
+   <insert id="insert" parameterType="Person" useGeneratedKeys="true" keyProperty="id">
+       INSERT INTO person(name, pswd)
+       VALUE (#{name}, #{pswd})
+   </insert>
+
+   // 方式二，使用 `<selectKey />` 标签
+   <insert id="insert" parameterType="Person">
+       <selectKey keyProperty="id" resultType="long" order="AFTER">
+           SELECT LAST_INSERT_ID()
+       </selectKey>
+
+       INSERT INTO person(name, pswd)
+       VALUE (#{name}, #{pswd})
+   </insert>
+   ```
+
+   * 其中，**方式一**较为常用。
+
+   Oracle 可以使用 **序列** ， `<selectKey />` 执行的时为 BEFORE：
+
+   ```xml
+   // 这个是创建表的自增序列
+   CREATE SEQUENCE student_sequence
+   INCREMENT BY 1
+   NOMAXVALUE
+   NOCYCLE
+   CACHE 10;
+
+   // 使用 `<selectKey />` 标签 + BEFORE
+   <insert id="add" parameterType="Student">
+   　　<selectKey keyProperty="student_id" resultType="int" order="BEFORE">
+         select student_sequence.nextval FROM dual
+       </selectKey>
+
+        INSERT INTO student(student_id, student_name, student_age)
+        VALUES (#{student_id},#{student_name},#{student_age})
+   </insert>
+   ```
+7. Mybatis 执行批量插入，能返回数据库主键列表吗？
+
+   SimpleExecutor和ReuseExecutor 可以正确返回，BatchExecutor 返回id为null。
+8. 在 Mapper 中如何传递多个参数?
+
+   * 第一种，使用 Map 集合 或者 Object 装载多个参数进行传递：
+
+   ```xml
+   // 调用方法
+   Map<String, Object> map = new HashMap();
+   map.put("start", start);
+   map.put("end", end);
+   return studentMapper.selectStudents(map);
+
+   // Mapper 接口
+   List<Student> selectStudents(Map<String, Object> map);
+
+   // Mapper XML 代码
+   <select id="selectStudents" parameterType="Map" resultType="Student">
+       SELECT * 
+       FROM students 
+       LIMIT #{start}, #{end}
+   </select>
+   ```
+
+   * 第二种，保持传递多个参数，使用 `@Param` 注解：
+
+   ```xml
+   // 调用方法
+   return studentMapper.selectStudents(0, 10);
+
+   // Mapper 接口
+   List<Student> selectStudents(@Param("start") Integer start, @Param("end") Integer end);
+
+   // Mapper XML 代码
+   <select id="selectStudents" resultType="Student">
+       SELECT * 
+       FROM students 
+       LIMIT #{start}, #{end}
+   </select>
+   ```
+
+   * 第三种，保持传递多个参数，不使用 `@Param` 注解，按照参数在方法方法中的位置，从 1 开始，逐个为 `#{param1}`、`#{param2}`、`#{param3}` 不断向下：
+
+   ```xml
+   // 调用方法
+   return studentMapper.selectStudents(0, 10);
+
+   // Mapper 接口
+   List<Student> selectStudents(Integer start, Integer end);
+
+   // Mapper XML 代码
+   <select id="selectStudents" resultType="Student">
+       SELECT * 
+       FROM students 
+       LIMIT #{param1}, #{param2}
+   </select>
+   ```
+9. Mybatis 都有哪些 Executor 执行器？它们之间的区别是什么？
+
+   Mybatis 有四种 Executor 执行器，分别是 SimpleExecutor、ReuseExecutor、BatchExecutor、CachingExecutor 。
+
+   * SimpleExecutor ：每执行一次 update 或 select 操作，就创建一个 Statement 对象，用完立刻关闭 Statement 对象。
+   * ReuseExecutor ：执行 update 或 select 操作，以 SQL 作为key 查找**缓存**的 Statement 对象，存在就使用，不存在就创建；用完后，不关闭 Statement 对象，而是放置于缓存 `Map<String, Statement>` 内，供下一次使用。简言之，就是重复使用 Statement 对象。
+   * BatchExecutor ：执行 update 操作（没有 select 操作，因为 JDBC 批处理不支持 select 操作），将所有 SQL 都添加到批处理中（通过 addBatch 方法），等待统一执行（使用 executeBatch 方法）。它缓存了多个 Statement 对象，每个 Statement 对象都是调用 addBatch 方法完毕后，等待一次执行 executeBatch 批处理。 **实际上，整个过程与 JDBC 批处理是相同** 。
+   * CachingExecutor ：在上述的三个执行器之上，增加**二级缓存**的功能。
+
+   通过设置 `<setting name="defaultExecutorType" value="">` 的 `"value"` 属性，可传入 SIMPLE、REUSE、BATCH 三个值，分别使用 SimpleExecutor、ReuseExecutor、BatchExecutor 执行器。
+
+   通过设置 `<setting name="cacheEnabled" value=""` 的 `"value"` 属性为 `true` 时，创建 CachingExecutor 执行器。
+10. MyBatis 如何执行批量插入?
+    使用批处理方式：
+
+    ```java
+    @Transactional
+    public void add(List<Item> itemList) {
+        SqlSession session = sqlSessionFactory.openSession(ExecutorType.BATCH,false);
+        ItemMapper mapper = session.getMapper(ItemMapper.class);
+        for (int i = 0; i < itemList.size(); i++) {
+            mapper.insertSelective(itemList.get(i));
+            if(i%1000==999){//每1000条提交一次防止内存溢出
+                session.commit();
+                session.clearCache();
+            }
+        }
+        session.commit();
+        session.clearCache();
+    }
+    ```
+11. MyBatis缓存机制
+
+* 一级缓存：需在配置文件中添加`<settingname="localCacheScope"value="SESSION"/>`,可以选择`SESSION`或者`STATEMENT`，默认是`SESSION`级别，即在一个MyBatis会话中执行的所有语句，都会共享这一个缓存，多SESSION之间可能出现脏读。`STATEMENT`级别为缓存只对当前执行的这一个`Statement`有效。
+
+  每个SqlSession中持有了Executor，每个Executor中有一个LocalCache。当用户发起查询时，MyBatis根据当前执行的语句生成`MappedStatement`，在Local Cache进行查询，如果缓存命中的话，直接返回结果给用户，如果缓存没有命中的话，查询数据库，结果写入`Local Cache`，最后返回结果给用户。
+* 二级缓存：需在配置文件中添加`<setting name="cacheEnabled" value="true"/>`，并在 mapper.xml 中配置cache或者 cache-ref,可多个session之间共享，分布式环境下必然存在脏数据。
+
+12. Mybatis 是否支持延迟加载？如果支持，它的实现原理是什么？
+
+    Mybatis 仅支持 association 关联对象和 collection 关联集合对象的延迟加载。association 指的就是 **一对一** ，collection 指的就是 **一对多查询** ,在 Mybatis 配置文件中，可以配置 `<setting name="lazyLoadingEnabled" value="true" />` 来启用延迟加载的功能。默认情况下，延迟加载的功能是关闭的。
+    原理:
+    使用 CGLIB 或 Javassist( 默认 ) 创建目标对象的代理对象。当调用代理对象的延迟加载属性的 getting 方法时，进入拦截器方法。比如调用 `a.getB().getName()` 方法，进入拦截器的 `invoke(...)` 方法，发现 `a.getB()` 需要延迟加载时，那么就会单独发送事先保存好的查询关联 B 对象的 SQL ，把 B 查询上来，然后调用`a.setB(b)` 方法，于是 `a` 对象 `b` 属性就有值了，接着完成`a.getB().getName()` 方法的调用。
+13. 一对多，多对多查询。
+14. 插件的原理。
+15. JDBC 编程有哪些不足之处，MyBatis是如何解决这些问题的？
+
+    问题一：SQL 语句写在代码中造成代码不易维护，且代码会比较混乱。
+    解决方式：将 SQL 语句配置在 Mapper XML 文件中，与 Java 代码分离。
+
+    问题二：根据参数不同，拼接不同的 SQL 语句非常麻烦。例如 SQL 语句的 WHERE 条件不一定，可能多也可能少，占位符需要和参数一一对应。
+    解决方式：MyBatis 提供 `<where />`、`<if />` 等等动态语句所需要的标签，并支持 OGNL 表达式，简化了动态 SQL 拼接的代码，提升了开发效率。
+
+    问题三，对结果集解析麻烦，SQL 变化可能导致解析代码变化，且解析前需要遍历。
+    解决方式：Mybatis 自动将 SQL 执行结果映射成 Java 对象。
+
+# JPA
+
+## Repository
+
+![image.png](./assets/89.png)
+
+使用方式：
+
+* 使用默认实现的方法：继承 JpaRepository、CrudRepository、PagingAndSortingRepository,并添加 @Repository 注解即可，例如 CrudRepository 中的 save、find、delete，PagingAndSortingRepository 中的 findAll(Pageable pageable)，QueryByExampleExecutor 中的 indAll(Example<S> example)等，它们的具体实现类都是 SimpleJpaRepository。
+* 自定义Repository：继承 Repository，添加 JpaRepository、CrudRepository、PagingAndSortingRepository 部分方法，并添加注解 @NoRepositoryBean，可以微调默认 Repository 中的方法，有选择性的暴露部分方法，例如：
+
+  ```java
+  @NoRepositoryBean
+  interface MyBaseRepository<T, ID> extends Repository<T, ID> {
+
+    Optional<T> findById(ID id);
+
+    <S extends T> S save(S entity);
+  }
+
+  interface UserRepository extends MyBaseRepository<User, Long> {
+    User findByEmailAddress(EmailAddress emailAddress);
+  }
+  ```
+* 通过方法名自定义方法：继承 Repository 或者它的子类，一般我们使用 JpaRepository，然后定义 findBy... 、countBy... 等开头的方法即可使用：![image.png](./assets/90.png)
+
+
+  | Keyword                | Sample                                                        | JPQL snippet                                                        |
+  | ------------------------ | --------------------------------------------------------------- | --------------------------------------------------------------------- |
+  | `Distinct`             | `findDistinctByLastnameAndFirstname`                          | `select distinct … where x.lastname = ?1 and x.firstname = ?2`     |
+  | `And`                  | `findByLastnameAndFirstname`                                  | `… where x.lastname = ?1 and x.firstname = ?2`                     |
+  | `Or`                   | `findByLastnameOrFirstname`                                   | `… where x.lastname = ?1 or x.firstname = ?2`                      |
+  | `Is`, `Equals`         | `findByFirstname`,`findByFirstnameIs`,`findByFirstnameEquals` | `… where x.firstname = ?1`                                         |
+  | `Between`              | `findByStartDateBetween`                                      | `… where x.startDate between ?1 and ?2`                            |
+  | `LessThan`             | `findByAgeLessThan`                                           | `… where x.age < ?1`                                               |
+  | `LessThanEqual`        | `findByAgeLessThanEqual`                                      | `… where x.age <= ?1`                                              |
+  | `GreaterThan`          | `findByAgeGreaterThan`                                        | `… where x.age > ?1`                                               |
+  | `GreaterThanEqual`     | `findByAgeGreaterThanEqual`                                   | `… where x.age >= ?1`                                              |
+  | `After`                | `findByStartDateAfter`                                        | `… where x.startDate > ?1`                                         |
+  | `Before`               | `findByStartDateBefore`                                       | `… where x.startDate < ?1`                                         |
+  | `IsNull`, `Null`       | `findByAge(Is)Null`                                           | `… where x.age is null`                                            |
+  | `IsNotNull`, `NotNull` | `findByAge(Is)NotNull`                                        | `… where x.age not null`                                           |
+  | `Like`                 | `findByFirstnameLike`                                         | `… where x.firstname like ?1`                                      |
+  | `NotLike`              | `findByFirstnameNotLike`                                      | `… where x.firstname not like ?1`                                  |
+  | `StartingWith`         | `findByFirstnameStartingWith`                                 | `… where x.firstname like ?1` (parameter bound with appended `%`)  |
+  | `EndingWith`           | `findByFirstnameEndingWith`                                   | `… where x.firstname like ?1` (parameter bound with prepended `%`) |
+  | `Containing`           | `findByFirstnameContaining`                                   | `… where x.firstname like ?1` (parameter bound wrapped in `%`)     |
+  | `OrderBy`              | `findByAgeOrderByLastnameDesc`                                | `… where x.age = ?1 order by x.lastname desc`                      |
+  | `Not`                  | `findByLastnameNot`                                           | `… where x.lastname <> ?1`                                         |
+  | `In`                   | `findByAgeIn(Collection<Age> ages)`                           | `… where x.age in ?1`                                              |
+  | `NotIn`                | `findByAgeNotIn(Collection<Age> ages)`                        | `… where x.age not in ?1`                                          |
+  | `True`                 | `findByActiveTrue()`                                          | `… where x.active = true`                                          |
+  | `False`                | `findByActiveFalse()`                                         | `… where x.active = false`                                         |
+  | `IgnoreCase`           | `findByFirstnameIgnoreCase`                                   | `… where UPPER(x.firstname) = UPPER(?1)`                           |
+
+### 自定义方法
+
+#### 方法查找策略
+
+![image.png](./assets/91.png)
+
+* create-if-not-found(默认)：如果通过 @Query指定查询语句，则执行该语句，如果没有，则看看有没有@NameQuery指定的查询语句，如果还没有，则通过解析方法名进行查询。
+* create：通过解析方法名字来创建查询。即使有 @Query，@NameQuery都会忽略。
+* use-declared-query：通过执行@Query定义的语句来执行查询，如果没有，则看看有没有通过执行@NameQuery来执行查询，还没有则抛出异常。
+
+#### 属性表达式
+
+findby后可以使用实体的直接属性，如果直接属性也是实体，可以通过嵌套使用,嵌套使用时实际生产的SQL为 LEFT OUT JOIN，例如：假设 `Person`的`Address`有一个`ZipCode`属性，这时候使用`List<Person> findByAddressZipCode(ZipCode zipCode);`，解析算法首先将整个部分 `AddressZipCode`解释为属性，如果算法成功，它将使用该属性。如果不是，该算法将驼峰部分从右侧拆分为头部和尾部，并尝试找到相应的属性——如示例中`AddressZip`和`Code`，如果算法找到具有该头部的属性，它将获取尾部并继续从那里向下构建树，以刚才描述的方式将尾部拆分。如果第一个分割不匹配，算法将分割点向左移动 `Address`,`ZipCode`)并继续。更好的方式是使用_来消除歧义，如`List<Person> findByAddress_ZipCode(ZipCode zipCode);`，_ 是 JPA 的关键字。
+
+#### 处理查询结果
+
+可以通过使用 `Pageable`、`Sort`来对查询结果进行分页和排序，如果需要知道总条数和总页数可以使用`page`来接收数据，否则可以使用`Slice`来接收数据，将不会触发查询总数，它只知道下一个`Slice`是否可用，例如:
+
+```java
+Page<User> findByLastname(String lastname, Pageable pageable);
+
+Slice<User> findByLastname(String lastname, Pageable pageable);
+
+List<User> findByLastname(String lastname, Sort sort);
+
+List<User> findByLastname(String lastname, Pageable pageable);
+```
+
+另外可以使用`first`、`top`、`distinct`来限制查询结果，例如：
+
+```java
+User findFirstByOrderByLastnameAsc();
+
+User findTopByOrderByAgeDesc();
+
+Page<User> queryFirst10ByLastname(String lastname, Pageable pageable);
+
+Slice<User> findTop3ByLastname(String lastname, Pageable pageable);
+
+List<User> findFirst10ByLastname(String lastname, Sort sort);
+
+List<User> findTop10ByLastname(String lastname, Pageable pageable);
+```
+
+##### 查询结果不同形式返回

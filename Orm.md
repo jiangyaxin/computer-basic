@@ -1057,3 +1057,277 @@ List<User> findTop10ByLastname(String lastname, Pageable pageable);
 ```
 
 ##### 查询结果不同形式返回
+
+* LIST & Page
+* Optional：用于处理可能为null的结果。
+* Streamable：用于扩展`Iterable`，可使用 Stream 流式处理扩展：
+
+  扩展方法：
+
+  1. 类型实现`Streamable`。
+  2. 该类型公开了一个构造函数或一个名为`of(…)`或作为参数的静态工厂方法。
+
+  例如：
+
+  ```java
+  class Product {   
+    MonetaryAmount getPrice() { … }
+  }
+
+  @RequiredArgsConstructor(staticName = "of")
+  class Products implements Streamable<Product> {   
+
+    private final Streamable<Product> streamable;
+
+    public MonetaryAmount getTotal() {  
+      return streamable.stream()
+        .map(Priced::getPrice)
+        .reduce(Money.of(0), MonetaryAmount::add);
+    }
+
+
+    @Override
+    public Iterator<Product> iterator() {   
+      return streamable.iterator();
+    }
+  }
+
+  interface ProductRepository implements Repository<Product, Long> {
+    Products findAllByDescriptionContaining(String text); 
+  }
+  ```
+* Stream：使用完成后需要对流进行关闭，可使用try-with-resources底层使用滚动结果集获取，可以用于大数据量查询，需要将结果集设置为 `TYPE_FORWARD_ONLY`(JPA已默认设置) 、 `CONCUR_READ_ONLY` 并且设置 `FETCHSIZE`，否则会内存溢出：
+  MYSQL：设置连接属性 `useCursorFetch=true`,
+
+  ```java
+  ps = (PreparedStatement) con.prepareStatement("select * from bigTable",ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);
+  ps.setFetchSize(Integer.MIN_VALUE);
+  ps.setFetchDirection(ResultSet.FETCH_REVERSE);
+  ```
+
+  PGSQL：autoCommit必须为false,
+
+  ```java
+      @Test
+      public void testReadTimeout() throws SQLException {
+          Connection connection = dataSource.getConnection();
+          //https://jdbc.postgresql.org/documentation/head/query.html
+          connection.setAutoCommit(false); //NOTE 为了设置fetchSize,必须设置为false
+
+          String sql = "select * from demo_table";
+          PreparedStatement pstmt;
+          try {
+              pstmt = (PreparedStatement)connection.prepareStatement(sql);
+              pstmt.setFetchSize(50);
+              System.out.println("ps.getQueryTimeout():" + pstmt.getQueryTimeout());
+              System.out.println("ps.getFetchSize():" + pstmt.getFetchSize());
+              System.out.println("ps.getFetchDirection():" + pstmt.getFetchDirection());
+              System.out.println("ps.getMaxFieldSize():" + pstmt.getMaxFieldSize());
+
+              ResultSet rs = pstmt.executeQuery();
+              //NOTE 这里返回了就代表statement执行完成,默认返回fetchSize的数据
+              int col = rs.getMetaData().getColumnCount();
+              System.out.println("============================");
+              while (rs.next()) {
+                  for (int i = 1; i <= col; i++) {
+                      System.out.print(rs.getObject(i));
+                  }
+                  System.out.println("");
+              }
+              System.out.println("============================");
+          } catch (SQLException e) {
+              e.printStackTrace();
+          } finally {
+              //close resources
+          }
+      }
+  ```
+* Future：异步查询，需要在方法上加 @Async 注解，适用于定时任务
+
+  ```java
+  @Async
+  Future<User> findByFirstname(String firstname);   
+
+  @Async
+  CompletableFuture<User> findOneByFirstname(String firstname); 
+
+  @Async
+  ListenableFuture<User> findOneByLastname(String lastname);  
+  ```
+*
+* Projections（投影）方式获取，这样可以返回部分数据：
+
+  ```java
+  class Person {
+    @Id UUID id;
+    String firstname, lastname;
+    Address address;
+
+    static class Address {
+        String zipCode, city, street;
+    }
+  }
+
+  interface NamesOnly {
+    String getFirstname();
+    String getLastname();
+  }
+
+  interface PersonRepository extends Repository<Person, UUID> {
+    Collection<NamesOnly> findByLastname(String lastname);
+  }
+
+  # 还支持 @Value 和 SPEL
+  interface NamesOnly {
+    @Value("#{target.firstname + ' ' + target.lastname}")
+    String getFullName();
+  }
+
+  # 使用 实例方法
+  @Component
+  class MyBean {
+
+    String getFullName(Person person) {
+    }
+  }
+
+  interface NamesOnly {
+    @Value("#{@myBean.getFullName(target)}")
+    String getFullName();
+  }
+
+  # 动态的Projection
+  interface PersonRepository extends Repository<Person, UUID> {
+    <T> Collection<T> findByLastname(String lastname, Class<T> type);
+  }
+
+  void someMethod(PersonRepository people) {
+
+    Collection<Person> aggregates =
+      people.findByLastname("Matthews", Person.class);
+
+    Collection<NamesOnly> aggregates =
+      people.findByLastname("Matthews", NamesOnly.class);
+  }
+  ```
+
+#### 注解式查询
+
+##### @Query
+
+```java
+public @interface Query {
+
+	/**
+	 * JPQL 语句，当 nativeQuery = true 时，为原生SQL。
+	 */
+	String value() default "";
+
+	/**
+	 * 指定 count 的 JPQL 语句，如果不指定根据 query 自动生成，当 nativeQuery = true 时，为原生SQL
+	 */
+	String countQuery() default "";
+
+	/**
+         * 根据那个字段来count
+	 */
+	String countProjection() default "";
+
+	/**
+	 * 是否使用原生SQL。
+	 */
+	boolean nativeQuery() default false;
+
+	/**
+	 * 默认名字为 {$domainClass}.${queryMethodName}
+	 */
+	String name() default "";
+
+	/**
+         * 默认名字为 {$domainClass}.${queryMethodName}.count
+	 */
+	String countName() default "";
+}
+```
+
+参数传递使用 ?1、?2 .... 或者 @Param + `:参数名`，JPQL 可以使用 SPEL like查询时需要自己加上 %，例如：
+
+```java
+@Query("select u from User u where u.firstname like %?#{escape([0])}% escape ?#{escapeCharacter()}")
+List<User> findContainingEscaped(String namePart);
+
+@Query("select u from User u where u.lastname like %:#{[0]}% and u.lastname like %:lastname%")
+List<User> findByLastnameWithSpelExpression(@Param("lastname") String lastname);
+```
+
+原生SQL 不支持 Sort 参数。，原生SQL 需要分页可使用 ?#{#pageable} 传参数：
+
+```
+@Query(value = "SELECT * FROM USERS WHERE LASTNAME = ?1 ORDER BY ?#{#pageable}",
+    countQuery = "SELECT count(*) FROM USERS WHERE LASTNAME = ?1",
+    nativeQuery = true)
+Page<User> findByLastname(String lastname, Pageable pageable);
+```
+
+#{#entityName} 可以取 @Entity 的实体名，可用来实现公共方法：
+
+```java
+@MappedSuperclass
+public abstract class AbstractMappedType {
+  String attribute
+}
+
+@Entity
+public class ConcreteType extends AbstractMappedType {
+
+}
+
+@NoRepositoryBean
+public interface MappedTypeRepository<T extends AbstractMappedType>
+  extends Repository<T, Long> {
+
+  @Query("select t from #{#entityName} t where t.attribute = ?1")
+  List<T> findAllByAttribute(String attribute);
+}
+
+public interface ConcreteRepository extends MappedTypeRepository<ConcreteType> {
+}
+```
+
+##### @Modify
+
+@Modify 和 @Query 可以完成 Update 和 DELETE 操作，必须要非可读事务，即加上 @Transactional。
+
+由于@Query 跟 find 和 save 系列方法是两套不同的体系，@Query 引起的数据库变更 EntityManager 并不能发现，可以配置下面两个属性来更新EntityManager
+
+```java
+public @interface Modifying {
+
+	/**
+         * 在执行UPDATE 和 DELETE 之前刷新entityManager中的数据到数据库，避免 clearAutomatically 属性 将缓存清除导致 数据没有刷新到数据库。
+	 */
+	boolean flushAutomatically() default false;
+
+	/**
+	 * 在执行UPDATE 和 DELETE 之后清除entityManager中一级缓存，否则，在同一接口中，更新一个对象，接着查询这个对象，那么查出来的这个对象还是之前的没有更新前的状态。
+	 */
+	boolean clearAutomatically() default false;
+}
+```
+
+##### @Procedure
+
+使用储存过程，如果定义了一个OUT参数可以直接返回，如果定义了多个参数，可以使用 map 返回。
+
+```java
+@Entity
+@NamedStoredProcedureQuery(name = "User.plus1", procedureName = "plus1inout", parameters = {
+  @StoredProcedureParameter(mode = ParameterMode.IN, name = "arg", type = Integer.class),
+  @StoredProcedureParameter(mode = ParameterMode.OUT, name = "res", type = Integer.class) })
+public class User {}
+
+@Procedure("plus1inout")
+Integer explicitlyNamedPlus1inout(Integer arg);
+```
+
+## 实体

@@ -1331,3 +1331,430 @@ Integer explicitlyNamedPlus1inout(Integer arg);
 ```
 
 ## 实体
+
+* @Entity
+* @Table：catalog、schema 默认为空，使用 url 中连接的数据库：
+
+
+  | 数据库系统 | catalog                            | schema         |
+  | ------------ | ------------------------------------ | ---------------- |
+  | MySQL      | 不支持                             | 数据库名       |
+  | Oracle     | 不支持                             | 用户 ID        |
+  | SQLServer  | 数据库名                           | 对象属主名     |
+  | DB2        | 指定数据库对象时，Catalog 可以省略 | Catalog 属主名 |
+  | Sybase     | 数据库名                           | 数据库属主名   |
+* @Id：主键
+* @IdClass：联合主键类，注解在类名上面，和@Id一起使用：
+
+  ```java
+  /**
+   * 必须实现 Serializable 接口
+   * 必须有默认的 public 无参数的构造方法
+   * 必须覆盖 equals 和 hashCode 方法。
+   */
+  @Data
+  public class User11Key implements Serializable {
+      private String name;
+      private String phone;
+
+      public User11Key() {}
+
+      public User11Key(String name, String phone) {
+          this.name = name;
+          this.phone = phone;
+      }
+  }
+
+  @Data
+  @Entity
+  @Table(name = "users2")
+  @IdClass(value = User11Key.class)
+  public class User11 {
+      // 指定为主键
+      @Id
+      @Column(nullable = false)
+      private String name;
+
+      // 指定为主键
+      @Id
+      @Column(nullable = false)
+      private String phone;
+
+      @Column
+      private String email;
+
+      @Column
+      private String address;
+  }
+  ```
+*
+*
+* @GeneratedValue：
+
+  ```java
+  public @interface GeneratedValue {
+
+      /**
+       * GenerationType 枚举类型：
+       * IDENTITY：采用数据库ID自增长的方式来自增主键字段，Oracle 不支持这种方式； 
+       * AUTO： JPA自动选择合适的策略，是默认选项； 
+       * SEQUENCE：通过序列产生主键，通过 @SequenceGenerator 注解指定序列名，MySql不支持这种方式 
+       * TABLE：通过表产生主键，框架借由表模拟序列产生主键，使用该策略可以使应用更易于数据库移植。
+       */
+      GenerationType strategy() default AUTO;
+
+      /**
+       * (Optional) The name of the primary key generator
+       * to use as specified in the {@link SequenceGenerator} 
+       * or {@link TableGenerator} annotation.
+       * <p> Defaults to the id generator supplied by persistence provider.
+       */
+      String generator() default "";
+  }
+  ```
+  SEQUENCE & @SequenceGenerator:
+
+  ```java
+  @Id  
+  @GeneratedValue(strategy = GenerationType.SEQUENCE,generator="payablemoney_seq")  
+  @SequenceGenerator(name="payablemoney_seq", sequenceName="seq_payment") 
+
+  public @interface SequenceGenerator { 
+  /**
+   * 用于generator使用
+   */ 
+   String name();
+  /**
+   * oracle中序列的名称
+   */
+   String sequenceName() default "";
+  /**
+   * 初始值
+   */
+   int initialValue() default 0;
+  /**
+   * 步长
+   */
+   int allocationSize() default 50;  
+  } 
+  ```
+  TABLE & @TableGenerator:
+
+  ```java
+  @Id  
+  @GeneratedValue(strategy = GenerationType.TABLE, generator="payablemoney_gen")  
+  @TableGenerator(name = "pk_gen",  
+      table="tb_generator",  
+      pkColumnName="gen_name",  
+      valueColumnName="gen_value",  
+      pkColumnValue="PAYABLEMOENY_PK",  
+      allocationSize=1  
+  )
+
+  CREATE TABLE  tb_generator (  
+    id NUMBER NOT NULL,  
+    gen_name VARCHAR2(255) NOT NULL,  
+    gen_value NUMBER NOT NULL,  
+    PRIMARY KEY(id)  
+  ) 
+
+  INSERT INTO tb_generator(id, gen_name, gen_value) VALUES (1,'PAYABLEMOENY_PK', 1); 
+
+  / ***** 属性解释 *******/
+  public @interface TableGenerator {
+    /**
+     * 用于generator使用
+     */
+    String name();  
+    String table() default "";  
+    String catalog() default "";  
+    String schema() default ""; 
+    /**
+     * 主键表中用于标识 被生成主键的表 的字段名，上面的例子中为 tb_generator(主键表) 的 gen_name
+     */
+    String pkColumnName() default "";
+    /**
+     * 主键表中用于标识 被生成的主键 的字段名，上面的例子中为 tb_generator(主键表) 的 gen_value
+     */
+    String valueColumnName() default ""; 
+    /**
+     * 被生成的主键表 的标识，可是是任意字符串，可以理解为 oracle 中的序列名，上面的例子中的 PAYABLEMOENY_PK
+     */
+    String pkColumnValue() default "";  
+    /**
+     * gen_value 的初始值
+     */
+    int initialValue() default 0;
+    /**
+     * gen_value 的步长
+     */  
+    int allocationSize() default 50;  
+    UniqueConstraint[] uniqueConstraints() default {};  
+  } 
+
+
+  ```
+* @GenericGenerator：与 @GeneratedValue 结合起来使用，用于自定义扩展，需实现 org.hibernate.id.IdentifierGenerator 接口：
+
+  ```java
+  @Id
+  @GeneratedValue(generator = "paymentableGenerator")  
+  @GenericGenerator(name = "paymentableGenerator", strategy = "assigned")
+
+  /**** hibernate 的默认实现 ****/
+  /**
+   * native: 对于 oracle 采用 Sequence 方式，对于MySQL 和 SQL Server 采用identity（自增主键生成机制），native就是将主键的生成工作交由数据库完成，hibernate不管
+   * uuid: 采用128位的uuid算法生成主键，uuid被编码为一个32位16进制数字的字符串。占用空间大（字符串类型）。
+   * assigned: 在插入数据的时候主键由程序处理（即程序员手动指定），这是 <generator>元素没有指定时的默认生成策略。等同于JPA中的AUTO。
+   * identity: 使用SQL Server 和 MySQL 的自增字段，这个方法不能放到 Oracle 中，Oracle 不支持自增字段，要设定sequence（MySQL 和 SQL Server 中很常用）。 等同于JPA中的INDENTITY。
+   * increment: 插入数据的时候hibernate会给主键添加一个自增的主键，但是一个hibernate实例就维护一个计数器，所以在多个实例运行的时候不能使用这个方法。
+   */
+  static { 
+   GENERATORS.put("uuid", UUIDHexGenerator.class); 
+   GENERATORS.put("hilo", TableHiLoGenerator.class); 
+   GENERATORS.put("assigned", Assigned.class); 
+   GENERATORS.put("identity", IdentityGenerator.class); 
+   GENERATORS.put("select", SelectGenerator.class); 
+   GENERATORS.put("sequence", SequenceGenerator.class); 
+   GENERATORS.put("seqhilo", SequenceHiLoGenerator.class); 
+   GENERATORS.put("increment", IncrementGenerator.class); 
+   GENERATORS.put("foreign", ForeignGenerator.class); 
+   GENERATORS.put("guid", GUIDGenerator.class); 
+   GENERATORS.put("uuid.hex", UUIDHexGenerator.class); //uuid.hex is deprecated 
+   GENERATORS.put("sequence-identity", SequenceIdentityGenerator.class); 
+  }
+  ```
+* @Transient：忽略该字段，不用映射到数据库。
+* @Column：字段：
+
+  ```java
+  public @interface Column {
+
+      String name() default "";
+
+      boolean unique() default false;
+
+      boolean nullable() default true;
+
+      /**
+       * insert 是否包含此字段
+       */
+      boolean insertable() default true;
+
+      /**
+       * update 是否包含此字段
+       */
+      boolean updatable() default true;
+
+      /**
+       * 数据库中的实际类型
+       */
+      String columnDefinition() default "";
+
+      /**
+       * 当映射多个表时使用，和 @SecondaryTable 、@Embedded 一起使用
+       */
+      String table() default "";
+
+      int length() default 255;
+
+      /**
+       * 当值为 double 时 总长度
+       */
+      int precision() default 0;
+
+      /**
+       * 当值为 double 时 小说位数
+       */
+      int scale() default 0;
+  }
+  ```
+* 对于枚举类型：较少使用 @Enumerated，通常：
+  继承 javax.persistence.AttributeConverter 并使用 @javax.persistence.Converter(autoApply = true) 开启自动映射，可自定义与数据库的转换。
+
+  继承 com.fasterxml.jackson.databind.util.Converter 并使用 @com.fasterxml.jackson.databind.annotation.JsonDeserialize(用于json转换成对象时使用) 、@JsonValue(用于转换成json时使用)。
+
+  ```java
+  public interface EnumI<Code> {
+
+      @JsonValue
+      Code getCode();
+
+      String getName();
+
+      static <E extends Enum<E> & EnumI<Code>,Code> E getEnumByCode(Class<E> enumClass, Code code){
+          EnumSet<E> enumSet = EnumSet.allOf(enumClass);
+          for(E e : enumSet){
+              if(Objects.equals(e.getCode(),code)){
+                  return e;
+              }
+          }
+          throw BusinessException.of(ENUM_CONVERT_ERROR_CODE,String.format("[%s]没有[code=%s]",enumClass,code));
+      }
+  }
+
+  public abstract class EnumConverter<E extends Enum<E> & EnumI<Code>,Code> implements AttributeConverter<E, Code>, Converter<Code,E> {
+
+      @SuppressWarnings("unchecked")
+      private final Class<E> enumClass = (Class<E>)((ParameterizedType)this.getClass().getGenericSuperclass()).getActualTypeArguments()[0];
+
+      @SuppressWarnings("unchecked")
+      private final Class<Code> codeClass = (Class<Code>)((ParameterizedType)this.getClass().getGenericSuperclass()).getActualTypeArguments()[1];
+
+      @Override
+      public Code convertToDatabaseColumn(E attribute) {
+          return attribute.getCode();
+      }
+
+      @Override
+      public E convertToEntityAttribute(Code dbData) {
+          return EnumI.getEnumByCode(enumClass,dbData);
+      }
+
+      @Override
+      public E convert(Code value) {
+          return EnumI.getEnumByCode(enumClass,value);
+      }
+
+      @Override
+      public JavaType getInputType(TypeFactory typeFactory) {
+          return typeFactory.constructType(codeClass);
+      }
+
+      @Override
+      public JavaType getOutputType(TypeFactory typeFactory) {
+          return typeFactory.constructType(enumClass);
+      }
+  }
+
+  @JsonDeserialize(converter = Direction.DirectionConverter.class)
+  public enum Direction implements EnumI<Integer> {
+      /**
+       * 东
+       */
+      EAST(1,"东"),
+      /**
+       * 西
+       */
+      WEST(2,"西"),
+      /**
+       * 南
+       */
+      SOUTH(3,"南"),
+      /**
+       * 北
+       */
+      NORTH(4,"北"),
+      /**
+       * 东北
+       */
+      EAST_NORTH(5,"东北"),
+      /**
+       * 西北
+       */
+      WEST_NORTH(6,"西北"),
+      /**
+       * 东南
+       */
+      EAST_SOUTH(7,"东南"),
+      /**
+       * 西南
+       */
+      WEST_SOUTH(8,"西南");
+
+
+      private final Integer code;
+
+      private final String name;
+
+      Direction(Integer code,String name){
+          this.code = code;
+          this.name = name;
+      }
+
+
+      @Override
+      public Integer getCode() {
+          return code;
+      }
+
+      @Override
+      public String getName() {
+          return name;
+      }
+
+      @Converter(autoApply = true)
+      public static class DirectionConverter extends EnumConverter<Direction,Integer> {
+
+      }
+  }
+  ```
+* @Lob：用于匹配 Clob（长字符串）、blob（字节类型），一般会设置为 lazy。
+* @JoinColumn：主要配合 @OneToOne、@ManyToOne、OneToMany使用。
+
+  ```java
+  public @interface JoinColumn {
+      /**
+       * 外键的名称，非必填
+       */
+      String name() default "";
+
+      /**
+       * 本实体的字段名，默认本表ID
+       */
+      String referencedColumnName() default "";
+
+      boolean unique() default false;
+
+      boolean nullable() default true;
+
+      /**
+       * 是否跟随一起新增
+       */
+      boolean insertable() default true;
+
+      /**
+       * 是否跟随一起更新
+       */
+      boolean updatable() default true;
+
+      /**
+       * (Optional) The SQL fragment that is used when
+       * generating the DDL for the column.
+       * <p> Defaults to the generated SQL for the column.
+       */
+      String columnDefinition() default "";
+
+      /**
+       * (Optional) The name of the table that contains
+       * the column. If a table is not specified, the column
+       * is assumed to be in the primary table of the
+       * applicable entity.
+       *
+       * <p> Default: 
+       * <ul>
+       * <li> If the join is for a OneToOne or ManyToOne mapping
+       * using a foreign key mapping strategy, the name of the table of
+       * the source entity or embeddable. 
+       * <li> If the join is for a unidirectional OneToMany mapping 
+       * using a foreign key mapping strategy, the name of the table of
+       * the target entity. 
+       * <li> If the join is for a ManyToMany mapping or
+       * for a OneToOne or bidirectional ManyToOne/OneToMany mapping
+       * using a join table, the name of the join table. 
+       * <li> If the join is for an element collection, the name of the collection table.
+       * </ul>
+       */
+      String table() default "";
+
+      /**
+       *  (Optional) Used to specify or control the generation of a
+       *  foreign key constraint when table generation is in effect.  If
+       *  this element is not specified, the persistence provider's
+       *  default foreign key strategy will apply.
+       *
+       *  @since Java Persistence 2.1
+       */
+      ForeignKey foreignKey() default @ForeignKey(PROVIDER_DEFAULT);
+  }
+  ```

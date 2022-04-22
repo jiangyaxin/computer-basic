@@ -2098,6 +2098,7 @@ public enum LockModeType
        * 关联关系由谁维护，不会生成外键
        * 只有维护方才能操作两者关系，不能与 @JoinColumn 和 @JoinTable 同时使用
        * 该字段是对方的属性，不是数据库字段
+       * 双向映射总是需要 mappedBy 侧
        */
       String mappedBy() default "";
 
@@ -2153,6 +2154,7 @@ public enum LockModeType
       Index[] indexes() default {};
   }
   ```
+- @Embedded & @Embeddable：一个实体类在多个实体类中使用，但又不用单独生成表。可使用 @AttributeOverrides 来覆盖映射关系。
 - @EntityGraph & @NamedEntityGraph：用于执行查询的路径和边界
 
   ```java
@@ -2281,6 +2283,10 @@ public enum LockModeType
 
 另外可以使用 @MappedSuperClass 抽象到基类中。
 
+### Version
+
+@Version 可自动实现悲观锁。当悲观锁更新失败时会抛出 org.springframework.orm.ObjectOptimisticLockingFailureException。
+
 ### 回调
 
 1. @PostLoad：
@@ -2302,3 +2308,19 @@ public enum LockModeType
    - @PostRemove事件在实体从数据库中删除后触发。
 
 这些回调方法都是同步执行，一旦报错将会影响底层代码执行，所以一般会使用异步线程来处理。
+
+# Hibernate
+
+## 动态SQL生成
+
+默认情况下，在启动期间，Hibernate会在创建持久化单元时为每个持久化类创建SQL，当字段特别多的表，可以使用 @DynamicInsert 和 @DynamicUpdate来禁用启动时创建，而是在需要时生成SQL，UPDATE将仅包含具有更新后的值的列，而INSERT将仅包含非空列。
+
+## 将实体映射到子查询
+
+通过 @Subselect 和 @Synchronize(列出所有引用过的表的名称) 注解为实体生成一个应用程序级别的视图，常和 @Immutable 不可变类配合使用
+
+## 缓存
+
+持久化上下文就是一级缓存,无法被卸载，通过在持久化上下文中存储持久化状态实体的快照，既可以进行脏检测，还可以当做持久化实体的缓存。
+
+二级缓存是跨越持久化上下文的，需要添加插件来开启，默认不开启。

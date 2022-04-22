@@ -34,7 +34,7 @@
 | proxyFactory                     | 指定 Mybatis 创建可延迟加载对象所用到的代理工具。                                                                                                                                                                                                 | CGLIB                                           | JAVASSIST                                             |
 | vfsImpl                          | 指定 VFS 的实现                                                                                                                                                                                                                                   | 自定义 VFS 的实现的类全限定名，以逗号分隔。     | 未设置                                                |
 | useActualParamName               | 允许使用方法签名中的名称作为语句参数名称。 为了使用该特性，你的项目必须采用 Java 8 编译，并且加上`-parameters` 选项。（新增于 3.4.1）                                                                                                             | true                                            | false                                                 |
-| configurationFactory             | 指定一个提供`Configuration` 实例的类。 这个被返回的 Configuration 实例用来加载被反序列化对象的延迟加载属性值。 这个类必须包含一个签名为`static Configuration getConfiguration()` 的方法。（新增于 3.2.3）                                         | 一个类型别名或完全限定类名。                    | 未设置                                                |
+| configurationFactory             | 指定一个提供`Configuration` 实例的类。 这个被返回的 Configuration 实例用来加载被反序列化对象的延迟加载属性值。 这个类必须包含一个签名为 `static Configuration getConfiguration()` 的方法。（新增于 3.2.3）                                        | 一个类型别名或完全限定类名。                    | 未设置                                                |
 | shrinkWhitespacesInSql           | 从SQL中删除多余的空格字符。请注意，这也会影响SQL中的文字字符串。 (新增于 3.5.5)                                                                                                                                                                   | true                                            | false                                                 |
 | defaultSqlProviderType           | Specifies an sql provider class that holds provider method (Since 3.5.6). This class apply to the`type`(or `value`) attribute on sql provider annotation(e.g. `@SelectProvider`), when these attribute was omitted.                               | A type alias or fully qualified class name      | Not set                                               |
 | nullableOnForEach                | Specifies the default value of 'nullable' attribute on 'foreach' tag. (Since 3.5.9)                                                                                                                                                               | true                                            | false                                                 |
@@ -96,7 +96,7 @@ mybatis.type-aliases-package=com.test.model
 
 #### TypeHandlers
 
-可继承`org.apache.ibatis.type.TypeHandler`或`org.apache.ibatis.type.BaseTypeHandler`来实现，并使用`@MappedTypes`和`@MappedJdbcTypes`注解来配置转换映射关系，然后在配置文件中配置，例如：
+可继承 `org.apache.ibatis.type.TypeHandler`或 `org.apache.ibatis.type.BaseTypeHandler`来实现，并使用 `@MappedTypes`和 `@MappedJdbcTypes`注解来配置转换映射关系，然后在配置文件中配置，例如：
 
 ```xml
 <typeHandlers>
@@ -297,10 +297,10 @@ public class PageInterceptor implements Interceptor {
 1. type：表示拦截的节点，Executor、ParameterHandler、ResultSetHandler、StatementHandler。
 2. method：节点中调用的方法。
 
-* Executor (update, query, flushStatements, commit, rollback, getTransaction, close, isClosed)
-* ParameterHandler (getParameterObject, setParameters)
-* ResultSetHandler (handleResultSets, handleOutputParameters)
-* StatementHandler (prepare, parameterize, batch, update, query)
+- Executor (update, query, flushStatements, commit, rollback, getTransaction, close, isClosed)
+- ParameterHandler (getParameterObject, setParameters)
+- ResultSetHandler (handleResultSets, handleOutputParameters)
+- StatementHandler (prepare, parameterize, batch, update, query)
 
 3. arg：调用方法对应的参数,可以查询源码中对应的类查找.
 
@@ -328,12 +328,12 @@ mybatis.mapper-locations=classpath*:com/open/**/dao/*.xml
 
 属性：
 
-* `type`：cache使用的类型，默认是`PerpetualCache`。
-* `eviction`： 定义回收的策略，常见的有FIFO，LRU。
-* `flushInterval`： 配置一定时间自动刷新缓存，单位是毫秒。
-* `size`： 最多缓存对象的个数。
-* `readOnly`： 默认配置可读写(false)，则需要对应的实体类能够序列化，是通过序列化返回缓存对象的拷贝，若配置只读(true)，会直接返回缓存中的实例，当更改该实例时会造成缓存修改，所以该实例禁止修改。
-* `blocking`： 若缓存中找不到对应的key，是否会一直blocking，直到有对应的数据进入缓存。
+- `type`：cache使用的类型，默认是`PerpetualCache`。
+- `eviction`： 定义回收的策略，常见的有FIFO，LRU。
+- `flushInterval`： 配置一定时间自动刷新缓存，单位是毫秒。
+- `size`： 最多缓存对象的个数。
+- `readOnly`： 默认配置可读写(false)，则需要对应的实体类能够序列化，是通过序列化返回缓存对象的拷贝，若配置只读(true)，会直接返回缓存中的实例，当更改该实例时会造成缓存修改，所以该实例禁止修改。
+- `blocking`： 若缓存中找不到对应的key，是否会一直blocking，直到有对应的数据进入缓存。
 
 多命名空间共享相同的缓存配置和实例：`<cache-ref namespace="com.someone.application.data.SomeMapper"/>`
 
@@ -360,7 +360,7 @@ mybatis.mapper-locations=classpath*:com/open/**/dao/*.xml
 | timeout       | 这个设置是在抛出异常之前，驱动程序等待数据库返回请求结果的秒数。默认值为未设置（unset）（依赖数据库驱动）。                                                                                               |
 | fetchSize     | 这是一个给驱动的建议值，尝试让驱动程序每次批量返回的结果行数等于这个设置值。 默认值为未设置（unset）（依赖驱动）。                                                                                        |
 | statementType | 可选 STATEMENT，PREPARED 或 CALLABLE。这会让 MyBatis 分别使用 Statement，PreparedStatement 或 CallableStatement，默认值：PREPARED。                                                                       |
-| resultSetType | FORWARD_ONLY，SCROLL_SENSITIVE, SCROLL_INSENSITIVE 或 DEFAULT（等价于 unset） 中的一个，默认值为 unset （依赖数据库驱动）。                                                                               |
+| resultSetType | FORWARD\_ONLY，SCROLL\_SENSITIVE, SCROLL_INSENSITIVE 或 DEFAULT（等价于 unset） 中的一个，默认值为 unset （依赖数据库驱动）。                                                                             |
 | databaseId    | 如果配置了数据库厂商标识（databaseIdProvider），MyBatis 会加载所有不带 databaseId 或匹配当前 databaseId 的语句；如果带和不带的语句都有，则不带的会被忽略。                                                |
 | resultOrdered | 这个设置仅针对嵌套结果 select 语句：如果为 true，将会假设包含了嵌套结果集或是分组，当返回一个主结果行时，就不会产生对前面结果集的引用。 这就使得在获取嵌套结果集的时候不至于内存不够用。默认值：`false`。 |
 | resultSets    | 这个设置仅适用于多结果集的情况。它将列出语句执行后返回的结果集并赋予每个结果集一个名称，多个名称之间以逗号分隔。                                                                                          |
@@ -417,7 +417,7 @@ mybatis.mapper-locations=classpath*:com/open/**/dao/*.xml
 
 ###### 动态SQL
 
-* if：test使用 OGNL 表达式，property ！= null and property != '' 用于字符串判断不为空。
+- if：test使用 OGNL 表达式，property ！= null and property != '' 用于字符串判断不为空。
 
   ```xml
   <select id="findActiveBlogLike"
@@ -446,10 +446,10 @@ mybatis.mapper-locations=classpath*:com/open/**/dao/*.xml
   !e,not e
   e.method(args)：调用对象方法
   e.property：对象属性值
-  e1[ e2 ]：按索引取值，List,数组和Map
+  e1\[ e2 \]：按索引取值，List,数组和Map
   @class@method(args)：调用类的静态方法
   @class@field：调用类的静态字段值
-* choose、when、otherwise：相当于switch
+- choose、when、otherwise：相当于switch
 
   ```xml
   <select id="findActiveBlogLike"
@@ -468,7 +468,7 @@ mybatis.mapper-locations=classpath*:com/open/**/dao/*.xml
     </choose>
   </select>
   ```
-* where：若子句的开头为 “AND” 或 “OR”，*where* 元素也会将它们去除。
+- where：若子句的开头为 “AND” 或 “OR”，*where* 元素也会将它们去除。
 
   ```xml
   <select id="findActiveBlogLike"
@@ -487,14 +487,14 @@ mybatis.mapper-locations=classpath*:com/open/**/dao/*.xml
     </where>
   </select>
   ```
-* trim：
+- trim：
 
   属性：
 
-  * prefix：会将该值放在 `<trim>`元素内容 前面。
-  * prefixOverrides：会将 `<trim>`元素内容 前面等于 该值的内容 替换为空字符。
-  * suffix：会将该值放在 `<trim>`元素内容 后面。
-  * suffixOverrides：会将 `<trim>`元素内容 后面等于 该值的内容 替换为空字符。
+  - prefix：会将该值放在`<trim>`元素内容 前面。
+  - prefixOverrides：会将`<trim>`元素内容 前面等于 该值的内容 替换为空字符。
+  - suffix：会将该值放在`<trim>`元素内容 后面。
+  - suffixOverrides：会将`<trim>`元素内容 后面等于 该值的内容 替换为空字符。
 
   ```xml
   <select id="getUserList3" resultMap="RESULT_MAP">
@@ -514,7 +514,7 @@ mybatis.mapper-locations=classpath*:com/open/**/dao/*.xml
      </trim>
   </select>
   ```
-* set：用于update语句，会自动删掉 最后额外的逗号
+- set：用于update语句，会自动删掉 最后额外的逗号
 
   ```xml
   <update id="updateAuthorIfNecessary">
@@ -528,16 +528,16 @@ mybatis.mapper-locations=classpath*:com/open/**/dao/*.xml
     where id=#{id}
   </update>
   ```
-* foreach：用于循环。
+- foreach：用于循环。
 
   属性：
 
-  * collection：循环的对象。
-  * item：每个元素。
-  * index：循环下标。
-  * open：开始字符。
-  * separator：分隔符。
-  * close：结束字符。
+  - collection：循环的对象。
+  - item：每个元素。
+  - index：循环下标。
+  - open：开始字符。
+  - separator：分隔符。
+  - close：结束字符。
 
   ```xml
   <select id="selectPostIn" resultType="domain.blog.Post">
@@ -551,7 +551,7 @@ mybatis.mapper-locations=classpath*:com/open/**/dao/*.xml
     </where>
   </select>
   ```
-* bind：使用 OGNL 表达式创建一个变量。
+- bind：使用 OGNL 表达式创建一个变量。
 
   ```xml
   <select id="selectBlogsLike" resultType="Blog">
@@ -560,7 +560,7 @@ mybatis.mapper-locations=classpath*:com/open/**/dao/*.xml
     WHERE title LIKE #{pattern}
   </select>
   ```
-* 多数据支持
+- 多数据支持
 
   ```xml
   <insert id="insert">
@@ -594,52 +594,52 @@ ${value}：会直接替换，value值可以是 OGNL 表达式。
 </select>
 ```
 
-默认情况下，配置文件中 autoMappingBehavior 使用默认值`PARTIAL`，会自动映射结果，如果`mapUnderscoreToCamelCase`设置为true，还可以按照数据库`_`分隔，javabean 驼峰进行映射。
+默认情况下，配置文件中 autoMappingBehavior 使用默认值 `PARTIAL`，会自动映射结果，如果 `mapUnderscoreToCamelCase`设置为true，还可以按照数据库 `_`分隔，javabean 驼峰进行映射。
 
 属性：
 
-* id：当前命名空间中的唯一标识。
-* type：ResultMap 对应的 javabean，类的完全限定名 或者 一个类型别名，例如：在配置文件配置`<typeAliases><package name="domain.blog"/></typeAliases>`。
-* autoMapping：定义 ResultMap 是否自动映射结果，会覆盖全局的 autoMappingBehavior ，默认未设置。
-* extends：继承其他 ResultMap 属性。
+- id：当前命名空间中的唯一标识。
+- type：ResultMap 对应的 javabean，类的完全限定名 或者 一个类型别名，例如：在配置文件配置`<typeAliases><package name="domain.blog"/></typeAliases>`。
+- autoMapping：定义 ResultMap 是否自动映射结果，会覆盖全局的 autoMappingBehavior ，默认未设置。
+- extends：继承其他 ResultMap 属性。
 
 子标签：
 
 1. id & result：配置映射关系。
    属性：
 
-   * property：javabean 中对应的属性。
-   * column：数据库的列名或者别名。
-   * javaType：javabean 的类名。
-   * jdbcType：JDBC 的类型。
-   * typeHandler：覆盖默认的类型。
+   - property：javabean 中对应的属性。
+   - column：数据库的列名或者别名。
+   - javaType：javabean 的类名。
+   - jdbcType：JDBC 的类型。
+   - typeHandler：覆盖默认的类型。
 2. constructor：不使用属性的set方法填充属性，可用来创建不可变类。
 
    子标签：
 
-   * idArg：ID参数，和 id & result 属性一样。
-   * arg：普通参数，和 id & result 属性一样。
+   - idArg：ID参数，和 id & result 属性一样。
+   - arg：普通参数，和 id & result 属性一样。
 3. association：嵌套映射另外一个类，一对一。
 
    子标签：id & result
    属性：
 
-   * property：javabean 中对应的属性。
-   * javaType：该属性对应的类名。
+   - property：javabean 中对应的属性。
+   - javaType：该属性对应的类名。
 
      嵌套结果映射：映射 leftjoin 结果
-   * resultMap：可以直接引用另外一个resultMap。
-   * columnPrefix: 可以给resultMap中每个column加个前缀。
+   - resultMap：可以直接引用另外一个resultMap。
+   - columnPrefix: 可以给resultMap中每个column加个前缀。
 
      嵌套select查询：将查询结果作为参数进行第二次查询
-   * select：将 column 属性作为参数传递给该select，多个参数可以使用`column="{prop1=col1,prop2=col2}"`，会造成n+1问题，不建议使用
-   * column：和 select 一起使用。
-   * fetchType：和 select 一起使用，有效值为 `lazy` 和 `eager`。 指定属性后，将在映射中忽略全局配置参数 `lazyLoadingEnabled`
+   - select：将 column 属性作为参数传递给该select，多个参数可以使用 `column="{prop1=col1,prop2=col2}"`，会造成n+1问题，不建议使用
+   - column：和 select 一起使用。
+   - fetchType：和 select 一起使用，有效值为 `lazy` 和 `eager`。 指定属性后，将在映射中忽略全局配置参数 `lazyLoadingEnabled`
 
      关联多个结果集：返回多个结果集，在结果集中进行关联
-   * resultSet：为每个结果集指定一个名字，如：resultSets="blogs,authors"
-   * column：父类型，与 子类型对应。
-   * foreignColumn：子类型，例如：
+   - resultSet：为每个结果集指定一个名字，如：resultSets="blogs,authors"
+   - column：父类型，与 子类型对应。
+   - foreignColumn：子类型，例如：
 
      ```xml
      <select id="selectBlog" resultSets="blogs,authors" resultMap="blogResult">
@@ -664,22 +664,22 @@ ${value}：会直接替换，value值可以是 OGNL 表达式。
    子标签：id & result
    属性：
 
-   * property：javabean 中对应的属性。
-   * javaType：该属性对应的集合名，例如 ArrayList。
-   * ofType：集合中对象名，例如 集合为 `List<Post>` ,该值为 Post。
+   - property：javabean 中对应的属性。
+   - javaType：该属性对应的集合名，例如 ArrayList。
+   - ofType：集合中对象名，例如 集合为 `List<Post>` ,该值为 Post。
 
      嵌套结果映射：映射 leftjoin 结果
-   * resultMap：可以直接引用另外一个resultMap。
-   * columnPrefix: 可以给resultMap中每个column加个前缀。
+   - resultMap：可以直接引用另外一个resultMap。
+   - columnPrefix: 可以给resultMap中每个column加个前缀。
 
      嵌套select查询：将查询结果作为参数进行第二次查询
-   * select：将 column 属性作为参数传递给该select，多个参数可以使用`column="{prop1=col1,prop2=col2}"`，会造成n+1问题，不建议使用
-   * column：和 select 一起使用。
+   - select：将 column 属性作为参数传递给该select，多个参数可以使用 `column="{prop1=col1,prop2=col2}"`，会造成n+1问题，不建议使用
+   - column：和 select 一起使用。
 
      关联多个结果集：返回多个结果集，在结果集中进行关联
-   * resultSet：为每个结果集指定一个名字，如：resultSets="blogs,authors"
-   * column：父类型，与 子类型对应。
-   * foreignColumn：子类型，例如：
+   - resultSet：为每个结果集指定一个名字，如：resultSets="blogs,authors"
+   - column：父类型，与 子类型对应。
+   - foreignColumn：子类型，例如：
 
      ```xml
      <select id="selectBlog" resultSets="blogs,authors" resultMap="blogResult" statementType="CALLABLE">
@@ -701,8 +701,8 @@ ${value}：会直接替换，value值可以是 OGNL 表达式。
    子标签：case ，如果不能匹配任何一个 case，只会使用 discriminator 以外的映射，discriminator 的结果映射将被忽略。
    属性：
 
-   * javaType：该属性对应的类名。
-   * column：switch的字段，例如：
+   - javaType：该属性对应的类名。
+   - column：switch的字段，例如：
 
      ```xml
      resultMap id="vehicleResult" type="Vehicle">
@@ -739,21 +739,21 @@ public interface UserMapper{
 
 2. MyBatis 编程步骤
 
-* 创建 SqlSessionFactory 对象。
-* 通过 SqlSessionFactory 获取 SqlSession 对象。
-* 通过 SqlSession 获得 Mapper 代理对象。
-* 通过 Mapper 代理对象，执行数据库操作。
-* 执行成功，则使用 SqlSession 提交事务。
-* 执行失败，则使用 SqlSession 回滚事务。
-* 最终，关闭会话。
+- 创建 SqlSessionFactory 对象。
+- 通过 SqlSessionFactory 获取 SqlSession 对象。
+- 通过 SqlSession 获得 Mapper 代理对象。
+- 通过 Mapper 代理对象，执行数据库操作。
+- 执行成功，则使用 SqlSession 提交事务。
+- 执行失败，则使用 SqlSession 回滚事务。
+- 最终，关闭会话。
 
 3. 通常一个 XML 映射文件，都会写一个 Mapper 接口与之对应。请问，这个 Mapper 接口的工作原理是什么？Mapper 接口里的方法，参数不同时，方法能重载吗？
 
 Mapper 接口，对应的关系如下：
 
-* 接口的全限名，就是映射文件中的 `"namespace"` 的值。
-* 接口的方法名，就是映射文件中 MappedStatement 的 `"id"` 值。
-* 接口方法内的参数，就是传递给 SQL 的参数。
+- 接口的全限名，就是映射文件中的 `"namespace"` 的值。
+- 接口的方法名，就是映射文件中 MappedStatement 的 `"id"` 值。
+- 接口方法内的参数，就是传递给 SQL 的参数。
 
   Mapper 接口是没有实现类的，当调用接口方法时，接口全限名 + 方法名拼接字符串作为 key 值，可唯一定位一个对应的 MappedStatement 。举例：`com.mybatis3.mappers.StudentDao.findStudentById` ，可以唯一找到 `"namespace"` 为 `com.mybatis3.mappers.StudentDao` 下面 `"id"` 为 `findStudentById` 的 MappedStatement 。
 
@@ -762,7 +762,7 @@ Mapper 接口，对应的关系如下：
   另外，Mapper 接口的实现类，通过 MyBatis 使用 **JDK Proxy** 自动生成其代理对象 Proxy ，而代理对象 Proxy 会拦截接口方法，从而“调用”对应的 MappedStatement 方法，最终执行 SQL ，返回执行结果。整体流程如下图：
 
   ![image.png](./assets/88.png)
-* 其中，SqlSession 在调用 Executor 之前，会获得对应的 MappedStatement 方法。例如：`DefaultSqlSession#select(String statement, Object parameter, RowBounds rowBounds, ResultHandler handler)` 方法，代码如下：
+- 其中，SqlSession 在调用 Executor 之前，会获得对应的 MappedStatement 方法。例如：`DefaultSqlSession#select(String statement, Object parameter, RowBounds rowBounds, ResultHandler handler)` 方法，代码如下：
 
   ```java
   // DefaultSqlSession.java
@@ -782,15 +782,15 @@ Mapper 接口，对应的关系如下：
   }
   ```
 
-  Mapper 接口里的方法，是不能重载的，因为是**全限名 + 方法名**的保存和寻找策略。
+  Mapper 接口里的方法，是不能重载的，因为是**全限名 \+ 方法名**的保存和寻找策略。
 
 4. Mapper 接口绑定有几种实现方式,分别是怎么实现的?
 
    接口绑定有三种实现方式：
 
-   * 第一种，通过 **XML Mapper** 里面写 SQL 来绑定。在这种情况下，要指定 XML 映射文件里面的 `"namespace"` 必须为接口的全路径名,推荐这种方式。
-   * 第二种，通过**注解**绑定，就是在接口的方法上面加上 `@Select`、`@Update`、`@Insert`、`@Delete` 注解，里面包含 SQL 语句来绑定。
-   * 第三种，是第二种的特例，也是通过**注解**绑定，在接口的方法上面加上 `@SelectProvider`、`@UpdateProvider`、`@InsertProvider`、`@DeleteProvider` 注解，通过 Java 代码，生成对应的动态 SQL 。
+   - 第一种，通过**XML Mapper** 里面写 SQL 来绑定。在这种情况下，要指定 XML 映射文件里面的`"namespace"` 必须为接口的全路径名,推荐这种方式。
+   - 第二种，通过**注解**绑定，就是在接口的方法上面加上`@Select`、`@Update`、`@Insert`、`@Delete` 注解，里面包含 SQL 语句来绑定。
+   - 第三种，是第二种的特例，也是通过**注解**绑定，在接口的方法上面加上`@SelectProvider`、`@UpdateProvider`、`@InsertProvider`、`@DeleteProvider` 注解，通过 Java 代码，生成对应的动态 SQL 。
 5. Mybatis 的 XML Mapper文件中，不同的 XML 映射文件，id 是否可以重复？
 
    不同的 XML Mapper 文件，如果配置了 `"namespace"` ，那么 id 可以重复；如果没有配置 `"namespace"` ，那么 id 不能重复。
@@ -821,7 +821,7 @@ Mapper 接口，对应的关系如下：
    </insert>
    ```
 
-   * 其中，**方式一**较为常用。
+   - 其中，**方式一**较为常用。
 
    Oracle 可以使用 **序列** ， `<selectKey />` 执行的时为 BEFORE：
 
@@ -848,7 +848,7 @@ Mapper 接口，对应的关系如下：
    SimpleExecutor和ReuseExecutor 可以正确返回，BatchExecutor 返回id为null。
 8. 在 Mapper 中如何传递多个参数?
 
-   * 第一种，使用 Map 集合 或者 Object 装载多个参数进行传递：
+   - 第一种，使用 Map 集合 或者 Object 装载多个参数进行传递：
 
    ```xml
    // 调用方法
@@ -868,7 +868,7 @@ Mapper 接口，对应的关系如下：
    </select>
    ```
 
-   * 第二种，保持传递多个参数，使用 `@Param` 注解：
+   - 第二种，保持传递多个参数，使用`@Param` 注解：
 
    ```xml
    // 调用方法
@@ -885,7 +885,7 @@ Mapper 接口，对应的关系如下：
    </select>
    ```
 
-   * 第三种，保持传递多个参数，不使用 `@Param` 注解，按照参数在方法方法中的位置，从 1 开始，逐个为 `#{param1}`、`#{param2}`、`#{param3}` 不断向下：
+   - 第三种，保持传递多个参数，不使用`@Param` 注解，按照参数在方法方法中的位置，从 1 开始，逐个为`#{param1}`、`#{param2}`、`#{param3}` 不断向下：
 
    ```xml
    // 调用方法
@@ -905,10 +905,10 @@ Mapper 接口，对应的关系如下：
 
    Mybatis 有四种 Executor 执行器，分别是 SimpleExecutor、ReuseExecutor、BatchExecutor、CachingExecutor 。
 
-   * SimpleExecutor ：每执行一次 update 或 select 操作，就创建一个 Statement 对象，用完立刻关闭 Statement 对象。
-   * ReuseExecutor ：执行 update 或 select 操作，以 SQL 作为key 查找**缓存**的 Statement 对象，存在就使用，不存在就创建；用完后，不关闭 Statement 对象，而是放置于缓存 `Map<String, Statement>` 内，供下一次使用。简言之，就是重复使用 Statement 对象。
-   * BatchExecutor ：执行 update 操作（没有 select 操作，因为 JDBC 批处理不支持 select 操作），将所有 SQL 都添加到批处理中（通过 addBatch 方法），等待统一执行（使用 executeBatch 方法）。它缓存了多个 Statement 对象，每个 Statement 对象都是调用 addBatch 方法完毕后，等待一次执行 executeBatch 批处理。 **实际上，整个过程与 JDBC 批处理是相同** 。
-   * CachingExecutor ：在上述的三个执行器之上，增加**二级缓存**的功能。
+   - SimpleExecutor ：每执行一次 update 或 select 操作，就创建一个 Statement 对象，用完立刻关闭 Statement 对象。
+   - ReuseExecutor ：执行 update 或 select 操作，以 SQL 作为key 查找**缓存**的 Statement 对象，存在就使用，不存在就创建；用完后，不关闭 Statement 对象，而是放置于缓存`Map<String, Statement>` 内，供下一次使用。简言之，就是重复使用 Statement 对象。
+   - BatchExecutor ：执行 update 操作（没有 select 操作，因为 JDBC 批处理不支持 select 操作），将所有 SQL 都添加到批处理中（通过 addBatch 方法），等待统一执行（使用 executeBatch 方法）。它缓存了多个 Statement 对象，每个 Statement 对象都是调用 addBatch 方法完毕后，等待一次执行 executeBatch 批处理。**实际上，整个过程与 JDBC 批处理是相同** 。
+   - CachingExecutor ：在上述的三个执行器之上，增加**二级缓存**的功能。
 
    通过设置 `<setting name="defaultExecutorType" value="">` 的 `"value"` 属性，可传入 SIMPLE、REUSE、BATCH 三个值，分别使用 SimpleExecutor、ReuseExecutor、BatchExecutor 执行器。
 
@@ -934,16 +934,16 @@ Mapper 接口，对应的关系如下：
     ```
 11. MyBatis缓存机制
 
-* 一级缓存：需在配置文件中添加`<settingname="localCacheScope"value="SESSION"/>`,可以选择`SESSION`或者`STATEMENT`，默认是`SESSION`级别，即在一个MyBatis会话中执行的所有语句，都会共享这一个缓存，多SESSION之间可能出现脏读。`STATEMENT`级别为缓存只对当前执行的这一个`Statement`有效。
+- 一级缓存：需在配置文件中添加 `<settingname="localCacheScope"value="SESSION"/>`,可以选择 `SESSION`或者 `STATEMENT`，默认是 `SESSION`级别，即在一个MyBatis会话中执行的所有语句，都会共享这一个缓存，多SESSION之间可能出现脏读。`STATEMENT`级别为缓存只对当前执行的这一个 `Statement`有效。
 
-  每个SqlSession中持有了Executor，每个Executor中有一个LocalCache。当用户发起查询时，MyBatis根据当前执行的语句生成`MappedStatement`，在Local Cache进行查询，如果缓存命中的话，直接返回结果给用户，如果缓存没有命中的话，查询数据库，结果写入`Local Cache`，最后返回结果给用户。
-* 二级缓存：需在配置文件中添加`<setting name="cacheEnabled" value="true"/>`，并在 mapper.xml 中配置cache或者 cache-ref,可多个session之间共享，分布式环境下必然存在脏数据。
+  每个SqlSession中持有了Executor，每个Executor中有一个LocalCache。当用户发起查询时，MyBatis根据当前执行的语句生成 `MappedStatement`，在Local Cache进行查询，如果缓存命中的话，直接返回结果给用户，如果缓存没有命中的话，查询数据库，结果写入 `Local Cache`，最后返回结果给用户。
+- 二级缓存：需在配置文件中添加 `<setting name="cacheEnabled" value="true"/>`，并在 mapper.xml 中配置cache或者 cache-ref,可多个session之间共享，分布式环境下必然存在脏数据。
 
 12. Mybatis 是否支持延迟加载？如果支持，它的实现原理是什么？
 
     Mybatis 仅支持 association 关联对象和 collection 关联集合对象的延迟加载。association 指的就是 **一对一** ，collection 指的就是 **一对多查询** ,在 Mybatis 配置文件中，可以配置 `<setting name="lazyLoadingEnabled" value="true" />` 来启用延迟加载的功能。默认情况下，延迟加载的功能是关闭的。
     原理:
-    使用 CGLIB 或 Javassist( 默认 ) 创建目标对象的代理对象。当调用代理对象的延迟加载属性的 getting 方法时，进入拦截器方法。比如调用 `a.getB().getName()` 方法，进入拦截器的 `invoke(...)` 方法，发现 `a.getB()` 需要延迟加载时，那么就会单独发送事先保存好的查询关联 B 对象的 SQL ，把 B 查询上来，然后调用`a.setB(b)` 方法，于是 `a` 对象 `b` 属性就有值了，接着完成`a.getB().getName()` 方法的调用。
+    使用 CGLIB 或 Javassist( 默认 ) 创建目标对象的代理对象。当调用代理对象的延迟加载属性的 getting 方法时，进入拦截器方法。比如调用 `a.getB().getName()` 方法，进入拦截器的 `invoke(...)` 方法，发现 `a.getB()` 需要延迟加载时，那么就会单独发送事先保存好的查询关联 B 对象的 SQL ，把 B 查询上来，然后调用 `a.setB(b)` 方法，于是 `a` 对象 `b` 属性就有值了，接着完成 `a.getB().getName()` 方法的调用。
 13. 一对多，多对多查询。
 14. 插件的原理。
 15. JDBC 编程有哪些不足之处，MyBatis是如何解决这些问题的？
@@ -965,8 +965,8 @@ Mapper 接口，对应的关系如下：
 
 使用方式：
 
-* 使用默认实现的方法：继承 JpaRepository、CrudRepository、PagingAndSortingRepository,并添加 @Repository 注解即可，例如 CrudRepository 中的 save、find、delete，PagingAndSortingRepository 中的 findAll(Pageable pageable)，QueryByExampleExecutor 中的 indAll(Example<S> example)等，它们的具体实现类都是 SimpleJpaRepository。
-* 自定义Repository：继承 Repository，添加 JpaRepository、CrudRepository、PagingAndSortingRepository 部分方法，并添加注解 @NoRepositoryBean，可以微调默认 Repository 中的方法，有选择性的暴露部分方法，例如：
+- 使用默认实现的方法：继承 JpaRepository、CrudRepository、PagingAndSortingRepository,并添加 @Repository 注解即可，例如 CrudRepository 中的 save、find、delete，PagingAndSortingRepository 中的 findAll(Pageable pageable)，QueryByExampleExecutor 中的 indAll(Example `<S>` example)等，它们的具体实现类都是 SimpleJpaRepository。
+- 自定义Repository：继承 Repository，添加 JpaRepository、CrudRepository、PagingAndSortingRepository 部分方法，并添加注解 @NoRepositoryBean，可以微调默认 Repository 中的方法，有选择性的暴露部分方法，例如：
 
   ```java
   @NoRepositoryBean
@@ -981,7 +981,7 @@ Mapper 接口，对应的关系如下：
     User findByEmailAddress(EmailAddress emailAddress);
   }
   ```
-* 通过方法名自定义方法：继承 Repository 或者它的子类，一般我们使用 JpaRepository，然后定义 findBy... 、countBy... 等开头的方法即可使用：![image.png](./assets/90.png)
+- 通过方法名自定义方法：继承 Repository 或者它的子类，一般我们使用 JpaRepository，然后定义 findBy... 、countBy... 等开头的方法即可使用：![image.png](./assets/90.png)
 
 
   | Keyword                | Sample                                                        | JPQL snippet                                                        |
@@ -1018,17 +1018,17 @@ Mapper 接口，对应的关系如下：
 
 ![image.png](./assets/91.png)
 
-* create-if-not-found(默认)：如果通过 @Query指定查询语句，则执行该语句，如果没有，则看看有没有@NameQuery指定的查询语句，如果还没有，则通过解析方法名进行查询。
-* create：通过解析方法名字来创建查询。即使有 @Query，@NameQuery都会忽略。
-* use-declared-query：通过执行@Query定义的语句来执行查询，如果没有，则看看有没有通过执行@NameQuery来执行查询，还没有则抛出异常。
+- create-if-not-found(默认)：如果通过 @Query指定查询语句，则执行该语句，如果没有，则看看有没有@NameQuery指定的查询语句，如果还没有，则通过解析方法名进行查询。
+- create：通过解析方法名字来创建查询。即使有 @Query，@NameQuery都会忽略。
+- use-declared-query：通过执行@Query定义的语句来执行查询，如果没有，则看看有没有通过执行@NameQuery来执行查询，还没有则抛出异常。
 
 #### 属性表达式
 
-findby后可以使用实体的直接属性，如果直接属性也是实体，可以通过嵌套使用,嵌套使用时实际生产的SQL为 LEFT OUT JOIN，例如：假设 `Person`的`Address`有一个`ZipCode`属性，这时候使用`List<Person> findByAddressZipCode(ZipCode zipCode);`，解析算法首先将整个部分 `AddressZipCode`解释为属性，如果算法成功，它将使用该属性。如果不是，该算法将驼峰部分从右侧拆分为头部和尾部，并尝试找到相应的属性——如示例中`AddressZip`和`Code`，如果算法找到具有该头部的属性，它将获取尾部并继续从那里向下构建树，以刚才描述的方式将尾部拆分。如果第一个分割不匹配，算法将分割点向左移动 `Address`,`ZipCode`)并继续。更好的方式是使用_来消除歧义，如`List<Person> findByAddress_ZipCode(ZipCode zipCode);`，_ 是 JPA 的关键字。
+findby后可以使用实体的直接属性，如果直接属性也是实体，可以通过嵌套使用,嵌套使用时实际生产的SQL为 LEFT OUT JOIN，例如：假设 `Person`的 `Address`有一个 `ZipCode`属性，这时候使用 `List<Person> findByAddressZipCode(ZipCode zipCode);`，解析算法首先将整个部分 `AddressZipCode`解释为属性，如果算法成功，它将使用该属性。如果不是，该算法将驼峰部分从右侧拆分为头部和尾部，并尝试找到相应的属性——如示例中 `AddressZip`和 `Code`，如果算法找到具有该头部的属性，它将获取尾部并继续从那里向下构建树，以刚才描述的方式将尾部拆分。如果第一个分割不匹配，算法将分割点向左移动 `Address`,`ZipCode`)并继续。更好的方式是使用_来消除歧义，如 `List<Person> findByAddress_ZipCode(ZipCode zipCode);`，_ 是 JPA 的关键字。
 
 #### 处理查询结果
 
-可以通过使用 `Pageable`、`Sort`来对查询结果进行分页和排序，如果需要知道总条数和总页数可以使用`page`来接收数据，否则可以使用`Slice`来接收数据，将不会触发查询总数，它只知道下一个`Slice`是否可用，例如:
+可以通过使用 `Pageable`、`Sort`来对查询结果进行分页和排序，如果需要知道总条数和总页数可以使用 `page`来接收数据，否则可以使用 `Slice`来接收数据，将不会触发查询总数，它只知道下一个 `Slice`是否可用，例如:
 
 ```java
 Page<User> findByLastname(String lastname, Pageable pageable);
@@ -1040,7 +1040,7 @@ List<User> findByLastname(String lastname, Sort sort);
 List<User> findByLastname(String lastname, Pageable pageable);
 ```
 
-另外可以使用`first`、`top`、`distinct`来限制查询结果，例如：
+另外可以使用 `first`、`top`、`distinct`来限制查询结果，例如：
 
 ```java
 User findFirstByOrderByLastnameAsc();
@@ -1058,9 +1058,9 @@ List<User> findTop10ByLastname(String lastname, Pageable pageable);
 
 ##### 查询结果不同形式返回
 
-* LIST & Page
-* Optional：用于处理可能为null的结果。
-* Streamable：用于扩展`Iterable`，可使用 Stream 流式处理扩展：
+- LIST & Page
+- Optional：用于处理可能为null的结果。
+- Streamable：用于扩展 `Iterable`，可使用 Stream 流式处理扩展：
 
   扩展方法：
 
@@ -1096,7 +1096,7 @@ List<User> findTop10ByLastname(String lastname, Pageable pageable);
     Products findAllByDescriptionContaining(String text); 
   }
   ```
-* Stream：使用完成后需要对流进行关闭，可使用try-with-resources底层使用滚动结果集获取，可以用于大数据量查询，需要将结果集设置为 `TYPE_FORWARD_ONLY`(JPA已默认设置) 、 `CONCUR_READ_ONLY` 并且设置 `FETCHSIZE`，否则会内存溢出：
+- Stream：使用完成后需要对流进行关闭，可使用try-with-resources底层使用滚动结果集获取，可以用于大数据量查询，需要将结果集设置为 `TYPE_FORWARD_ONLY`(JPA已默认设置) 、 `CONCUR_READ_ONLY` 并且设置 `FETCHSIZE`，否则会内存溢出：
   MYSQL：设置连接属性 `useCursorFetch=true`,
 
   ```java
@@ -1142,7 +1142,7 @@ List<User> findTop10ByLastname(String lastname, Pageable pageable);
           }
       }
   ```
-* Future：异步查询，需要在方法上加 @Async 注解，适用于定时任务
+- Future：异步查询，需要在方法上加 @Async 注解，适用于定时任务
 
   ```java
   @Async
@@ -1154,8 +1154,7 @@ List<User> findTop10ByLastname(String lastname, Pageable pageable);
   @Async
   ListenableFuture<User> findOneByLastname(String lastname);  
   ```
-*
-* Projections（投影）方式获取，这样可以返回部分数据：
+- Projections（投影）方式获取，这样可以返回部分数据：
 
   ```java
   class Person {
@@ -1218,35 +1217,35 @@ List<User> findTop10ByLastname(String lastname, Pageable pageable);
 ```java
 public @interface Query {
 
-	/**
-	 * JPQL 语句，当 nativeQuery = true 时，为原生SQL。
-	 */
-	String value() default "";
+    /**
+     * JPQL 语句，当 nativeQuery = true 时，为原生SQL。
+     */
+    String value() default "";
 
-	/**
-	 * 指定 count 的 JPQL 语句，如果不指定根据 query 自动生成，当 nativeQuery = true 时，为原生SQL
-	 */
-	String countQuery() default "";
+    /**
+     * 指定 count 的 JPQL 语句，如果不指定根据 query 自动生成，当 nativeQuery = true 时，为原生SQL
+     */
+    String countQuery() default "";
 
-	/**
+    /**
          * 根据那个字段来count
-	 */
-	String countProjection() default "";
+     */
+    String countProjection() default "";
 
-	/**
-	 * 是否使用原生SQL。
-	 */
-	boolean nativeQuery() default false;
+    /**
+     * 是否使用原生SQL。
+     */
+    boolean nativeQuery() default false;
 
-	/**
-	 * 默认名字为 {$domainClass}.${queryMethodName}
-	 */
-	String name() default "";
+    /**
+     * 默认名字为 {$domainClass}.${queryMethodName}
+     */
+    String name() default "";
 
-	/**
+    /**
          * 默认名字为 {$domainClass}.${queryMethodName}.count
-	 */
-	String countName() default "";
+     */
+    String countName() default "";
 }
 ```
 
@@ -1303,15 +1302,15 @@ public interface ConcreteRepository extends MappedTypeRepository<ConcreteType> {
 ```java
 public @interface Modifying {
 
-	/**
+    /**
          * 在执行UPDATE 和 DELETE 之前刷新entityManager中的数据到数据库，避免 clearAutomatically 属性 将缓存清除导致 数据没有刷新到数据库。
-	 */
-	boolean flushAutomatically() default false;
+     */
+    boolean flushAutomatically() default false;
 
-	/**
-	 * 在执行UPDATE 和 DELETE 之后清除entityManager中一级缓存，否则，在同一接口中，更新一个对象，接着查询这个对象，那么查出来的这个对象还是之前的没有更新前的状态。
-	 */
-	boolean clearAutomatically() default false;
+    /**
+     * 在执行UPDATE 和 DELETE 之后清除entityManager中一级缓存，否则，在同一接口中，更新一个对象，接着查询这个对象，那么查出来的这个对象还是之前的没有更新前的状态。
+     */
+    boolean clearAutomatically() default false;
 }
 ```
 
@@ -1330,10 +1329,346 @@ public class User {}
 Integer explicitlyNamedPlus1inout(Integer arg);
 ```
 
+### 扩展
+
+#### QueryByExampleExecutor
+
+Example 由 probe（探针）和 ExampleMatcher 匹配规则组成。
+
+ExampleMatcher：使用 GenericPropertyMatcher 去创建
+
+- nullHandler：用来判断数据库表中该字段值为null时是否参与筛选，INCLUDE 表示 null 也会匹配，IGNORE 表示 null 不匹配行。
+- defaultStringMatcher：DEFAULT、EXACT 表示相等，STARTING 表示以什么开始，ENDING 表示以什么结束，CONTAINING 表示包含，REGEX 表示 正则表达式。
+- defaultIgnoreCase：默认大小写忽略方式，对所有字符串属性生效，除非在 propertySpecifiers 自定义。
+- propertySpecifiers：自定义属性查询方式，如需要对字符串进行转换，GenericPropertyMatcher.transform 来定义
+- ignoredPaths：忽略属性列表，这些属性不参与查询。
+
+#### JpaSpecificationExecutor
+
+```java
+public interface Specification<T> extends Serializable {
+
+    long serialVersionUID = 1L;
+
+    static <T> Specification<T> not(@Nullable Specification<T> spec) {
+
+        return spec == null //
+                ? (root, query, builder) -> null //
+                : (root, query, builder) -> builder.not(spec.toPredicate(root, query, builder));
+    }
+
+    static <T> Specification<T> where(@Nullable Specification<T> spec) {
+        return spec == null ? (root, query, builder) -> null : spec;
+    }
+
+    default Specification<T> and(@Nullable Specification<T> other) {
+        return SpecificationComposition.composed(this, other, CriteriaBuilder::and);
+    }
+
+    default Specification<T> or(@Nullable Specification<T> other) {
+        return SpecificationComposition.composed(this, other, CriteriaBuilder::or);
+    }
+
+    /**
+     * root：代表可以查询和操作的实体对象的根，通过 root.get("字段名") 来获取属性名
+         * query：代表一个顶层查询，例如 select、where、from、group by、order by等
+         * criteriaBuilder：用来构建条件或者条件组合
+     */
+    @Nullable
+    Predicate toPredicate(Root<T> root, CriteriaQuery<?> query, CriteriaBuilder criteriaBuilder);
+}
+```
+
+### EntityManager
+
+可以使用 @PersistenceContext 方式注入到 EntityManager，这样 EntityManager 由容器管理，不同的线程会创建不同的 EntityManager ，线程安全，多个 EntityManager 指向同一个 PersistenceContext。
+
+也可以使用 @PersistenceUnit 注入到 EntityManagerFactory，可用在非spring环境，需要自己管理连接、事务等。
+
+![92.png](./assets/92.png)
+
+实体的状态：持久标识即 ID
+
+- New：没有持久标识，并且没有与上下文环境关联。
+- Detached：具有持久标识，并且没有与持久上下文环境关联，这些实体可能来自 事务提交、事务回滚、从上下文删除等。
+- Managed：具有持久标识，并且与持久上下文环境关联。
+- Removed：具有持久标识，并且与持久上下文环境关联，但是准备从数据库中删除。
+
+```java
+public interface EntityManager {
+
+    /**
+     * 如果是新实体，则会变为管理的。
+     * 如果是被管理实体，则该操作被忽略。
+     * 如果是删除的实体，则将重新变成被管理的。
+     * 如果是分离的实体，会抛出异常。
+     * 如果关系中声明的级联操作包括CascadeType.PERSIST，则会把级联的实体持久化。
+     */
+    public void persist(Object entity);
+  
+    /**
+     * 如果是新的实体，则会创建一个新的管理的实体。
+     * 如果是被管理实体，则把属性复制到查询的对象中，当事务提交时，会执行UPDATE
+     * 如果是删除的实体，则产生异常。
+     * 如果是分离的实体，会创建一个新的管理的实体，如果数据库有对应记录，会查询该对象，然后把属性复制到查询的对象中，当事务提交时，会执行UPDATE
+     */  
+    public <T> T merge(T entity);
+
+    /**
+     * 如果是新的实体，则该操作被忽略。
+     * 如果是被管理实体，则会变成删除的。
+     * 如果是删除的实体，则该操作被忽略。
+     * 如果是分离的实体，会抛出异常。
+     * 事务提交的时候或者作为flush操作的结果，删除的实体将从数据库中删除。
+     */
+    public void remove(Object entity);
+  
+    /**
+     * 根据主键查找数据
+     */
+    public <T> T find(Class<T> entityClass, Object primaryKey);
+  
+    /**
+     * 根据主键查找数据，并加上 查询属性设置 例如：
+     * Map<String, Object> map = new HashMap<>();
+     * map.put("org.hibernate.cacheMode", CacheMode.REFRESH);
+     * MyClass myClass = em.find(MyClass.class, 1L, map);
+     */ 
+    public <T> T find(Class<T> entityClass, Object primaryKey, 
+                      Map<String, Object> properties); 
+  
+    /**
+     * 根据主键加锁查找数据
+     */
+    public <T> T find(Class<T> entityClass, Object primaryKey,
+                      LockModeType lockMode);
+
+    /**
+     * 根据主键加锁查找数据，并加上 查询属性设置
+     */
+    public <T> T find(Class<T> entityClass, Object primaryKey,
+                      LockModeType lockMode, 
+                      Map<String, Object> properties);
+
+    /**
+     * 获取一个代理实体，不会立即加载数据库，只有当获取该实体的数据时才会访问数据库，与懒加载相似，如果访问数据时数据库没有该数据，则报错
+     * find 方法即立即加载
+     */
+    public <T> T getReference(Class<T> entityClass, 
+                                  Object primaryKey);
+
+    /**
+     * 如果实体是管理的实体，将被同步到数据库。
+     * 如果是实体是删除的实体，将从数据库中删除掉。
+     * 通常自动完成，也可以自动调用。
+     */
+    public void flush();
+
+    /**
+     * AUTO : 默认，查询时flush
+     * COMMIT ： 事务提交时flush
+     * 
+     */
+    public void setFlushMode(FlushModeType flushMode);
+
+    public FlushModeType getFlushMode();
+
+    public void lock(Object entity, LockModeType lockMode);
+
+    public void lock(Object entity, LockModeType lockMode,Map<String, Object> properties);
+
+    /**
+     * 将数据库中的数据更新到 Entity
+     */  
+    public void refresh(Object entity);
+
+    public void refresh(Object entity,Map<String, Object> properties); 
+
+    public void refresh(Object entity, LockModeType lockMode);
+
+    public void refresh(Object entity, LockModeType lockMode,Map<String, Object> properties);
+  
+    /**
+     * 清理上下文，使所有实体变成游离态
+     */
+    public void clear();
+
+    /**
+     * 将一个实体移出上下文，变为游离态
+     */
+    public void detach(Object entity); 
+
+    /**
+     * 检查实体是否是 Manager 状态
+     */  
+    public boolean contains(Object entity);
+
+    public LockModeType getLockMode(Object entity);
+
+    public void setProperty(String propertyName, Object value);
+
+    public Map<String, Object> getProperties();
+
+    /**
+     * 支持JQPL语法
+     */
+    public Query createQuery(String qlString);
+
+    /**
+     * 利用 CriteriaQuery 来创建查询
+     */
+    public <T> TypedQuery<T> createQuery(CriteriaQuery<T> criteriaQuery); 
+
+    /**
+     * 利用 CriteriaUpdate 来创建更新查询
+     */
+    public Query createQuery(CriteriaUpdate updateQuery);
+
+    /**
+     * 利用 CriteriaDelete 来创建删除查询
+     */
+    public Query createQuery(CriteriaDelete deleteQuery);
+
+    /**
+     * 支持JQPL语法，带查询结果泛型
+     */
+    public <T> TypedQuery<T> createQuery(String qlString, Class<T> resultClass);
+
+    /**
+     * @NameQuery 使用较少
+     */
+    public Query createNamedQuery(String name);
+
+    public <T> TypedQuery<T> createNamedQuery(String name, Class<T> resultClass);
+
+    /**
+     * 利用 原生SQL 语句创建查询，可以是查询、更新、删除
+     */
+    public Query createNativeQuery(String sqlString);
+
+    /**
+     * 利用 原生SQL 语句创建查询，指定返回类型
+     */
+    public Query createNativeQuery(String sqlString, Class resultClass);
+
+    /**
+     * 与 @SqlResultSetMapping 一起使用，比较少 
+     */
+    public Query createNativeQuery(String sqlString, String resultSetMapping);
+
+    /**
+     * 与 @NamedStoredProcedureQueries 一起使用
+     */
+    public StoredProcedureQuery createNamedStoredProcedureQuery(String name);
+
+    public StoredProcedureQuery createStoredProcedureQuery(String procedureName);
+
+    public StoredProcedureQuery createStoredProcedureQuery(String procedureName, Class... resultClasses);
+
+    public StoredProcedureQuery createStoredProcedureQuery(String procedureName, String... resultSetMappings);
+
+    /**
+     * 容器托管的EntityManager使用 JTA 管理事务，将当前事务合并到上一次的事务中
+     */
+    public void joinTransaction();
+
+    public boolean isJoinedToTransaction();
+
+    /**
+     * 用来获取 hibernate 的api
+     * 例如：Session session = entityManager.unwrap( Session.class );
+     */
+    public <T> T unwrap(Class<T> cls); 
+
+    /**
+     * 获取 EntityManger 的实现者
+     */
+    public Object getDelegate();
+
+    public void close();
+
+    public boolean isOpen();
+
+    public EntityTransaction getTransaction();
+
+    public EntityManagerFactory getEntityManagerFactory();
+
+    public CriteriaBuilder getCriteriaBuilder();
+
+    public Metamodel getMetamodel();
+
+    /**
+     * 创建 一个实体 的EntityGraph
+     */
+    public <T> EntityGraph<T> createEntityGraph(Class<T> rootType);
+
+    public EntityGraph<?> createEntityGraph(String graphName);
+
+    public  EntityGraph<?> getEntityGraph(String graphName);
+
+    public <T> List<EntityGraph<? super T>> getEntityGraphs(Class<T> entityClass);
+
+}
+```
+
+### 锁
+
+```java
+public enum LockModeType
+{
+    /**
+     *  等同于 OPTIMISTIC
+     */
+    READ,
+
+    /**
+     *  等同于 OPTIMISTIC_FORCE_INCREMENT
+     */
+    WRITE,
+
+    /**
+     * 默认锁类型
+     * 乐观锁，当数据没有修改时，版本不会增加，可能存在，数据修改了多次，当最后修改为原数据。
+     */
+    OPTIMISTIC,
+
+    /**
+     * 乐观锁，即使什么数据没有更改，提交事务后，版本也会增加，可以避免上面说的问题
+     */
+    OPTIMISTIC_FORCE_INCREMENT,
+
+    /**
+     * 悲观 S 锁，通过SQL实现
+     */
+    PESSIMISTIC_READ,
+
+    /**
+     * 悲观 X 锁，通过SQL实现
+     */
+    PESSIMISTIC_WRITE,
+
+    /**
+     * 悲观 X 锁，即使什么数据没有更改，提交事务后，版本也会增加，避免 悲观锁乐观锁混用时版本不统一问题：例如使用悲观锁修改后，但是版本号没有增加，乐观锁以为数据没修改将数据覆盖进去。
+     */
+    PESSIMISTIC_FORCE_INCREMENT,
+
+    /**
+     * 无锁
+     */
+    NONE
+}
+```
+
 ## 实体
 
-* @Entity
-* @Table：catalog、schema 默认为空，使用 url 中连接的数据库：
+使用双向关联时，序列化JSON时会产生死循环，可以使用 @JsonIgnore。
+
+级联删除谨慎使用。
+
+@JoinColumn 配置可以根据打印的sql来做调整。
+
+- @Entity
+- @Table：catalog、schema 默认为空，使用 url 中连接的数据库：
 
 
   | 数据库系统 | catalog                            | schema         |
@@ -1343,8 +1678,8 @@ Integer explicitlyNamedPlus1inout(Integer arg);
   | SQLServer  | 数据库名                           | 对象属主名     |
   | DB2        | 指定数据库对象时，Catalog 可以省略 | Catalog 属主名 |
   | Sybase     | 数据库名                           | 数据库属主名   |
-* @Id：主键
-* @IdClass：联合主键类，注解在类名上面，和@Id一起使用：
+- @Id：主键
+- @IdClass：联合主键类，注解在类名上面，和@Id一起使用：
 
   ```java
   /**
@@ -1387,9 +1722,7 @@ Integer explicitlyNamedPlus1inout(Integer arg);
       private String address;
   }
   ```
-*
-*
-* @GeneratedValue：
+- @GeneratedValue：
 
   ```java
   public @interface GeneratedValue {
@@ -1412,6 +1745,7 @@ Integer explicitlyNamedPlus1inout(Integer arg);
       String generator() default "";
   }
   ```
+
   SEQUENCE & @SequenceGenerator:
 
   ```java
@@ -1438,6 +1772,7 @@ Integer explicitlyNamedPlus1inout(Integer arg);
    int allocationSize() default 50;  
   } 
   ```
+
   TABLE & @TableGenerator:
 
   ```java
@@ -1494,7 +1829,7 @@ Integer explicitlyNamedPlus1inout(Integer arg);
 
 
   ```
-* @GenericGenerator：与 @GeneratedValue 结合起来使用，用于自定义扩展，需实现 org.hibernate.id.IdentifierGenerator 接口：
+- @GenericGenerator：与 @GeneratedValue 结合起来使用，用于自定义扩展，需实现 org.hibernate.id.IdentifierGenerator 接口：
 
   ```java
   @Id
@@ -1524,8 +1859,8 @@ Integer explicitlyNamedPlus1inout(Integer arg);
    GENERATORS.put("sequence-identity", SequenceIdentityGenerator.class); 
   }
   ```
-* @Transient：忽略该字段，不用映射到数据库。
-* @Column：字段：
+- @Transient：忽略该字段，不用映射到数据库。
+- @Column：字段：
 
   ```java
   public @interface Column {
@@ -1547,7 +1882,7 @@ Integer explicitlyNamedPlus1inout(Integer arg);
       boolean updatable() default true;
 
       /**
-       * 数据库中的实际类型
+       * 建表语句时创建的DDL语句，例如：columnDefinition="BIGINT(20) NOT NULL COMMENT '创建管理员ID'"
        */
       String columnDefinition() default "";
 
@@ -1569,7 +1904,7 @@ Integer explicitlyNamedPlus1inout(Integer arg);
       int scale() default 0;
   }
   ```
-* 对于枚举类型：较少使用 @Enumerated，通常：
+- 对于枚举类型：较少使用 @Enumerated，通常：
   继承 javax.persistence.AttributeConverter 并使用 @javax.persistence.Converter(autoApply = true) 开启自动映射，可自定义与数据库的转换。
 
   继承 com.fasterxml.jackson.databind.util.Converter 并使用 @com.fasterxml.jackson.databind.annotation.JsonDeserialize(用于json转换成对象时使用) 、@JsonValue(用于转换成json时使用)。
@@ -1689,18 +2024,18 @@ Integer explicitlyNamedPlus1inout(Integer arg);
       }
   }
   ```
-* @Lob：用于匹配 Clob（长字符串）、blob（字节类型），一般会设置为 lazy。
-* @JoinColumn：主要配合 @OneToOne、@ManyToOne、OneToMany使用。
+- @Lob：用于匹配 Clob（长字符串）、blob（字节类型），一般会设置为 lazy。
+- @JoinColumn：主要配合 @OneToOne、@ManyToOne、OneToMany使用。
 
   ```java
   public @interface JoinColumn {
       /**
-       * 外键的名称，非必填
+       * 对应外键的字段，可能存在于当前表，也可能存在于关联表中，如果注释的字段是实体不是集合，会默认生成 实体名_实体中主键属性。
        */
       String name() default "";
 
       /**
-       * 本实体的字段名，默认本表ID
+       * 与外键对应的字段，默认为主键
        */
       String referencedColumnName() default "";
 
@@ -1719,42 +2054,251 @@ Integer explicitlyNamedPlus1inout(Integer arg);
       boolean updatable() default true;
 
       /**
-       * (Optional) The SQL fragment that is used when
-       * generating the DDL for the column.
-       * <p> Defaults to the generated SQL for the column.
+       * 建表语句时创建的DDL语句，例如：columnDefinition="BIGINT(20) NOT NULL COMMENT '创建管理员ID'"
        */
       String columnDefinition() default "";
 
       /**
-       * (Optional) The name of the table that contains
-       * the column. If a table is not specified, the column
-       * is assumed to be in the primary table of the
-       * applicable entity.
-       *
-       * <p> Default: 
-       * <ul>
-       * <li> If the join is for a OneToOne or ManyToOne mapping
-       * using a foreign key mapping strategy, the name of the table of
-       * the source entity or embeddable. 
-       * <li> If the join is for a unidirectional OneToMany mapping 
-       * using a foreign key mapping strategy, the name of the table of
-       * the target entity. 
-       * <li> If the join is for a ManyToMany mapping or
-       * for a OneToOne or bidirectional ManyToOne/OneToMany mapping
-       * using a join table, the name of the join table. 
-       * <li> If the join is for an element collection, the name of the collection table.
-       * </ul>
+       * 当映射多个表时使用，和 @SecondaryTable 、@Embedded 一起使用
        */
       String table() default "";
 
       /**
-       *  (Optional) Used to specify or control the generation of a
-       *  foreign key constraint when table generation is in effect.  If
-       *  this element is not specified, the persistence provider's
-       *  default foreign key strategy will apply.
-       *
-       *  @since Java Persistence 2.1
+       * 外键策略，默认使用物理外键，自动建表时会创建中间表和外键
        */
       ForeignKey foreignKey() default @ForeignKey(PROVIDER_DEFAULT);
   }
   ```
+- @OneToOne
+
+  ```java
+  public @interface OneToOne {
+
+      /** 
+       * 关联目标实体,非必填
+       */
+      Class targetEntity() default void.class;
+
+      /**
+       * 级联操作
+       */
+      CascadeType[] cascade() default {};
+
+      /** 
+       * 是否懒加载
+       */
+      FetchType fetch() default EAGER;
+
+      /** 
+       * 是否允许为空
+       */
+      boolean optional() default true;
+
+      /**  
+       * 关联关系由谁维护，不会生成外键
+       * 只有维护方才能操作两者关系，不能与 @JoinColumn 和 @JoinTable 同时使用
+       * 该字段是对方的属性，不是数据库字段
+       */
+      String mappedBy() default "";
+
+
+      /**
+       * 是否级联删除
+       */
+      boolean orphanRemoval() default false;
+  }
+  ```
+- @OneToMany & @Orderby：常一起使用，用于排序
+
+  ```java
+  public @interface OneToMany {
+      Class targetEntity() default void.class;
+      CascadeType[] cascade() default {};
+      FetchType fetch() default LAZY;
+      String mappedBy() default "";
+      boolean orphanRemoval() default false;
+  }
+  ```
+- @ManyToOne
+- @ManyToMany & @JoinTable：
+
+  ```java
+  public @interface JoinTable {
+
+      /**
+       * 中间表表名
+       */
+      String name() default "";
+
+      String catalog() default "";
+
+      String schema() default "";
+
+      /**
+       * 当前实体和中间表关联关系
+       */
+      JoinColumn[] joinColumns() default {};
+
+      /** 
+       * 被关联实体和中间表关联关系
+       */
+      JoinColumn[] inverseJoinColumns() default {};
+
+      ForeignKey foreignKey() default @ForeignKey(PROVIDER_DEFAULT);
+
+      ForeignKey inverseForeignKey() default @ForeignKey(PROVIDER_DEFAULT);
+
+      UniqueConstraint[] uniqueConstraints() default {};
+
+      Index[] indexes() default {};
+  }
+  ```
+- @EntityGraph & @NamedEntityGraph：用于执行查询的路径和边界
+
+  ```java
+  public @interface NamedEntityGraph {
+
+      /**
+       * NamedEntityGraph的名称 用于给 @EntityGraph
+       */
+      String name() default "";
+
+      /**
+       * 需要left join fetch 的属性,NamedAttributeNode 可以使用 subgraph 引用子节点 subgraphs，如果子节点存在多态，可使用 subclassSubgraphs 指定获取哪个子类
+       */
+      NamedAttributeNode[] attributeNodes() default {};
+
+      boolean includeAllAttributes() default false;
+
+      /**
+       * 子节点列表供 attributeNodes 使用
+       */
+      NamedSubgraph[] subgraphs() default {};
+
+      /**
+       * 子节点多态时，指定子节点的子类，需要与 subgraphs 中的父类使用相同名字
+       */
+      NamedSubgraph[] subclassSubgraphs() default {};
+  }
+
+  public @interface EntityGraph {
+
+      /**
+       * 使用上面定义的 NamedEntityGraph 的名称。
+       */
+      String value() default "";
+
+      /**
+       * 枚举类型
+       */
+      EntityGraphType type() default EntityGraphType.FETCH;
+
+      /**
+       * 不使用 NamedEntityGraph 的情况下，指定抓取的属性
+       */
+      String[] attributePaths() default {};
+
+
+      public enum EntityGraphType {
+
+          /**
+           * 实体图中指定的所有属性也是FetchType.EAGER，但未指定的属性使用它们指定的类型或默认值
+           */
+          LOAD("javax.persistence.loadgraph"),
+
+          /**
+           * 实体图中指定的所有属性都将被视为FetchType.EAGER，而所有未指定的属性将被视为FetchType.LAZY
+           */
+          FETCH("javax.persistence.fetchgraph");
+
+          private final String key;
+
+          private EntityGraphType(String value) {
+              this.key = value;
+          }
+
+          public String getKey() {
+              return key;
+          }
+      }
+  ```
+
+  ```java
+  @NamedEntityGraph(
+      name = "Graph.Department.FetchManagers", 
+      includeAllAttributes = false,
+      attributeNodes = {
+          @NamedAttributeNode(value = "name"),
+          @NamedAttributeNode(value = "employees", subgraph = "FetchManagers.Subgraph.Managers")
+      },
+      subgraphs = {
+          @NamedSubgraph(
+              name = "FetchManagers.Subgraph.Managers",
+              type = Employee.class,
+              attributeNodes = {
+                  @NamedAttributeNode(value = "name")
+              }
+          )
+      },
+      subclassSubgraphs = {
+          @NamedSubgraph(
+              name = "FetchManagers.Subgraph.Managers",
+              type = Manager.class,
+              attributeNodes = {
+                  @NamedAttributeNode(value = "carAllowance"),
+              }
+          )
+      }
+  )
+  ```
+
+## 扩展
+
+### Auditing
+
+- 添加Auditing注解。
+- 配置 AuditingEntityListener。
+
+  ```java
+  @EntityListeners(AuditingEntityListener.class)
+  public class Auditable {
+
+      @CreatedBy
+      private Long createdBy;
+
+      @CreatedDate
+      private Date createdDate;
+
+      @LastModifiedBy
+      private Long lastModifiedBy;
+
+      @LastModifiedDate
+      private Date lastModifiedDate;
+  }
+  ```
+- 实现 AuditorAware 告诉 JPA 当前用户是谁，并配置 成bean 加入到 容器。
+- 添加 @EnableJpaAuditing 注解
+
+另外可以使用 @MappedSuperClass 抽象到基类中。
+
+### 回调
+
+1. @PostLoad：
+
+   - 执行EntityManager.find()或getreference()方法载入一个实体后。
+   - 执行JPQL查询后。
+   - EntityManager.refresh()方法被调用后。
+2. @PrePersist、@PostPersist：
+
+   - @PrePersist事件在调用persist()方法后立刻发生，此时的数据还没有真正插入进数据库。
+   - @PostPersist事件在数据已经插入进数据库后发生。
+3. @PreUpdate、@PostUpdate：
+
+   - @PreUpdate事件在实体的状态同步到数据库之前触发，此时的数据还没有真正更新到数据库。
+   - @PostUpdate事件在实体的状态同步到数据库之后触发，同步在事务提交时发生。
+4. @PreRemove、@PostRemove：
+
+   - @PreRemove事件在实体从数据库删除之前触发，即在调用remove()方法删除时发生，此时的数据还没有真正从数据库中删除。
+   - @PostRemove事件在实体从数据库中删除后触发。
+
+这些回调方法都是同步执行，一旦报错将会影响底层代码执行，所以一般会使用异步线程来处理。

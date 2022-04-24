@@ -206,7 +206,7 @@ docker images
 # 删除镜像
 docker rmi <image-id>
 # 查看正在运行容器，可添加 -a 显示所有容器，包含已经停止的容器
-docker ps 
+docker ps
 # 拉取镜像
 docker pull ubuntu:16.04
 # 从指定仓库拉取镜像

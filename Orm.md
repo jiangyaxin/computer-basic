@@ -862,8 +862,8 @@ Mapper 接口，对应的关系如下：
 
    // Mapper XML 代码
    <select id="selectStudents" parameterType="Map" resultType="Student">
-       SELECT * 
-       FROM students 
+       SELECT *
+       FROM students
        LIMIT #{start}, #{end}
    </select>
    ```
@@ -879,8 +879,8 @@ Mapper 接口，对应的关系如下：
 
    // Mapper XML 代码
    <select id="selectStudents" resultType="Student">
-       SELECT * 
-       FROM students 
+       SELECT *
+       FROM students
        LIMIT #{start}, #{end}
    </select>
    ```
@@ -896,8 +896,8 @@ Mapper 接口，对应的关系如下：
 
    // Mapper XML 代码
    <select id="selectStudents" resultType="Student">
-       SELECT * 
-       FROM students 
+       SELECT *
+       FROM students
        LIMIT #{param1}, #{param2}
    </select>
    ```
@@ -1070,16 +1070,16 @@ List<User> findTop10ByLastname(String lastname, Pageable pageable);
   例如：
 
   ```java
-  class Product {   
+  class Product {
     MonetaryAmount getPrice() { … }
   }
 
   @RequiredArgsConstructor(staticName = "of")
-  class Products implements Streamable<Product> {   
+  class Products implements Streamable<Product> {
 
     private final Streamable<Product> streamable;
 
-    public MonetaryAmount getTotal() {  
+    public MonetaryAmount getTotal() {
       return streamable.stream()
         .map(Priced::getPrice)
         .reduce(Money.of(0), MonetaryAmount::add);
@@ -1087,13 +1087,13 @@ List<User> findTop10ByLastname(String lastname, Pageable pageable);
 
 
     @Override
-    public Iterator<Product> iterator() {   
+    public Iterator<Product> iterator() {
       return streamable.iterator();
     }
   }
 
   interface ProductRepository implements Repository<Product, Long> {
-    Products findAllByDescriptionContaining(String text); 
+    Products findAllByDescriptionContaining(String text);
   }
   ```
 - Stream：使用完成后需要对流进行关闭，可使用try-with-resources底层使用滚动结果集获取，可以用于大数据量查询，需要将结果集设置为 `TYPE_FORWARD_ONLY`(JPA已默认设置) 、 `CONCUR_READ_ONLY` 并且设置 `FETCHSIZE`，否则会内存溢出：
@@ -1146,13 +1146,13 @@ List<User> findTop10ByLastname(String lastname, Pageable pageable);
 
   ```java
   @Async
-  Future<User> findByFirstname(String firstname);   
+  Future<User> findByFirstname(String firstname);
 
   @Async
-  CompletableFuture<User> findOneByFirstname(String firstname); 
+  CompletableFuture<User> findOneByFirstname(String firstname);
 
   @Async
-  ListenableFuture<User> findOneByLastname(String lastname);  
+  ListenableFuture<User> findOneByLastname(String lastname);
   ```
 - Projections（投影）方式获取，这样可以返回部分数据：
 
@@ -1405,13 +1405,13 @@ public interface EntityManager {
      * 如果关系中声明的级联操作包括CascadeType.PERSIST，则会把级联的实体持久化。
      */
     public void persist(Object entity);
-  
+
     /**
      * 如果是新的实体，则会创建一个新的管理的实体。
      * 如果是被管理实体，则把属性复制到查询的对象中，当事务提交时，会执行UPDATE
      * 如果是删除的实体，则产生异常。
      * 如果是分离的实体，会创建一个新的管理的实体，如果数据库有对应记录，会查询该对象，然后把属性复制到查询的对象中，当事务提交时，会执行UPDATE
-     */  
+     */
     public <T> T merge(T entity);
 
     /**
@@ -1422,21 +1422,21 @@ public interface EntityManager {
      * 事务提交的时候或者作为flush操作的结果，删除的实体将从数据库中删除。
      */
     public void remove(Object entity);
-  
+
     /**
      * 根据主键查找数据
      */
     public <T> T find(Class<T> entityClass, Object primaryKey);
-  
+
     /**
      * 根据主键查找数据，并加上 查询属性设置 例如：
      * Map<String, Object> map = new HashMap<>();
      * map.put("org.hibernate.cacheMode", CacheMode.REFRESH);
      * MyClass myClass = em.find(MyClass.class, 1L, map);
-     */ 
-    public <T> T find(Class<T> entityClass, Object primaryKey, 
-                      Map<String, Object> properties); 
-  
+     */
+    public <T> T find(Class<T> entityClass, Object primaryKey,
+                      Map<String, Object> properties);
+
     /**
      * 根据主键加锁查找数据
      */
@@ -1447,14 +1447,14 @@ public interface EntityManager {
      * 根据主键加锁查找数据，并加上 查询属性设置
      */
     public <T> T find(Class<T> entityClass, Object primaryKey,
-                      LockModeType lockMode, 
+                      LockModeType lockMode,
                       Map<String, Object> properties);
 
     /**
      * 获取一个代理实体，不会立即加载数据库，只有当获取该实体的数据时才会访问数据库，与懒加载相似，如果访问数据时数据库没有该数据，则报错
      * find 方法即立即加载
      */
-    public <T> T getReference(Class<T> entityClass, 
+    public <T> T getReference(Class<T> entityClass,
                                   Object primaryKey);
 
     /**
@@ -1467,7 +1467,7 @@ public interface EntityManager {
     /**
      * AUTO : 默认，查询时flush
      * COMMIT ： 事务提交时flush
-     * 
+     *
      */
     public void setFlushMode(FlushModeType flushMode);
 
@@ -1479,15 +1479,15 @@ public interface EntityManager {
 
     /**
      * 将数据库中的数据更新到 Entity
-     */  
+     */
     public void refresh(Object entity);
 
-    public void refresh(Object entity,Map<String, Object> properties); 
+    public void refresh(Object entity,Map<String, Object> properties);
 
     public void refresh(Object entity, LockModeType lockMode);
 
     public void refresh(Object entity, LockModeType lockMode,Map<String, Object> properties);
-  
+
     /**
      * 清理上下文，使所有实体变成游离态
      */
@@ -1496,11 +1496,11 @@ public interface EntityManager {
     /**
      * 将一个实体移出上下文，变为游离态
      */
-    public void detach(Object entity); 
+    public void detach(Object entity);
 
     /**
      * 检查实体是否是 Manager 状态
-     */  
+     */
     public boolean contains(Object entity);
 
     public LockModeType getLockMode(Object entity);
@@ -1517,7 +1517,7 @@ public interface EntityManager {
     /**
      * 利用 CriteriaQuery 来创建查询
      */
-    public <T> TypedQuery<T> createQuery(CriteriaQuery<T> criteriaQuery); 
+    public <T> TypedQuery<T> createQuery(CriteriaQuery<T> criteriaQuery);
 
     /**
      * 利用 CriteriaUpdate 来创建更新查询
@@ -1552,7 +1552,7 @@ public interface EntityManager {
     public Query createNativeQuery(String sqlString, Class resultClass);
 
     /**
-     * 与 @SqlResultSetMapping 一起使用，比较少 
+     * 与 @SqlResultSetMapping 一起使用，比较少
      */
     public Query createNativeQuery(String sqlString, String resultSetMapping);
 
@@ -1578,7 +1578,7 @@ public interface EntityManager {
      * 用来获取 hibernate 的api
      * 例如：Session session = entityManager.unwrap( Session.class );
      */
-    public <T> T unwrap(Class<T> cls); 
+    public <T> T unwrap(Class<T> cls);
 
     /**
      * 获取 EntityManger 的实现者
@@ -1729,16 +1729,16 @@ public enum LockModeType
 
       /**
        * GenerationType 枚举类型：
-       * IDENTITY：采用数据库ID自增长的方式来自增主键字段，Oracle 不支持这种方式； 
-       * AUTO： JPA自动选择合适的策略，是默认选项； 
-       * SEQUENCE：通过序列产生主键，通过 @SequenceGenerator 注解指定序列名，MySql不支持这种方式 
+       * IDENTITY：采用数据库ID自增长的方式来自增主键字段，Oracle 不支持这种方式；
+       * AUTO： JPA自动选择合适的策略，是默认选项；
+       * SEQUENCE：通过序列产生主键，通过 @SequenceGenerator 注解指定序列名，MySql不支持这种方式
        * TABLE：通过表产生主键，框架借由表模拟序列产生主键，使用该策略可以使应用更易于数据库移植。
        */
       GenerationType strategy() default AUTO;
 
       /**
        * (Optional) The name of the primary key generator
-       * to use as specified in the {@link SequenceGenerator} 
+       * to use as specified in the {@link SequenceGenerator}
        * or {@link TableGenerator} annotation.
        * <p> Defaults to the id generator supplied by persistence provider.
        */
@@ -1749,14 +1749,14 @@ public enum LockModeType
   SEQUENCE & @SequenceGenerator:
 
   ```java
-  @Id  
-  @GeneratedValue(strategy = GenerationType.SEQUENCE,generator="payablemoney_seq")  
-  @SequenceGenerator(name="payablemoney_seq", sequenceName="seq_payment") 
+  @Id
+  @GeneratedValue(strategy = GenerationType.SEQUENCE,generator="payablemoney_seq")
+  @SequenceGenerator(name="payablemoney_seq", sequenceName="seq_payment")
 
-  public @interface SequenceGenerator { 
+  public @interface SequenceGenerator {
   /**
    * 用于generator使用
-   */ 
+   */
    String name();
   /**
    * oracle中序列的名称
@@ -1769,41 +1769,41 @@ public enum LockModeType
   /**
    * 步长
    */
-   int allocationSize() default 50;  
-  } 
+   int allocationSize() default 50;
+  }
   ```
 
   TABLE & @TableGenerator:
 
   ```java
-  @Id  
-  @GeneratedValue(strategy = GenerationType.TABLE, generator="payablemoney_gen")  
-  @TableGenerator(name = "pk_gen",  
-      table="tb_generator",  
-      pkColumnName="gen_name",  
-      valueColumnName="gen_value",  
-      pkColumnValue="PAYABLEMOENY_PK",  
-      allocationSize=1  
+  @Id
+  @GeneratedValue(strategy = GenerationType.TABLE, generator="payablemoney_gen")
+  @TableGenerator(name = "pk_gen",
+      table="tb_generator",
+      pkColumnName="gen_name",
+      valueColumnName="gen_value",
+      pkColumnValue="PAYABLEMOENY_PK",
+      allocationSize=1
   )
 
-  CREATE TABLE  tb_generator (  
-    id NUMBER NOT NULL,  
-    gen_name VARCHAR2(255) NOT NULL,  
-    gen_value NUMBER NOT NULL,  
-    PRIMARY KEY(id)  
-  ) 
+  CREATE TABLE  tb_generator (
+    id NUMBER NOT NULL,
+    gen_name VARCHAR2(255) NOT NULL,
+    gen_value NUMBER NOT NULL,
+    PRIMARY KEY(id)
+  )
 
-  INSERT INTO tb_generator(id, gen_name, gen_value) VALUES (1,'PAYABLEMOENY_PK', 1); 
+  INSERT INTO tb_generator(id, gen_name, gen_value) VALUES (1,'PAYABLEMOENY_PK', 1);
 
   / ***** 属性解释 *******/
   public @interface TableGenerator {
     /**
      * 用于generator使用
      */
-    String name();  
-    String table() default "";  
-    String catalog() default "";  
-    String schema() default ""; 
+    String name();
+    String table() default "";
+    String catalog() default "";
+    String schema() default "";
     /**
      * 主键表中用于标识 被生成主键的表 的字段名，上面的例子中为 tb_generator(主键表) 的 gen_name
      */
@@ -1811,21 +1811,21 @@ public enum LockModeType
     /**
      * 主键表中用于标识 被生成的主键 的字段名，上面的例子中为 tb_generator(主键表) 的 gen_value
      */
-    String valueColumnName() default ""; 
+    String valueColumnName() default "";
     /**
      * 被生成的主键表 的标识，可是是任意字符串，可以理解为 oracle 中的序列名，上面的例子中的 PAYABLEMOENY_PK
      */
-    String pkColumnValue() default "";  
+    String pkColumnValue() default "";
     /**
      * gen_value 的初始值
      */
     int initialValue() default 0;
     /**
      * gen_value 的步长
-     */  
-    int allocationSize() default 50;  
-    UniqueConstraint[] uniqueConstraints() default {};  
-  } 
+     */
+    int allocationSize() default 50;
+    UniqueConstraint[] uniqueConstraints() default {};
+  }
 
 
   ```
@@ -1833,7 +1833,7 @@ public enum LockModeType
 
   ```java
   @Id
-  @GeneratedValue(generator = "paymentableGenerator")  
+  @GeneratedValue(generator = "paymentableGenerator")
   @GenericGenerator(name = "paymentableGenerator", strategy = "assigned")
 
   /**** hibernate 的默认实现 ****/
@@ -1844,19 +1844,19 @@ public enum LockModeType
    * identity: 使用SQL Server 和 MySQL 的自增字段，这个方法不能放到 Oracle 中，Oracle 不支持自增字段，要设定sequence（MySQL 和 SQL Server 中很常用）。 等同于JPA中的INDENTITY。
    * increment: 插入数据的时候hibernate会给主键添加一个自增的主键，但是一个hibernate实例就维护一个计数器，所以在多个实例运行的时候不能使用这个方法。
    */
-  static { 
-   GENERATORS.put("uuid", UUIDHexGenerator.class); 
-   GENERATORS.put("hilo", TableHiLoGenerator.class); 
-   GENERATORS.put("assigned", Assigned.class); 
-   GENERATORS.put("identity", IdentityGenerator.class); 
-   GENERATORS.put("select", SelectGenerator.class); 
-   GENERATORS.put("sequence", SequenceGenerator.class); 
-   GENERATORS.put("seqhilo", SequenceHiLoGenerator.class); 
-   GENERATORS.put("increment", IncrementGenerator.class); 
-   GENERATORS.put("foreign", ForeignGenerator.class); 
-   GENERATORS.put("guid", GUIDGenerator.class); 
-   GENERATORS.put("uuid.hex", UUIDHexGenerator.class); //uuid.hex is deprecated 
-   GENERATORS.put("sequence-identity", SequenceIdentityGenerator.class); 
+  static {
+   GENERATORS.put("uuid", UUIDHexGenerator.class);
+   GENERATORS.put("hilo", TableHiLoGenerator.class);
+   GENERATORS.put("assigned", Assigned.class);
+   GENERATORS.put("identity", IdentityGenerator.class);
+   GENERATORS.put("select", SelectGenerator.class);
+   GENERATORS.put("sequence", SequenceGenerator.class);
+   GENERATORS.put("seqhilo", SequenceHiLoGenerator.class);
+   GENERATORS.put("increment", IncrementGenerator.class);
+   GENERATORS.put("foreign", ForeignGenerator.class);
+   GENERATORS.put("guid", GUIDGenerator.class);
+   GENERATORS.put("uuid.hex", UUIDHexGenerator.class); //uuid.hex is deprecated
+   GENERATORS.put("sequence-identity", SequenceIdentityGenerator.class);
   }
   ```
 - @Transient：忽略该字段，不用映射到数据库。
@@ -2074,7 +2074,7 @@ public enum LockModeType
   ```java
   public @interface OneToOne {
 
-      /** 
+      /**
        * 关联目标实体,非必填
        */
       Class targetEntity() default void.class;
@@ -2084,17 +2084,17 @@ public enum LockModeType
        */
       CascadeType[] cascade() default {};
 
-      /** 
+      /**
        * 是否懒加载
        */
       FetchType fetch() default EAGER;
 
-      /** 
+      /**
        * 是否允许为空
        */
       boolean optional() default true;
 
-      /**  
+      /**
        * 关联关系由谁维护，不会生成外键
        * 只有维护方才能操作两者关系，不能与 @JoinColumn 和 @JoinTable 同时使用
        * 该字段是对方的属性，不是数据库字段
@@ -2140,7 +2140,7 @@ public enum LockModeType
        */
       JoinColumn[] joinColumns() default {};
 
-      /** 
+      /**
        * 被关联实体和中间表关联关系
        */
       JoinColumn[] inverseJoinColumns() default {};
@@ -2227,7 +2227,7 @@ public enum LockModeType
 
   ```java
   @NamedEntityGraph(
-      name = "Graph.Department.FetchManagers", 
+      name = "Graph.Department.FetchManagers",
       includeAllAttributes = false,
       attributeNodes = {
           @NamedAttributeNode(value = "name"),

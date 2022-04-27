@@ -158,7 +158,7 @@ public class CDPlayerConfig {
 * 作为JNDI条目。
 * 作为环境变量。
 * 作为JVM的系统属性。
-* 在集成测试类上，使用@ActiveProfiles注解设置。
+* 在集成测试类 @SpringBootTest 上，使用@ActiveProfiles注解设置。
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
@@ -442,8 +442,11 @@ spring.servlet.multipart.max-file-size=10MB
 | TypeMismatchException                   | 400 - Bad Request            |
 
 # SpringSecurity
-
-controller 可以使用 @AuthenticationPrincipal 来接收 Authentication.getPrincipal() 的值。
+获取用户：
+* controller 可以使用 @AuthenticationPrincipal 注解在参数上 来接收 Authentication.getPrincipal() 的值。
+* 使用 Principal 参数 接收。
+* 使用 Authentication 参数 接收。
+* 使用 SecurityContextHolder 来获取。
 
 WebSecurityConfigurerAdapter 方法：
 
@@ -602,6 +605,7 @@ protected void configure(HttpSecurity http) throws Exception {
 | beforeInvocation | boolean | 如果为 true 的话，在方法调用之前移除条目。如果为 false（默认值）的话，在方法成功调用之后再移除条目 |
 
 # SpringBootActuator
+
 | HTTP 方法 | 路径            | 描述                                                            |
 | --------- | --------------- | --------------------------------------------------------------- |
 | GET       | /autoconfig     | 提供了一份自动配置报告，记录哪些自动配置条件通过了，哪些没通过  |
@@ -617,3 +621,49 @@ protected void configure(HttpSecurity http) throws Exception {
 | GET       | /metrics/{name} | 报告指定名称的应用程序度量值                                    |
 | POST      | /shutdown       | 关闭应用程序，要求endpoints.shutdown.enabled设置为true          |
 | GET       | /trace          | 提供基本的HTTP请求跟踪信息(时间戳、HTTP头等)                    |
+
+# SpringReactor
+
+* Mono 用于不超过一个的场景。
+* Flux 用于零个、一个、多个（可能是无限个的场景）。
+
+创建：
+* 根据对象创建：`Flux.just("A","B")`
+* 根据集合创建：`Flux.fromArray(new String[]{"A","B"})`,`Flux.fromIterable(new ArrayList<>())`,`Flux.fromStream(Stream.of("A","B"))`
+* 生成数据：`Flux.range(1,5)`,`Flux.interval(Duration.ofSeconds(1)).take(5)`
+* 合并：`Flux.range(1,5).mergeWith(Flux.interval(Duration.ofSeconds(1)).take(5))`
+* 延迟发布：`Flux.range(1,5).delaySubscription(Duration.ofMillis(250)).delayElements(Duration.ofMillis(500))`
+* 压缩,会将多个FLUX对齐分组为 Tuple2，通过 getT1(),getT2() 来获取：`Flux.zip(Flux.range(1,5),Flux.interval(Duration.ofSeconds(1)).take(5))`，如果不想获得 Tuple2 ，可使用 `Flux.zip( flux1, flux2,mergeFunction)`
+* 只发布快的第一个flux：`Flux.first(flux1,flux2)`只会消费一个flux，另一个flux忽略。
+* 缓冲数据：
+```java
+Flux.just("apple", "orange", "banana", "kiwi", "strawberry")
+Flux<List<String>> bufferedFlux = fruitFlux.buffer(3)
+```
+会生成一个新的Flux
+* 收集数据：
+```java
+Flux<String> fruitFlux = Flux.just("apple", "orange", "banana", "kiwi", "strawberry");
+Mono<List<String>> fruitListMono = fruitFlux.collectList();
+```
+```java
+Flux<String> animalFlux = Flux.just("aardvark", "elephant", "koala", "eagle", "kangaroo");
+Mono<Map<Character, String>> animalMapMono = animalFlux.collectMap(a -> a.charAt(0));
+```
+
+转换：
+* 并行处理 `Flux.just("A","B").flatMap(n -> Mono.just(n).map(mapFunction).subscribeOn(Schedulers.parallel()))`
+
+| Scheduler方法 | 描述                 |
+| ------------- | -------------------- |
+| .immediate()  | 在当前线程中执行订阅 |
+| .single()  | 在单个可重用线程中执行订阅，对所有调用方重复使用同一线程 |
+| .newSingle()  | 在每个调用专用线程中执行订阅 |
+| .elastic()  | 在从无限弹性池中提取的工作进程中执行订阅，根据需要创建新的工作线程，并释放空闲的工作线程（默认情况下 60 秒） |
+| .parallel()  | 在从固定大小的池中提取的工作进程中执行订阅，该池的大小取决于 CPU 核心的数量。 |
+
+# SpringWebFlux
+
+* 高并发、少计算且I/O密集的应用中，响应式和非阻塞往往能够发挥出价值。
+* Spring Data Reactive Repositories 目前只支持 MongoDB、Redis 和 Couchbase 等几种不支持事务管理的 NOSQL。
+* 不能加快响应的速度，可以减少线程数量。

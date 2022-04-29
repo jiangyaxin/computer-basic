@@ -1,6 +1,7 @@
 # BeanFactory
 
 ![97](assets/97.png)
+
 * AliasRegistry：定义对alias的简单增删改等操作。
 * BeanDefinitionRegistry：定义对 BeanDefinition 的各种增删改操作。
 * HierarchicalBeanFactory：增加 BeanFactory 对 parentFactory 的缓存。
@@ -19,10 +20,12 @@
 * BeanDefinitionReader：整合 ResourceLoader、DocumentLoader、BeanDefinitionDocument 功能读取资源获得 BeanDefinition 。
 
 ## BeanDefinition：
+
 * AnnotatedGenericBeanDefinition ： 表示@Configuration注解注释的BeanDefinition类。
 * ScannedGenericBeanDefinition ：表示@Component、@Service、@Controller等注解注释的Bean类。
 
 ## Bean的加载：
+
 当我们隐式或者显示的调用 BeanFactory#getBean(...) 时，会触发加载Bean阶段，这时，容器会首先检查所请求的对象是否已经初始化完成，如果没有，则会根据注册的 Bean 信息实例化请求的对象，并为其注册依赖，然后将其返回给请求方。
 
 1. 首先从 alias 中获取 BeanName。
@@ -31,33 +34,33 @@
 2. 依次从缓存中获取bean，这里的bean有个可能是 FactoryBean 也有可能是普通bean，并且可能没有实例化，缓存有三个：
 
    ```java
-  /**
-   * 存放的是单例 bean 的映射。
-   * 对应关系为 bean name --> bean instance
-   */
-   private final Map<String, Object> singletonObjects = new ConcurrentHashMap<>(256);
+     /**
+      * 存放的是单例 bean 的映射。
+      * 对应关系为 bean name --> bean instance
+     */
+     private final Map<String, Object> singletonObjects = new ConcurrentHashMap<>(256);
 
-  /**
-   * 存放的是 ObjectFactory，可以理解为创建单例 bean 的 factory 。
-   * 对应关系是 bean name --> ObjectFactory
-   **/
-   private final Map<String, ObjectFactory<?>> singletonFactories = new HashMap<>(16);
+    /**
+     * 存放的是 ObjectFactory，可以理解为创建单例 bean 的 factory 。
+     * 对应关系是 bean name --> ObjectFactory
+     **/
+     private final Map<String, ObjectFactory<?>> singletonFactories = new HashMap<>(16);
 
-  /**
-   * 存放的是早期的 bean，对应关系也是 bean name --> bean instance。
-   * 它与 {@link #singletonFactories} 区别在于 earlySingletonObjects 中存放的 bean 不一定是完整。
-   *
-   * bean 在创建过程中就已经加入到 earlySingletonObjects 中了，所以当在 bean 的创建过程中，就可以通过 getBean() 方法获取。
-   */
-   private final Map<String, Object> earlySingletonObjects = new HashMap<>(16);
+    /**
+     * 存放的是早期的 bean，对应关系也是 bean name --> bean instance。
+     * 它与 {@link #singletonFactories} 区别在于 earlySingletonObjects 中存放的 bean 不一定是完整。
+     *
+     * bean 在创建过程中就已经加入到 earlySingletonObjects 中了，所以当在 bean 的创建过程中，就可以通过 getBean() 方法获取。
+     */
+     private final Map<String, Object> earlySingletonObjects = new HashMap<>(16);
    ```
-   
 3. 如果从缓存中获取到bean，由于bean不是最终的bean，所以需要调用 getObjectForBeanInstance(...) 获取bean实例 或 FactoryBean.getObject() 的对象。
 4. 如果没有从缓存中获取到bean 先从 parentBeanFactory 获取 Bean。
 5. 如果没有从 parentBeanFactory 获取到，再获取 BeanDefinition ，先需要依赖，判断没有循环先创建依赖，再根据不同的作用域创建bean。
 6. 类型转换，例如name返回为String，requiredType 要求返回 Integer，这时候会使用 ConversionService 做转换。
 
 循环依赖处理：
+
 1. 首先，从一级缓存 singletonObjects 获取。
 2. 如果，没有且当前指定的 beanName 正在创建，就再从二级缓存 earlySingletonObjects 中获取。
 3. 如果，还是没有获取到且允许 singletonFactories 通过 #getObject() 获取，则从三级缓存 singletonFactories 获取。如果获取到，则通过其 #getObject() 方法，获取对象，并将其加入到二级缓存 earlySingletonObjects 中，并从三级缓存 singletonFactories 删除，这里的 #getObject 是ObjectFactory 的方法，不是 FactoryBean 的方法，不要搞混。
@@ -76,6 +79,7 @@ singletonFactories 中的数据来自于 doCreateBean 时使添加，添加的�
 6. 从第二级缓存移除A代理对象，A代理对象加入第一级缓存。
 
 是否可以只用二级缓存：可以：解决循环依赖有两个方案：
+
 1. 不管有没有循环依赖，都提前创建好代理对象，并将代理对象放入缓存，出现循环依赖时，其他对象直接就可以取到代理对象并注入。
 2. 不提前创建好代理对象，在出现循环依赖被其他对象注入时，才实时生成代理对象。这样在没有循环依赖的情况下，Bean就可以按着Spring设计原则的步骤来创建。
 
@@ -85,6 +89,7 @@ pring 的设计原则是尽可能保证普通对象创建完成之后，再生�
 SpringAOP 是在Bean创建完全之后通过AnnotationAwareAspectJAutoProxyCreator这个后置处理器来完成的，在这个后置处理的postProcessAfterInitialization方法中对初始化后的Bean完成AOP代理，如果出现了循环依赖，那没有办法，只有给Bean先创建代理。
 
 ## Spring扩展点：
+
 * BeanFactoryPostProcessor#postProcessBeanFactory(ConfigurableListableBeanFactory beanFactory)：负责修改 BeanFactory 属性，例如继承CustomEditorConfigurer 自定义Editor 时自动将其注入到 BeanFactory、PropertyPlaceholderConfigurer 、ConfigurationClassPostProcessor扫描 @configuration 注解等。
 * BeanDefinitionRegistryPostProcessor#postProcessBeanDefinitionRegistry(BeanDefinitionRegistry registry) ： 可以直接注入 BeanDefinition。
 * BeanPostProcessor#postProcessAfterInitialization(Object bean, String beanName)：负责修改Bean，例如生成代理，注入 xxxAware、注入ApplicationListener等。
@@ -114,13 +119,14 @@ Resource一般包括这些实现类：UrlResource、ClassPathResource、FileSyst
 ```java
 public interface ResourceLoader {
 
-    //该接口仅包含这个方法，该方法用于返回一个 Resource 实例。ApplicationContext 的实现类都实现       ResourceLoader 接口，因此 ApplicationContext 可用于直接获取 Resource 实例
-    Resource getResource(String location);
+ //该接口仅包含这个方法，该方法用于返回一个 Resource 实例。ApplicationContext 的实现类都实现       ResourceLoader 接口，因此 ApplicationContext 可用于直接获取 Resource 实例
+ Resource getResource(String location);
 
 }
 ```
 
 另外 Resource 可以直接接受 application.yml 中的路径，ResourcePatternResolver 可用来加载多个Resource,以及它的实现类 PathMatchingResourcePatternResolver：
+
 ```java
 public interface ResourcePatternResolver extends ResourceLoader {
 
@@ -133,14 +139,17 @@ public interface ResourcePatternResolver extends ResourceLoader {
 
 Spring不仅支持classpath:、file:、http:等各种前缀开头的资源文件解析，而且对于也支持Ant(路径匹配表达式)风格的通配符解析.
 
-| Pattern | Description             | Example                                           | Remark                                                     |
-| ------- | ----------------------- | ------------------------------------------------- | ---------------------------------------------------------- |
-| ?       | 匹配任何的单个字符      | example/?ork                                      | 可以匹配:example/fork;example/work                         |
-| *       | 匹配0或者任意数量的字符 | file:C:/some/path/*.xml                           | 可以匹配C:/some/path下的所有xml文件                        |
+
+| Pattern | Description             | Example                                           | Remark                                                                                                                                                              |
+| --------- | ------------------------- | --------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ?       | 匹配任何的单个字符      | example/?ork                                      | 可以匹配:example/fork;example/work                                                                                                                                  |
+| *       | 匹配0或者任意数量的字符 | file:C:/some/path/*.xml                           | 可以匹配C:/some/path下的所有xml文件                                                                                                                                 |
 | **      | 匹配0个或者更多的目录   | classpath:com/mycompany/**/applicationContext.xml | 可以匹配mycompany和applicationContext.xml的任意目录，例如: classpath:com/mycompany/test/applicationContext.xml;classpath:com/mycompany/work/applicationContext.xml. |
 
 # 上下文
+
 上下文分为4类：
+
 * ServletContext : 由 Servlet 容器初始化，为项目提供宿主环境，例如 Tom­cat，在 web 项目启动的时候他就初始化这样的上下文环境，为后续的 Spring 容器，Spring­Mvc 容器提供宿主环境。
 * WebApplicationContext ：Spring 上下文，也是根上下文，是 Spring­Mvc servlet 的父级上下文，当我们启动 Spring 的时候，那么就需要初始化 IOC 容器，而这个上下文就是用于管理这些 bean，把他们放到容器里。
 * Spring­MVC 上下文 ：DispatchServlet 初始化的时候会创建自己的上下文，并从 ServletContext 中取出 WebApplicationContext 作为自己上下文的父容器。
@@ -149,13 +158,14 @@ Spring不仅支持classpath:、file:、http:等各种前缀开头的资源文件
 Spring 中容器存在父子关系，父容器不能访问子容器的资源，而子容器可以访问父容器的资源。
 
 # ApplicationContext
+
 ![99](assets/99.png)
 ApplicationContext 是对 BeanFactory 的扩展，Application 有两个直接子类：WebApplicationContext 和 ConfigurableApplicationContext：
+
 * WebApplicationContext：可以获取ServletContext。
 * ConfigurableApplicationContext：包含主要的方法，其中就包含refresh()方法，它是 ApplicationContext 对 BeanFactory 最主要的扩展。
 
 ApplicationContext 继承 ResourcePatternResolver 的 getResources() 方法可以供日常使用。
-
 
 * `AnnotationConfigApplicationContext`：从一个或多个基于Java的配置类中加载Spring应用上下文。
 * `AnnotationConfigWebApplicationContext`：从一个或多个基于Java的配置类中加载Spring Web应用上下文。
@@ -164,8 +174,11 @@ ApplicationContext 继承 ResourcePatternResolver 的 getResources() 方法可�
 * `XmlWebApplicationContext`：从Web应用下的一个或多个XML配置文件中加载上下文定义。
 
 ## refresh
+
 1. 准备刷新：
- * Environment 并且对 Environment 中的属性进行校验，Environment 可能是 StandardEnvironment(包含 系统环境和jvm属性) 也可能是 StandardServletEnvironment(继承 StandardEnvironment,另外包含 ServletContext 的属性)
+
+* Environment 并且对 Environment 中的属性进行校验，Environment 可能是 StandardEnvironment(包含 系统环境和jvm属性) 也可能是 StandardServletEnvironment(继承 StandardEnvironment,另外包含 ServletContext 的属性)
+
 2. 获取 BeanFactory，对于 XmlWebApplicationContext 类型的会在这个时候创建，并加载BeanDefinition，对于 AnnotationConfigWebApplicationContext 类型的直接获取，并不会加载 BeanDefin，因为AnnotationConfigWebApplicationContext创建时就已经创建。
 3. 准备 BeanFactory
    * 填充 SpelExpressionParser。
@@ -187,12 +200,15 @@ ApplicationContext 继承 ResourcePatternResolver 的 getResources() 方法可�
 7. 初始化 MessageSource。
 8. 初始化 ApplicationEventMulticaster 上下文事件广播器。
 9. onRefresh 留给子类扩展，
+
 * 在 AnnotationConfigServletWebServerApplicationContext 中会启动 web 容器，例如 Tomcat
+
 10. 注册 ApplicationListener 到 ApplicationEventMulticaster。
 11. 初始化 ConversionService 等。
 12. 注册 DefaultLifecycleProcessor，发布 ContextRefreshedEvent 事件。
 
 ## SpelExpressionParser
+
 1. Expression 表达式（“干什么”）：SpEL的核心，所以表达式语言都是围绕表达式进行的
 2. ExpressionParser 解析器（“谁来干”）：用于将字符串表达式解析为表达式对象
 3. EvaluationContext 上下文（“在哪干”）：表达式对象执行的环境，该环境可能定义变量、定义自定义函数、提供类型转换等等
@@ -210,7 +226,9 @@ expression.getValue();
 expression.getValue(EvaluationContext);
 expression.getValue(rootObject);
 ```
+
 ## MessageSource
+
 ```java
 //1. application.yml 配置资源文件地址，也可以不配置即使用 message
 // spring.messages.basename=message
@@ -254,6 +272,7 @@ public class HelloController {
 @ExceptionHandler：对controller进行统一异常处理
 
 @InitBinder：自定义转换器，转换前端的数据，例如：
+
 ```java
 @ControllerAdvice(basePackages = "com.kevin.tool")
 public class ExceptionHandlerController {
@@ -264,7 +283,9 @@ public class ExceptionHandlerController {
     }
 }
 ```
+
 @ModelAttribute：给传入controller的数据加一下属性，例如：
+
 ```java
 @ControllerAdvice(basePackages = "com.kevin.tool")
 public class ExceptionHandlerController {
@@ -292,17 +313,23 @@ public class ControllerAdviceDemoController {
 
 }
 ```
+
 ## Bean 装配
+
 @ComponentScan：默认会扫描当前包，以及这个包下的子包。
 
 注入方式：
+
 * 构造器注入：
+
 ```java
 <bean id="cdPlay" class="com.springinaction.CDPlayer" >
 	<constructor-arg ref="compactDisc"/>
 </bean>
 ```
+
 * 属性注入：
+
 ```java
 <bean id="compactDisc" class="com.springinaction.BlankDisc" >
         <property name="title" value="Sgt. Pepper's Lonely Hearts Club Band"/>
@@ -311,6 +338,7 @@ public class ControllerAdviceDemoController {
 ```
 
 导入其他配置类：
+
 ```java
 @Configuration
 @Import(CDConfig.class)     // 导入单个配置类
@@ -319,6 +347,7 @@ public class ControllerAdviceDemoController {
 public class CDPlayerConfig {
 }
 ```
+
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
 <beans xmlns="http://www.springframework.org/schema/beans"
@@ -330,8 +359,11 @@ public class CDPlayerConfig {
     <import resource="cdplayer-config.xml"/>
 </beans>
 ```
+
 ## Profile 控制
+
 @Profile 可以作用于 使用@Configuration的类上、使用@Bean的方法上。
+
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
 <beans xmlns="http://www.springframework.org/schema/beans"
@@ -361,12 +393,15 @@ public class CDPlayerConfig {
   </beans>
 </beans>
 ```
+
 ### 激活 Profile
+
 * 如果设置了spring.profiles.active属性的话，那么它的值就会用来确定哪个profile是激活的。
 * 但如果没有设置spring.profiles.active属性的话，那Spring将会查找spring.profiles.default的值。
 * 如果spring.profiles.active和spring.profiles.default均没有设置的话，那就没有激活的profile，因此只会创建那些没有定义在profile中的bean。
 
 设置的方式：
+
 * 作为DispatcherServlet的初始化参数。
 * 作为Web应用的上下文参数。
 * 作为JNDI条目。
@@ -416,8 +451,11 @@ public class CDPlayerConfig {
   </servlet-mapping>
 </web-app>
 ```
+
 ## 条件化的bean
+
 自定义条件注解：
+
 1. 实现 org.springframework.context.annotation.Condition 接口。
 2. 使用 org.springframework.context.annotation.Conditional 定义注解。
 
@@ -453,9 +491,12 @@ public interface AnnotatedTypeMetadata {
     MultiValueMap<String, Object> getAllAnnotationAttributes(String annotationType, boolean classValuesAsString);
 }
 ```
+
 ## 消除 Bean 歧义性
+
 1. 使用 @Primary 确定首选bean。
 2. 使用 @Qualifier 指定使用具体的bean。
+
 ```java
 @Component
 @Qualifier("cold")
@@ -469,15 +510,18 @@ public void setDessert(Dessert dessert) {
 ```
 
 ## bean 作用域
+
 使用 @Scope(ConfigurableBeanFactory.SCOPE_PROTOTYPE) 注解来控制作用域。
 
 默认情况下，Spring应用上下文所有bean都是作为以单例的形式创建的。
+
 * 单例（Singleton）：在整个应用中，只创建bean的一个实例。
 * 原型（Prototype）：每次注入或者通过Spring应用上下文获取的时候，都会创建一个新的bean实例。
 * 会话（Session）：在Web应用中，为每个会话创建一个bean实例。
 * 请求（Request）：在Web应用中，为每个请求创建一个bean实例。
 
 ## Spring 运行时求值
+
 * 属性占位符 （Property placeholder）: ${...} 形式
 * Spring表达式语言（SpEL）：#{...} 形式,例如
 
@@ -532,10 +576,13 @@ public void setDessert(Dessert dessert) {
     //获取Aerosmith所有歌曲的title
     "# { jukebox.songs.?[artist eq 'Aerosmith'].![title] }"
 ```
+
 # 切面
+
 通知和切点共同定义了切面。
 
 织入方式：
+
 * 编译期：切面在目标类编译时被织入。AspectJ的织入编译器是以这种方式织入切面的。
 * 类加载期：切面在目标类加载到JVM时被织入。需要特殊的类加载器，它可以在目标类被引入应用之前增强该目标类的字节码。AspectJ5的加载时织入就支持以这种方式织入切面。
 * 运行期：切面在应用运行的某个时刻被织入。一般情况下，在织入切面时，AOP容器会为目标对象动态地创建一个代理对象。SpringAOP就是以这种方式织入切面。
@@ -546,11 +593,14 @@ Spring提供了4种类型的AOP支持：
 * 纯POJO切面。
 * @AspectJ注解驱动的切面。
 * 注入式AspectJ切面。
-前三种本质都是 SpringAOP，现在通常使用 @AspectJ。
+  前三种本质都是 SpringAOP，现在通常使用 @AspectJ。
 
 ## SpringAOP
+
 SpringAop 只支持方法级别切面。
+
 ### 通知
+
 * 前置通知（Before）：在目标方法被调用之前调用通知功能。
 * 后置通知（After）：在目标方法完成之后调用通知，此时不会关心方法的输出是什么。
 * 返回通知（After-returning ）：在目标方法成功执行之后调用通知。
@@ -558,38 +608,45 @@ SpringAop 只支持方法级别切面。
 * 环绕通知（Around）：通知包裹了被通知的方法，在被通知的方法调用之前和调用之后执行自定义的行为。
 
 ### 切点
+
 需要被代理的类和方法
 
 #### 切点指示器
-| AspectJ指示器 | 描述                                       |
-| ------------- | ------------------------------------------ |
-| arg()         | 限制连接点匹配参数为指定类型的执行方法     |
-| @args()       | 限制连接点匹配参数有指定注解标注的执行方法 |
-| execution()   | 用于匹配是连接点的执行方法                 |
-| this()        | 限制连接点匹配AOP代理的bean引用为指定类型的类   |
-|target	|限制连接点匹配目标对象为指定类型的类|
-|@target()|	限制连接点匹配特定的执行对象，这些对象对应的类要具有指定类型的注解|
-|within()|	限制连接点匹配指定的类型|
-|@within()|	限制连接点匹配指定注解所标注的类型（当使用Spring AOP时，方法定义在由指定的注解所标注的类里）|
-|@annotation|	限制匹配带有指定注解的连接点|
-|bean | 限制指定bean |
+
+
+| AspectJ指示器 | 描述                                                                                         |
+| --------------- | ---------------------------------------------------------------------------------------------- |
+| arg()         | 限制连接点匹配参数为指定类型的执行方法                                                       |
+| @args()       | 限制连接点匹配参数有指定注解标注的执行方法                                                   |
+| execution()   | 用于匹配是连接点的执行方法                                                                   |
+| this()        | 限制连接点匹配AOP代理的bean引用为指定类型的类                                                |
+| target        | 限制连接点匹配目标对象为指定类型的类                                                         |
+| @target()     | 限制连接点匹配特定的执行对象，这些对象对应的类要具有指定类型的注解                           |
+| within()      | 限制连接点匹配指定的类型                                                                     |
+| @within()     | 限制连接点匹配指定注解所标注的类型（当使用Spring AOP时，方法定义在由指定的注解所标注的类里） |
+| @annotation   | 限制匹配带有指定注解的连接点                                                                 |
+| bean          | 限制指定bean                                                                                 |
 
 ![94](assets/94.png)
 
 ![95](assets/95.png)
+
 ### 处理通知中的参数
+
 ![96](assets/96.png)
 
 # SpringMVC
+
 处理参数：
+
 * GET、DELETE方法：使用 @RequestParam 或者 POJO 对象。
 * POST、PUT方法：使用 @RequestBody + POJO 对象。
 * 路径参数：使用 @PathVariable
 
 参数校验：
+
 * @AssertFalse：所注解的元素必须是Boolean类型，并且值为false
 * @AssertTrue：所注解的元素必须是Boolean类型，并且值为true
-
 * @Max：所注解的元素必须是数字，并且它的值要小于或等于给定的值
 * @Min：所注解的元素必须是数字，并且它的值要大于或等于给定的值
 * @DecimalMax：所注解的元素必须是数字，并且它的值要小于或等于给定的BigDecimalString值
@@ -598,18 +655,15 @@ SpringAop 只支持方法级别切面。
 * @Negative：负数（不包括0）
 * @NegativeOrZero：负数或0
 * @PositiveOrZero：正数或0
-
 * @Future：所注解的元素的值必须是一个将来的日期
 * @Past：所注解的元素的值必须是一个已过期的日期
 * @FutureOrPresent：当前或将来时间
 * @PastOrPresent：必须是过去的时间，包含现在
-
 * @NotNull：所注解的元素的值必须不能为Null
 * @Null：所注解的元素的值必须为Null
 * @NotBlank：不为null并且包含至少一个非空白字符,用在String上面
 * @NotEmpty：不为null并且不为空,用在集合类上面
 * @Size：所注解的元素的值必须是String、集合或数组，并且它的长度要符合给定的范围
-
 * @Pattern：所直接的元素的值必须匹配给定的正则表达式
 * @Email：校验是否符合Email格式
 
@@ -621,7 +675,9 @@ spring.servlet.multipart.max-request-size=10MB
 # 单个文件的最大值
 spring.servlet.multipart.max-file-size=10MB
 ```
+
 接收参数可使用 MultipartFile(依赖于org.springframework.web.multipart.commons.CommonsMultipartResolver) 或 Part 来接收。
+
 ```java
  // 单文件上传
  @PostMapping("/upload")
@@ -637,12 +693,14 @@ spring.servlet.multipart.max-file-size=10MB
 ```
 
 ## 异常处理
+
 * 特定的Spring异常将会自动映射为指定的HTTP状态码；
 * 异常上可以添加@ResponseStatus注解，从而将其映射为某一个HTTP状态码,可使用在自定义注解异常类上。
 * 使用 @ControllerAdvice 在方法上可以添加@ExceptionHandler注解，使其捕获异常并用该方法来处理异常。
 
+
 | Spring异常                              | HTTP状态码                   |
-| --------------------------------------- | ---------------------------- |
+| ----------------------------------------- | ------------------------------ |
 | BindException                           | 400 - Bad Request            |
 | ConversionNotSupportedException         | 500 - Internal Server Error  |
 | HttpMediaTypeNotAcceptableException     | 406 - Not Acceptable         |
@@ -656,7 +714,9 @@ spring.servlet.multipart.max-file-size=10MB
 | TypeMismatchException                   | 400 - Bad Request            |
 
 # SpringSecurity
+
 获取用户：
+
 * controller 可以使用 @AuthenticationPrincipal 注解在参数上 来接收 Authentication.getPrincipal() 的值。
 * 使用 Principal 参数 接收。
 * 使用 Authentication 参数 接收。
@@ -664,17 +724,19 @@ spring.servlet.multipart.max-file-size=10MB
 
 WebSecurityConfigurerAdapter 方法：
 
-| 方法                                    | 描述                                        |
-| --------------------------------------- | ------------------------------------------- |
+
+| 方法                                    | 描述                                                         |
+| ----------------------------------------- | -------------------------------------------------------------- |
 | configure(WebSecurity)                  | 通过重载，配置 Spring Security 的 Filter 链,比如忽略某些资源 |
-| configure(HttpSecurity)                 | 通过重载，配置如何通过拦截器保护请求        |
-| configure(AuthenticationManagerBuilder) | 通过重载，配置 user-detail 服务             |
+| configure(HttpSecurity)                 | 通过重载，配置如何通过拦截器保护请求                         |
+| configure(AuthenticationManagerBuilder) | 通过重载，配置 user-detail 服务                              |
 
 安全配置：
 首先通过authorizeRequests()方法来开始请求权限配置,再使用 anyRequest() 或 antMatchers() 来匹配请求，最后使用下面方法进行权限配置
 
+
 | 方法                       | 能够做什么                                                           |
-| -------------------------- | -------------------------------------------------------------------- |
+| ---------------------------- | ---------------------------------------------------------------------- |
 | access(String)             | 如果给定的 SpEL 表达式计算结果为 true，就允许访问                    |
 | anonymous()                | 允许匿名用户访问 authenticated() 允许认证过的用户访问                |
 | denyAll()                  | 无条件拒绝所有访问                                                   |
@@ -690,8 +752,9 @@ WebSecurityConfigurerAdapter 方法：
 
 access 接受的表达式：
 
+
 | 安全表达式                | 计算结果                                                                           |
-| ------------------------- | ---------------------------------------------------------------------------------- |
+| --------------------------- | ------------------------------------------------------------------------------------ |
 | authentication            | 用户的认证对象                                                                     |
 | denyAll                   | 结果始终为 false                                                                   |
 | hasAnyRole(list of roles) | 如果用户被授予了列表中任意的指定角色，结果为 true                                  |
@@ -705,6 +768,7 @@ access 接受的表达式：
 | principal                 | 用户的principal对象                                                                |
 
 除了 authorizeRequests() 之外，还可以使用 requeresChannel() 来现在请求必须是https
+
 ```java
 @Override
 protected void configure(HttpSecurity http) throws Exception {
@@ -720,18 +784,21 @@ protected void configure(HttpSecurity http) throws Exception {
 ```
 
 Spring Security 提供了三种不同的安全注解：
+
 * Spring Security 自带的 @Secured 注解，需要使用 @EnableGlobalMethodSecurity(securedEnabled=true) 开启。
 * JSR-250 的 @RolesAllowed 注解，需要使用 @EnableGlobalMethodSecurity(jsr250Enable=true) 开启。
 * 表达式驱动的注解，包括 @PreAuthorize、@PostAuthorize、@PreFilter 和 @PostFilter，需要使用 @EnableGlobalMethodSecurity(prePostEnable=true) 开启，推荐使用：
 
-| 注解           | 描述                                                               |
-| -------------- | ------------------------------------------------------------------ |
-| @PreAuthorize  | 在方法调用之前，基于表达式的计算结果来限制对方法的访问             |
-| @PostAuthorize | 允许方法调用，但是如果表达式计算结果为false，将抛出一个安 全性异常 |
+
+| 注解           | 描述                                                                                         |
+| ---------------- | ---------------------------------------------------------------------------------------------- |
+| @PreAuthorize  | 在方法调用之前，基于表达式的计算结果来限制对方法的访问                                       |
+| @PostAuthorize | 允许方法调用，但是如果表达式计算结果为false，将抛出一个安 全性异常                           |
 | @PostFilter    | 允许方法调用，但必须按照表达式来过滤方法的结果，可使用 filterObject 表示返回集合中的一个元素 |
-| @PreFilter     | 允许方法调用，但必须在进入方法之前过滤输入值                       |
+| @PreFilter     | 允许方法调用，但必须在进入方法之前过滤输入值                                                 |
 
 @PostFilter 使用实例：
+
 ```java
 @PreAuthorize("hasRole({'ROLE_SPITTER', 'ROLE_ADMIN'})")
 // ROLE_ADMIN 可以看到所有结果
@@ -740,8 +807,10 @@ Spring Security 提供了三种不同的安全注解：
 public List<Spittle> getOffensiveSpittles() {
 }
 ```
+
 自定义权限计算器：
 通过实现 org.springframework.security.access.PermissionEvaluator 并加入到 DefaultMethodSecurityExpressionHandler 中，当使用 hasPermission 表达式时将执行这个方法，返回为true表示有权限。
+
 ```java
 // 第一步
 public class UserPermissionEvaluator implements PermissionEvaluator {
@@ -784,12 +853,14 @@ protected void configure(HttpSecurity http) throws Exception {
     .expressionHandler(expressionHandler);
 }
 ```
+
 # 缓存
 
 @Cacheable 和 @CachePut 属性：
 
+
 | 属性      | 类型     | 描述                                                               |
-| --------- | -------- | ------------------------------------------------------------------ |
+| ----------- | ---------- | -------------------------------------------------------------------- |
 | value     | String[] | 要使用的缓存名称                                                   |
 | condition | String   | SpEL 表达式，如果得到的值是 false 的话，不会将缓存应用到方法调用上 |
 | key       | String   | SpEL 表达式，用来计算自定义的缓存key                               |
@@ -797,8 +868,9 @@ protected void configure(HttpSecurity http) throws Exception {
 
 自定义缓存 key：
 
+
 | 表达式            | 描述                                                       |
-| ----------------- | ---------------------------------------------------------- |
+| ------------------- | ------------------------------------------------------------ |
 | #root.args        | 传递给缓存方法的参数，形式为数组                           |
 | #root.caches      | 该方法执行时所对应的缓存，形式为数组                       |
 | #root.target      | 目标对象                                                   |
@@ -810,18 +882,20 @@ protected void configure(HttpSecurity http) throws Exception {
 
 @CacheEvict 属性：
 
-| 属性       | 类型     | 描述                                                             |
-| ---------- | -------- | ---------------------------------------------------------------- |
-| value      | String[] | 要使用的缓存名称                                                 |
-| condition  | String   | SpEL 表达式，如果得到的值是 false 的话，缓存不会应用到方法调用上 |
-| key        | String   | SpEL 表达式，用来计算自定义的缓存key                             |
-| allEntries | boolean  | 如果为 true 的话，特定缓存的所有条目都会被移除掉                 |
-| beforeInvocation | boolean | 如果为 true 的话，在方法调用之前移除条目。如果为 false（默认值）的话，在方法成功调用之后再移除条目 |
+
+| 属性             | 类型     | 描述                                                                                               |
+| ------------------ | ---------- | ---------------------------------------------------------------------------------------------------- |
+| value            | String[] | 要使用的缓存名称                                                                                   |
+| condition        | String   | SpEL 表达式，如果得到的值是 false 的话，缓存不会应用到方法调用上                                   |
+| key              | String   | SpEL 表达式，用来计算自定义的缓存key                                                               |
+| allEntries       | boolean  | 如果为 true 的话，特定缓存的所有条目都会被移除掉                                                   |
+| beforeInvocation | boolean  | 如果为 true 的话，在方法调用之前移除条目。如果为 false（默认值）的话，在方法成功调用之后再移除条目 |
 
 # SpringBootActuator
 
+
 | HTTP 方法 | 路径            | 描述                                                            |
-| --------- | --------------- | --------------------------------------------------------------- |
+| ----------- | ----------------- | ----------------------------------------------------------------- |
 | GET       | /autoconfig     | 提供了一份自动配置报告，记录哪些自动配置条件通过了，哪些没通过  |
 | GET       | /configprops    | 描述配置属性(包含默认值)如何注入Bean                            |
 | GET       | /beans          | 描述应用程序上下文里全部的Bean，以及它们的关系                  |
@@ -842,6 +916,7 @@ protected void configure(HttpSecurity http) throws Exception {
 * Flux 用于零个、一个、多个（可能是无限个的场景）。
 
 创建：
+
 * 根据对象创建：`Flux.just("A","B")`
 * 根据集合创建：`Flux.fromArray(new String[]{"A","B"})`,`Flux.fromIterable(new ArrayList<>())`,`Flux.fromStream(Stream.of("A","B"))`
 * 生成数据：`Flux.range(1,5)`,`Flux.interval(Duration.ofSeconds(1)).take(5)`
@@ -850,31 +925,38 @@ protected void configure(HttpSecurity http) throws Exception {
 * 压缩,会将多个FLUX对齐分组为 Tuple2，通过 getT1(),getT2() 来获取：`Flux.zip(Flux.range(1,5),Flux.interval(Duration.ofSeconds(1)).take(5))`，如果不想获得 Tuple2 ，可使用 `Flux.zip( flux1, flux2,mergeFunction)`
 * 只发布快的第一个flux：`Flux.first(flux1,flux2)`只会消费一个flux，另一个flux忽略。
 * 缓冲数据：
+
 ```java
 Flux.just("apple", "orange", "banana", "kiwi", "strawberry")
 Flux<List<String>> bufferedFlux = fruitFlux.buffer(3)
 ```
+
 会生成一个新的Flux
+
 * 收集数据：
+
 ```java
 Flux<String> fruitFlux = Flux.just("apple", "orange", "banana", "kiwi", "strawberry");
 Mono<List<String>> fruitListMono = fruitFlux.collectList();
 ```
+
 ```java
 Flux<String> animalFlux = Flux.just("aardvark", "elephant", "koala", "eagle", "kangaroo");
 Mono<Map<Character, String>> animalMapMono = animalFlux.collectMap(a -> a.charAt(0));
 ```
 
 转换：
+
 * 并行处理 `Flux.just("A","B").flatMap(n -> Mono.just(n).map(mapFunction).subscribeOn(Schedulers.parallel()))`
 
-| Scheduler方法 | 描述                 |
-| ------------- | -------------------- |
-| .immediate()  | 在当前线程中执行订阅 |
-| .single()  | 在单个可重用线程中执行订阅，对所有调用方重复使用同一线程 |
-| .newSingle()  | 在每个调用专用线程中执行订阅 |
-| .elastic()  | 在从无限弹性池中提取的工作进程中执行订阅，根据需要创建新的工作线程，并释放空闲的工作线程（默认情况下 60 秒） |
-| .parallel()  | 在从固定大小的池中提取的工作进程中执行订阅，该池的大小取决于 CPU 核心的数量。 |
+
+| Scheduler方法 | 描述                                                                                                         |
+| --------------- | -------------------------------------------------------------------------------------------------------------- |
+| .immediate()  | 在当前线程中执行订阅                                                                                         |
+| .single()     | 在单个可重用线程中执行订阅，对所有调用方重复使用同一线程                                                     |
+| .newSingle()  | 在每个调用专用线程中执行订阅                                                                                 |
+| .elastic()    | 在从无限弹性池中提取的工作进程中执行订阅，根据需要创建新的工作线程，并释放空闲的工作线程（默认情况下 60 秒） |
+| .parallel()   | 在从固定大小的池中提取的工作进程中执行订阅，该池的大小取决于 CPU 核心的数量。                                |
 
 # SpringWebFlux
 

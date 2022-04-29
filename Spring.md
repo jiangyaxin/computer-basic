@@ -29,6 +29,7 @@
    假设配置了一个 FactoryBean 的名字为 "abc" ，那么获取 FactoryBean 创建的 Bean 时，使用 "abc" ，如果获取 FactoryBean 本身，使用 "&abc" 。另外，&定义在 BeanFactory.FACTORY_BEAN_PREFIX = "&" 上。
    FactoryBean 用于创建一些复杂的bean。
 2. 依次从缓存中获取bean，这里的bean有个可能是 FactoryBean 也有可能是普通bean，并且可能没有实例化，缓存有三个：
+
    ```java
   /**
    * 存放的是单例 bean 的映射。
@@ -50,6 +51,7 @@
    */
    private final Map<String, Object> earlySingletonObjects = new HashMap<>(16);
    ```
+   
 3. 如果从缓存中获取到bean，由于bean不是最终的bean，所以需要调用 getObjectForBeanInstance(...) 获取bean实例 或 FactoryBean.getObject() 的对象。
 4. 如果没有从缓存中获取到bean 先从 parentBeanFactory 获取 Bean。
 5. 如果没有从 parentBeanFactory 获取到，再获取 BeanDefinition ，先需要依赖，判断没有循环先创建依赖，再根据不同的作用域创建bean。

@@ -1,3 +1,142 @@
+# BeanFactory
+
+![97](assets/97.png)
+* AliasRegistry：定义对alias的简单增删改等操作。
+* BeanDefinitionRegistry：定义对 BeanDefinition 的各种增删改操作。
+* HierarchicalBeanFactory：增加 BeanFactory 对 parentFactory 的缓存。
+* ListableBeanFactory：获取bean的列表。
+* ConfigurableBeanFactory：可以配置 BeanFactory。
+* AutowireCapableBeanFactory：可以手动调用完成 bean 的注入、初始化、应用后处理器，这里的自动装配不是 @Autowired 注解，而是 xml方式 的注入，也叫传统注入方式，注解驱动注入是通过 AutowiredAnnotationBeanPostProcessor#setAutowiredAnnotationType 提供的。
+* ConfigurableListableBeanFactory：继承 ConfigurableBeanFactory 和 AutowireCapableBeanFactory。
+
+## XmlBeanDefinitionReader：
+
+![98](assets/98.png)
+
+* ResourceLoader：根据给定资源文件地址返回对应的 Resource 。
+* DocumentLoader：从资源文件加载转换为 Document 。
+* BeanDefinitionDocument：将 Document 转换为 BeanDefinition 。
+* BeanDefinitionReader：整合 ResourceLoader、DocumentLoader、BeanDefinitionDocument 功能读取资源获得 BeanDefinition 。
+
+## BeanDefinition：
+* AnnotatedGenericBeanDefinition ： 表示@Configuration注解注释的BeanDefinition类。
+* ScannedGenericBeanDefinition ：表示@Component、@Service、@Controller等注解注释的Bean类。
+
+## Bean的加载：
+当我们隐式或者显示的调用 BeanFactory#getBean(...) 时，会触发加载Bean阶段，这时，容器会首先检查所请求的对象是否已经初始化完成，如果没有，则会根据注册的 Bean 信息实例化请求的对象，并为其注册依赖，然后将其返回给请求方。
+
+1. 首先从 alias 中获取 BeanName。
+   假设配置了一个 FactoryBean 的名字为 "abc" ，那么获取 FactoryBean 创建的 Bean 时，使用 "abc" ，如果获取 FactoryBean 本身，使用 "&abc" 。另外，&定义在 BeanFactory.FACTORY_BEAN_PREFIX = "&" 上。
+   FactoryBean 用于创建一些复杂的bean。
+2. 依次从缓存中获取bean，这里的bean有个可能是 FactoryBean 也有可能是普通bean，并且可能没有实例化，缓存有三个：
+   ```java
+  /**
+   * 存放的是单例 bean 的映射。
+   * 对应关系为 bean name --> bean instance
+   */
+   private final Map<String, Object> singletonObjects = new ConcurrentHashMap<>(256);
+
+  /**
+   * 存放的是 ObjectFactory，可以理解为创建单例 bean 的 factory 。
+   * 对应关系是 bean name --> ObjectFactory
+   **/
+   private final Map<String, ObjectFactory<?>> singletonFactories = new HashMap<>(16);
+
+  /**
+   * 存放的是早期的 bean，对应关系也是 bean name --> bean instance。
+   * 它与 {@link #singletonFactories} 区别在于 earlySingletonObjects 中存放的 bean 不一定是完整。
+   *
+   * bean 在创建过程中就已经加入到 earlySingletonObjects 中了，所以当在 bean 的创建过程中，就可以通过 getBean() 方法获取。
+   */
+   private final Map<String, Object> earlySingletonObjects = new HashMap<>(16);
+   ```
+3. 如果从缓存中获取到bean，由于bean不是最终的bean，所以需要调用 getObjectForBeanInstance(...) 获取bean实例 或 FactoryBean.getObject() 的对象。
+4. 如果没有从缓存中获取到bean 先从 parentBeanFactory 获取 Bean。
+5. 如果没有从 parentBeanFactory 获取到，再获取 BeanDefinition ，先需要依赖，判断没有循环先创建依赖，再根据不同的作用域创建bean。
+6. 类型转换，例如name返回为String，requiredType 要求返回 Integer，这时候会使用 ConversionService 做转换。
+
+循环依赖处理：
+1. 首先，从一级缓存 singletonObjects 获取。
+2. 如果，没有且当前指定的 beanName 正在创建，就再从二级缓存 earlySingletonObjects 中获取。
+3. 如果，还是没有获取到且允许 singletonFactories 通过 #getObject() 获取，则从三级缓存 singletonFactories 获取。如果获取到，则通过其 #getObject() 方法，获取对象，并将其加入到二级缓存 earlySingletonObjects 中，并从三级缓存 singletonFactories 删除，这里的 #getObject 是ObjectFactory 的方法，不是 FactoryBean 的方法，不要搞混。
+
+三级缓存这样升级到二级缓存，二级缓存存在的意义，就是缓存三级缓存中的 ObjectFactory 的 #getObject() 方法的执行结果，提早曝光的单例 Bean 对象。
+singletonFactories 中的数据来自于 doCreateBean 时使添加，添加的是刚创建但是没有填充属性、也没有初始化的对象，并对对象进行postProcessAfterInitialization处理，这个逻辑不会立马触发，是一个函数表达式，需要满足三个条件：单例、正在创建、可以运行提前暴露。
+当创建单例完成后就 从singletonFactories移除。
+
+如果对象A和对象B循环依赖，且都有代理的话:
+
+1. A半成品加入第三级缓存。
+2. A填充属性注入B -> 创建B对象 -> B半成品加入第三级缓存。
+3. B填充属性注入A -> 创建A代理对象，从第三级缓存移除A对象，A代理对象加入第二级缓存（此时A还是半成品，B注入的是A代理对象）。
+4. 创建B代理对象（此时B是完成品） -> 从第三级缓存移除B对象，B代理对象加入第一级缓存。
+5. A半成品注入B代理对象。
+6. 从第二级缓存移除A代理对象，A代理对象加入第一级缓存。
+
+是否可以只用二级缓存：可以：解决循环依赖有两个方案：
+1. 不管有没有循环依赖，都提前创建好代理对象，并将代理对象放入缓存，出现循环依赖时，其他对象直接就可以取到代理对象并注入。
+2. 不提前创建好代理对象，在出现循环依赖被其他对象注入时，才实时生成代理对象。这样在没有循环依赖的情况下，Bean就可以按着Spring设计原则的步骤来创建。
+
+那为什么Sping不选择二级缓存方式，而是要额外加一层缓存？
+
+pring 的设计原则是尽可能保证普通对象创建完成之后，再生成其 AOP 代理，如果要使用二级缓存解决循环依赖，意味着Bean在构造完后就创建代理对象。
+SpringAOP 是在Bean创建完全之后通过AnnotationAwareAspectJAutoProxyCreator这个后置处理器来完成的，在这个后置处理的postProcessAfterInitialization方法中对初始化后的Bean完成AOP代理，如果出现了循环依赖，那没有办法，只有给Bean先创建代理。
+
+## Spring扩展点：
+* BeanFactoryPostProcessor#postProcessBeanFactory(ConfigurableListableBeanFactory beanFactory)：负责修改 BeanFactory 属性，例如继承CustomEditorConfigurer 自定义Editor 时自动将其注入到 BeanFactory、PropertyPlaceholderConfigurer 、ConfigurationClassPostProcessor扫描 @configuration 注解等。
+* BeanDefinitionRegistryPostProcessor#postProcessBeanDefinitionRegistry(BeanDefinitionRegistry registry) ： 可以直接注入 BeanDefinition。
+* BeanPostProcessor#postProcessAfterInitialization(Object bean, String beanName)：负责修改Bean，例如生成代理，注入 xxxAware、注入ApplicationListener等。
+* xxxAware
+* InitializingBean
+* DisposableBean
+* ApplicationListener
+
+## Resource：
+
+> * getInputStream(): 找到并打开资源，返回一个InputStream以从资源中读取。预计每次调用都会返回一个新的InputStream()，调用者有责任关闭每个流
+> * isOpen: 返回一个布尔值，指示此资源是否具有开放流的句柄。如果为true，InputStream就不能够多次读取，只能够读取一次并且及时关闭以避免内存泄漏。对于所有常规资源实现，返回false，但是InputStreamResource除外。
+> * getDescription(): 返回资源的描述，用来输出错误的日志。这通常是完全限定的文件名或资源的实际URL。
+> * isReadable(): 表明资源的目录读取是否通过getInputStream()进行读取。
+> * isFile(): 表明这个资源是否代表了一个文件系统的文件。
+> * getURL(): 返回一个URL句柄，如果资源不能够被解析为URL，将抛出IOException
+> * getURI(): 返回一个资源的URI句柄
+> * getFile(): 返回某个文件，如果资源不能够被解析称为绝对路径，将会抛出FileNotFoundException
+> * lastModified(): 资源最后一次修改的时间戳
+> * createRelative(): 创建此资源的相关资源
+> * getFilename(): 资源的文件名是什么 例如：最后一部分的文件名 myfile.txt
+
+Resource一般包括这些实现类：UrlResource、ClassPathResource、FileSystemResource、ServletContextResource、InputStreamResource、ByteArrayResource。
+
+平常使用可以使用 ResourceLoader 接口 ,可通过 ResourceLoaderAware 注入：
+
+```java
+public interface ResourceLoader {
+
+    //该接口仅包含这个方法，该方法用于返回一个 Resource 实例。ApplicationContext 的实现类都实现       ResourceLoader 接口，因此 ApplicationContext 可用于直接获取 Resource 实例
+    Resource getResource(String location);
+
+}
+```
+
+另外 Resource 可以直接接受 application.yml 中的路径，ResourcePatternResolver 可用来加载多个Resource,以及它的实现类 PathMatchingResourcePatternResolver：
+```java
+public interface ResourcePatternResolver extends ResourceLoader {
+
+	String CLASSPATH_ALL_URL_PREFIX = "classpath*:";
+
+	Resource[] getResources(String locationPattern) throws IOException;
+
+}
+```
+
+Spring不仅支持classpath:、file:、http:等各种前缀开头的资源文件解析，而且对于也支持Ant(路径匹配表达式)风格的通配符解析.
+
+| Pattern | Description             | Example                                           | Remark                                                     |
+| ------- | ----------------------- | ------------------------------------------------- | ---------------------------------------------------------- |
+| ?       | 匹配任何的单个字符      | example/?ork                                      | 可以匹配:example/fork;example/work                         |
+| *       | 匹配0或者任意数量的字符 | file:C:/some/path/*.xml                           | 可以匹配C:/some/path下的所有xml文件                        |
+| **      | 匹配0个或者更多的目录   | classpath:com/mycompany/**/applicationContext.xml | 可以匹配mycompany和applicationContext.xml的任意目录，例如: classpath:com/mycompany/test/applicationContext.xml;classpath:com/mycompany/work/applicationContext.xml. |
+
 # 上下文
 上下文分为4类：
 * ServletContext : 由 Servlet 容器初始化，为项目提供宿主环境，例如 Tom­cat，在 web 项目启动的时候他就初始化这样的上下文环境，为后续的 Spring 容器，Spring­Mvc 容器提供宿主环境。
@@ -7,13 +146,86 @@
 
 Spring 中容器存在父子关系，父容器不能访问子容器的资源，而子容器可以访问父容器的资源。
 
-# 应用上下文
+# ApplicationContext
+![99](assets/99.png)
+ApplicationContext 是对 BeanFactory 的扩展，Application 有两个直接子类：WebApplicationContext 和 ConfigurableApplicationContext：
+* WebApplicationContext：可以获取ServletContext。
+* ConfigurableApplicationContext：包含主要的方法，其中就包含refresh()方法，它是 ApplicationContext 对 BeanFactory 最主要的扩展。
+
+ApplicationContext 继承 ResourcePatternResolver 的 getResources() 方法可以供日常使用。
+
 
 * `AnnotationConfigApplicationContext`：从一个或多个基于Java的配置类中加载Spring应用上下文。
 * `AnnotationConfigWebApplicationContext`：从一个或多个基于Java的配置类中加载Spring Web应用上下文。
 * `ClassPathXmlApplicationContext`：从类路径下的一个或多个XML配置文件中加载上下文定义，把应用上下文的定义文件作为类资源，使用的是 class路径
 * `FileSystemXmlapplicationcontext`：从文件系统下的一个或多个XML配置文件中加载上下文定义,使用的是 文件系统路径。
 * `XmlWebApplicationContext`：从Web应用下的一个或多个XML配置文件中加载上下文定义。
+
+## refresh
+1. 准备刷新：
+ * Environment 并且对 Environment 中的属性进行校验，Environment 可能是 StandardEnvironment(包含 系统环境和jvm属性) 也可能是 StandardServletEnvironment(继承 StandardEnvironment,另外包含 ServletContext 的属性)
+2. 获取 BeanFactory，对于 XmlWebApplicationContext 类型的会在这个时候创建，并加载BeanDefinition，对于 AnnotationConfigWebApplicationContext 类型的直接获取，并不会加载 BeanDefin，因为AnnotationConfigWebApplicationContext创建时就已经创建。
+3. 准备 BeanFactory
+   * 填充 SpelExpressionParser。
+   * 添加 Resource 类型及其子类型添加 转换器。
+   * 添加 xxxAware 类型后置处理器，即创建bean后注入对应的 xxx。
+   * 将 BeanFactory、ApplicationContext 等注入到上下文。
+   * 添加 ApplicationListener 类型后置处理器，即创建bean 之后注入到 发布器。
+   * 注册 Environment、SystemProperties、SystemEnvironment。
+4. postProcessBeanFactory，提供给子类实现，
+   * 在 AbstractRefreshableWebApplicationContext 中默认实现是 处理ServletContextAware，并且设置 RequestObjectFactory，ResponseObjectFactory，SessionObjectFactory，WebRequestObjectFactory。
+   * 在 AnnotationConfigServletWebServerApplicationContext 相对上面的内容还要添加 扫描AnnotationConfigServletWebServerApplicationContext 中的basePackages和annotatedClasses。
+5. 触发 BeanFactoryPostProcessor，springboot 在该阶段会扫描所有包。
+   * ConfigurationClassPostProcessor：beanName为internalConfigurationAnnotationProcessor用于处理@configuration注解的后置处理器的bean
+   * AutowiredAnnotationBeanPostProcessor：beanName为internalAutowiredAnnotationProcessor用于处理@Autowired，@Value,@Inject以及@Lookup注解的后置处理器bean
+   * CommonAnnotationBeanPostProcessor：beanName为internalCommonAnnotationProcessor用于处理JSR-250注解，例如@Resource,@PostConstruct,@PreDestroy的后置处理器bean
+   * EventListenerMethodProcessor：beanName为internalEventListenerProcessor用于处理@EventListener注解的后置处理器的bean
+   * DefaultEventListenerFactory：beanName为internalEventListenerFactory管理用于生产ApplicationListener对象的EventListenerFactory对象
+6. 识别所有的 BeanPostProcessor 并注册到 BeanFactory。
+7. 初始化 MessageSource。
+8. 初始化 ApplicationEventMulticaster 上下文事件广播器。
+9. onRefresh 留给子类扩展，
+* 在 AnnotationConfigServletWebServerApplicationContext 中会启动 web 容器，例如 Tomcat
+10. 注册 ApplicationListener 到 ApplicationEventMulticaster。
+11. 初始化 ConversionService 等。
+12. 注册 DefaultLifecycleProcessor，发布 ContextRefreshedEvent 事件。
+
+## SpelExpressionParser
+1. Expression 表达式（“干什么”）：SpEL的核心，所以表达式语言都是围绕表达式进行的
+2. ExpressionParser 解析器（“谁来干”）：用于将字符串表达式解析为表达式对象
+3. EvaluationContext 上下文（“在哪干”）：表达式对象执行的环境，该环境可能定义变量、定义自定义函数、提供类型转换等等
+4. root根对象及活动上下文对象（“对谁干”）：root根对象是默认的活动上下文对象，活动上下文对象表示了当前表达式操作的对象，例如 application.yml 所生成的root对象，表示表达式在这个跟对象取数据。
+
+表达的变量可能从 EvaluationContext 和 rootObject 取。
+
+```java
+// 创建解析器
+ExpressionParser parser = new SpelExpressionParser();
+// 生成表达式
+Expression expression = parser.parseExpression("#p.name");
+// 结合 EvaluationContext 和 rootObject 计算结果
+expression.getValue();
+expression.getValue(EvaluationContext);
+expression.getValue(rootObject);
+```
+## MessageSource
+```java
+//1. application.yml 配置资源文件地址，也可以不配置即使用 message
+// spring.messages.basename=message
+//2. 创建资源文件 message.properties、message_en.properties，在idea中可以使用 resource 类型创建文件
+//3. 注入 MessageSource 并使用
+@RestController
+public class HelloController {
+    @Autowired
+    MessageSource messageSource;
+    @GetMapping("/hello")
+    public String hello() {
+       // 第二个参数用于替换 属性文件中 的 #{0} 变量
+        return messageSource.getMessage("user.name", null, LocaleContextHolder.getLocale());
+    }
+}
+// 4. 添加 Accept-Language head 进行http请求
+```
 
 ## Bean 生命周期
 

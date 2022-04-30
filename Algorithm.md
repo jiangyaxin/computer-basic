@@ -62,6 +62,8 @@ void traverse(int[] arr) {
     }
 }
 ```
+### 前缀和
+
 ## 链表
 具有迭代和递归两种结构
 ```java
@@ -83,6 +85,160 @@ void traverse(ListNode head) {
 }
 ```
 访问链表可以借助指针来访问，通过移动指针的位置来依次访问每个节点，另外可以创建一个虚拟节点 和 它的指针来创建一个新的指针。
+
+### 合并2个升序链表
+建立一个结果链表，然后使用3个指针分别在3个链表上进行移动
+```java
+ListNode mergeTwoLists(ListNode l1, ListNode l2) {
+    // 虚拟头结点
+    ListNode dummy = new ListNode(-1), p = dummy;
+    ListNode p1 = l1, p2 = l2;
+
+    while (p1 != null && p2 != null) {
+        // 比较 p1 和 p2 两个指针
+        // 将值较小的的节点接到 p 指针
+        if (p1.val > p2.val) {
+            p.next = p2;
+            p2 = p2.next;
+        } else {
+            p.next = p1;
+            p1 = p1.next;
+        }
+        // p 指针不断前进
+        p = p.next;
+    }
+
+    if (p1 != null) {
+        p.next = p1;
+    }
+    if (p2 != null) {
+        p.next = p2;
+    }
+    return dummy.next;
+}
+```
+### 合并K个升序链表
+使用 优先队列 对各个链表头节点进行排序
+```java
+ListNode mergeKLists(ListNode[] lists) {
+    if (lists.length == 0) return null;
+    // 虚拟头结点
+    ListNode dummy = new ListNode(-1);
+    ListNode p = dummy;
+    // 优先级队列，最小堆
+    PriorityQueue<ListNode> pq = new PriorityQueue<>(
+        lists.length, (a, b)->(a.val - b.val));
+    // 将 k 个链表的头结点加入最小堆
+    for (ListNode head : lists) {
+        if (head != null)
+            pq.add(head);
+    }
+
+    while (!pq.isEmpty()) {
+        // 获取最小节点，接到结果链表中
+        ListNode node = pq.poll();
+        p.next = node;
+        if (node.next != null) {
+            pq.add(node.next);
+        }
+        // p 指针不断前进
+        p = p.next;
+    }
+    return dummy.next;
+}
+```
+### 检查是否有环
+使用 快慢两个指针 若指针相遇则又环
+```java
+boolean hasCycle(ListNode head) {
+    // 快慢指针初始化指向 head
+    ListNode slow = head, fast = head;
+    // 快指针走到末尾时停止
+    while (fast != null && fast.next != null) {
+        // 慢指针走一步，快指针走两步
+        slow = slow.next;
+        fast = fast.next.next;
+        // 快慢指针相遇，说明含有环
+        if (slow == fast) {
+            return true;
+        }
+    }
+    // 不包含环
+    return false;
+}
+```
+若相遇 快指针走过 2k 个节点，慢指针走过 k 个节点，求 k 值只需要将慢节点重置回头节点， 快慢节点以同样速度再走一次
+
+### 删除倒数第n个节点
+1. 使用后序遍历，递归删除
+2. 使用快慢节点，快节点先走 n 个节点，快慢节点再一起走，快节点走到头，慢节点即为删除节点。
+
+### 判断两个链表是否相交
+让 p1 遍历完链表 A 之后开始遍历链表 B，让 p2 遍历完链表 B 之后开始遍历链表 A。
+
+如果这样进行拼接，就可以让 p1 和 p2 同时进入公共部分，因为相交节点到尾节点的距离相同。
+### 翻转链表
+```java
+ListNode reverse(ListNode head) {
+    if (head == null || head.next == null) {
+        return head;
+    }
+    ListNode last = reverse(head.next);
+    head.next.next = head;
+    head.next = null;
+    return last;
+}
+```
+### 反转链表前 N 个节点
+```java
+ListNode successor = null; // 后驱节点
+
+// 反转以 head 为起点的 n 个节点，返回新的头结点
+ListNode reverseN(ListNode head, int n) {
+    if (n == 1) {
+        // 记录第 n + 1 个节点
+        successor = head.next;
+        return head;
+    }
+    // 以 head.next 为起点，需要反转前 n - 1 个节点
+    ListNode last = reverseN(head.next, n - 1);
+
+    head.next.next = head;
+    // 让反转之后的 head 节点和后面的节点连起来
+    head.next = successor;
+    return last;
+}
+```
+#### 翻转链表 n - m 中的节点
+```java
+ListNode reverseBetween(ListNode head, int left, int right) {
+    if(left == 1){
+        return reverseN(head,right);
+    }
+
+    head.next = reverseBetween(head.next,left-1,right-1);
+
+    return head;
+}
+```
+### 是否是回文链表
+```java
+ListNode left;
+
+boolean isPalindrome(ListNode head) {
+    left = head;
+    return traverse(head);
+}
+
+boolean traverse(ListNode right) {
+    if (right == null) return true;
+    boolean res = traverse(right.next);
+    // 后序遍历代码
+    res = res && (right.val == left.val);
+    left = left.next;
+    return res;
+}
+```
 ## 二叉树
 遍历
 ```java
@@ -106,7 +262,7 @@ void traverse(TreeNode root) {
     // 后序位置
 }
 ```
-前序遍历就是刚进入一个节点时，后序遍历就是即将离开一个节点时。比如倒序打印一个单链表，可以用后序遍历：
+前序遍历就是刚进入一个节点时，后序遍历就是即将离开一个节点时。比如倒序打印一个单链表，可以用后序遍历,计算倒数第n个节点。
 ```java
 /* 递归遍历单链表，倒序打印链表元素 */
 void traverse(ListNode head) {

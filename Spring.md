@@ -8,13 +8,17 @@
 * DisposableBean
 * ApplicationListener
 
+# Springboot启动流程
+
+![105](assets/105.png)
+
 # SpringBoot扩展点
 
 * org.springframework.context.ApplicationContextInitializer：这时候容器刚刚创建，还未load、refresh，例如 ConfigFileApplicationContextInitializer 在这时候初始化属性。
   生效办法：
   1. 启动类中加入 springApplication.addInitializers(new TestApplicationContextInitializer())
-  2. 配置文件中加入 context.initializer.classes=com.example.demo.TestApplicationContextInitializer
-  3. Spring SPI扩展，在spring.factories中加入org.springframework.context.ApplicationContextInitializer=com.example.demo.TestApplicationContextInitializer
+  2. 配置文件中加入， 例如 context.initializer.classes=com.example.demo.TestApplicationContextInitializer
+  3. Spring SPI扩展，在spring.factories中加入，例如 org.springframework.context.ApplicationContextInitializer=com.example.demo.TestApplicationContextInitializer
 * org.springframework.beans.factory.support.BeanDefinitionRegistryPostProcessor
 * org.springframework.beans.factory.config.BeanFactoryPostProcessor：Springboot扫描注解就是通过这种方式。
 * org.springframework.beans.factory.config.InstantiationAwareBeanPostProcessor：继承于 BeanPostProcessor，除此之外还存在额外的3个方法：

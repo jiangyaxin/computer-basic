@@ -12,6 +12,17 @@
 
 ![105](assets/105.png)
 
+1. 从spring.factories配置文件中加载EventPublishingRunListener对象，该对象拥有SimpleApplicationEventMulticaster属性，即在SpringBoot启动过程的不同阶段用来发射内置的生命周期事件。
+2. 准备环境变量，包括系统变量，环境变量，命令行参数，默认变量，servlet相关配置变量，随机值以及配置文件（比如application.properties）等。
+3. 控制台打印SpringBoot的bannner标志。
+4. 根据不同类型环境创建不同类型的applicationcontext容器，因为这里是servlet环境，所以创建的是AnnotationConfigServletWebServerApplicationContext容器对象；
+5. 从spring.factories配置文件中加载FailureAnalyzers对象,用来报告SpringBoot启动过程中的异常。
+6. 为刚创建的容器对象做一些初始化工作，准备一些容器属性值等，对ApplicationContext应用一些相关的后置处理和调用各个ApplicationContextInitializer的初始化方法来执行一些初始化逻辑等。
+7. 刷新容器，这一步至关重要。比如调用bean factory的后置处理器，注册BeanPostProcessor后置处理器，初始化事件广播器且广播事件，初始化剩下的单例bean和SpringBoot创建内嵌的Tomcat服务器等等重要且复杂的逻辑都在这里实现。
+8. 执行刷新容器后的后置处理逻辑，注意这里为空方法。
+9. 调用ApplicationRunner和CommandLineRunner的run方法，我们实现这两个接口可以在spring容器启动后需要的一些东西比如加载一些业务数据等。
+10. 报告启动异常，即若启动过程中抛出异常，此时用FailureAnalyzers来报告异常。
+
 # SpringBoot扩展点
 
 * org.springframework.context.ApplicationContextInitializer：这时候容器刚刚创建，还未load、refresh，例如 ConfigFileApplicationContextInitializer 在这时候初始化属性。
@@ -53,17 +64,13 @@
 
 ![93](assets/93.png)
 
-1. Spring对bean进行实例化。
-2. Spring将值和bean的引用注入到bean对应的属性中。
-3. 如果bean实现了BeanNameAware接口，Spring将bean的ID传递给setBeanName()方法。
-4. 如果bean实现了BeanFactoryAware接口，Spring将调用setBeanFactory()方法，将BeanFactory容器实例传入。
-5. 如果bean实现了ApplicationContextAware接口，Spring将调用setApplicationContext()方法，将bean所在的应用上下文的引用传入进来。
-6. 如果bean实现了BeanPostProcessor接口，Spring将调用它们的 postProcessBeforeInitialization() 方法。
-7. 如果bean实现了InitializingBean接口，Spring将调用它们的 afterPropertiesSet()方法 。类似地，如果bean使用initmethod声明了初始化方法，该方法也会被调用。
-8. 如果bean实现了BeanPostProcessor接口，Spring将调用它们的 postProcessAfterInitialization() 方法。
-
-此时，bean已经准备就绪，可以被应用程序使用了，它们将一直驻留在应用上下文中，直到该应用上下文被销毁；
-如果bean实现了DisposableBean接口，Spring将调用它的destroy()接口方法。同样，如果bean使用destroy-method声明了销毁方法，该方法也会被调用。
+1. 实例化Bean：通过反射调用构造方法实例化对象。
+2. 依赖注入：装配Bean的属性。
+3. 实现了Aware接口的Bean，执行接口方法：如顺序执行BeanNameAware、BeanFactoryAware、ApplicationContextAware的接口方法。
+4. Bean对象初始化前，循环调用实现了BeanPostProcessor接口的预初始化方法（postProcessBeforeInitialization），顺序执行@PostConstruct注解方法。
+5. Bean对象初始化：InitializingBean接口方法、init-method方法。
+6. Bean对象初始化后，循环调用实现了BeanPostProcessor接口的后初始化方法（postProcessAfterInitialization）。
+7. 容器关闭时，执行Bean对象的销毁方法，顺序是：@PreDestroy注解方法、DisposableBean接口方法、destroy-method
 
 # BeanFactory
 

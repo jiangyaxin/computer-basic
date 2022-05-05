@@ -1,8 +1,187 @@
 # SpringSecurity
 
+## SpringSecurityFilter.md
+
+## 启动
+
+![SpringSecurity生成FilterChain](assets/SpringSecurity生成FilterChain.png)
+
+1. 入口为 @EnableWebSecurity , Import 3个类，继承 EnableGlobalAuthentication：
+   * SpringWebMvcImportSelector：添加MVC支持，即添加 AuthenticationPrincipalArgumentResolver、CurrentSecurityContextArgumentResolver、CsrfTokenArgumentResolver，分别负责向Controller中 @AuthenticationPrincipal、 @CurrentSecurityContext、CsrfToken类型 的参数注入值。
+   * OAuth2ImportSelector：添加OAuth2支持。
+   * WebSecurityConfiguration：负责建立过滤器链。
+   * @EnableGlobalAuthentication：负责注入AuthenticationManager。
+2. WebSecurityConfiguration:
+  * autowiredWebSecurityConfigurersIgnoreParents: 最先执行，因为需要被下面依赖。
+  * setFilterChainProxySecurityConfigurer：负责创建 WebSecurity ,并通过 autowiredWebSecurityConfigurersIgnoreParents 从 BeanFactory 查找所有的 WebSecurityConfigurer，并将其加入到 WebSecurity，
+    1). 值得注意的是 WebSecurity 实现 SecurityBuilder<Filter> ，表明它拥有创建 Filter的能力。
+    2). WebSecurityConfigurer<T extends SecurityBuilder<Filter>> 继承 SecurityConfigurer<Filter, T> ,这里的T为 WebSecurity。
+    3). 所以 WebSecurityConfigurer#init(WebSecurity) 和 WebSecurityConfigurer#config(configure) 可以配置  WebSecurity，最后改变  WebSecurity 创建的 Filter。
+    4). WebSecurityConfigurerAdapter 是 WebSecurityConfigurer 默认实现，所有我们通过继承 WebSecurityConfigurerAdapter 可以修改最后的 Filter。
+3. springSecurityFilterChain：应用 WebSecurityConfigurerAdapter 配置，并build Filter：
+   * 调用 WebSecurityConfigurerAdapter#init() 方法：
+     1). 创建 HttpSecurity，HttpSecurity 实现  SecurityBuilder<DefaultSecurityFilterChain>，表明它负责创建 DefaultSecurityFilterChain，DefaultSecurityFilterChain包含一个 List<Filter> 过滤器链。
+     2). HttpSecurity 应用 AbstractHttpConfigurer：AbstractHttpConfigurer 继承 SecurityConfigurerAdapter<DefaultSecurityFilterChain, B>，这里 B 为 HttpSecurity，表明 AbstractHttpConfigurer 通过修改 HttpSecurity 最后改变 DefaultSecurityFilterChain。
+     3). WebSecurityConfigurerAdapte#configure(HttpSecurity)：该方法是我们常覆盖的，用来配置过滤器链。
+## 调用链路
+
+![SpringSecurity调用链路](assets/SpringSecurity调用链路.png)
+
+## Filters
+
+- ChannelProcessingFilter
+- WebAsyncManagerIntegrationFilter
+- SecurityContextPersistenceFilter
+- HeaderWriterFilter
+- CorsFilter
+- CsrfFilter
+- LogoutFilter
+- OAuth2AuthorizationRequestRedirectFilter
+- Saml2WebSsoAuthenticationRequestFilter
+- X509AuthenticationFilter
+- AbstractPreAuthenticatedProcessingFilter
+- CasAuthenticationFilter
+- OAuth2LoginAuthenticationFilter
+- Saml2WebSsoAuthenticationFilter
+- UsernamePasswordAuthenticationFilter
+- OpenIDAuthenticationFilter
+- DefaultLoginPageGeneratingFilter
+- DefaultLogoutPageGeneratingFilter
+- ConcurrentSessionFilter
+- DigestAuthenticationFilter
+- BearerTokenAuthenticationFilter
+- BasicAuthenticationFilter
+- RequestCacheAwareFilter
+- SecurityContextHolderAwareRequestFilter
+- JaasApiIntegrationFilter
+- RememberMeAuthenticationFilter
+- AnonymousAuthenticationFilter
+- OAuth2AuthorizationCodeGrantFilter
+- SessionManagementFilter
+- ExceptionTranslationFilter
+- FilterSecurityInterceptor
+- SwitchUserFilter
+
+### ExceptionTranslationFilter
+
+#### 核心代码
+
+```java
+......
+
+public void doFilter(ServletRequest req, ServletResponse res, FilterChain chain)
+      throws IOException, ServletException {
+   HttpServletRequest request = (HttpServletRequest) req;
+   HttpServletResponse response = (HttpServletResponse) res;
+
+   try {
+      chain.doFilter(request, response);
+
+      logger.debug("Chain processed normally");
+   }
+   catch (IOException ex) {
+      throw ex;
+   }
+   catch (Exception ex) {
+      // Try to extract a SpringSecurityException from the stacktrace
+      Throwable[] causeChain = throwableAnalyzer.determineCauseChain(ex);
+      RuntimeException ase = (AuthenticationException) throwableAnalyzer
+            .getFirstThrowableOfType(AuthenticationException.class, causeChain);
+
+      if (ase == null) {
+         ase = (AccessDeniedException) throwableAnalyzer.getFirstThrowableOfType(
+               AccessDeniedException.class, causeChain);
+      }
+
+      if (ase != null) {
+         if (response.isCommitted()) {
+            throw new ServletException("Unable to handle the Spring Security Exception because the response is already committed.", ex);
+         }
+         handleSpringSecurityException(request, response, chain, ase);
+      }
+      else {
+         // Rethrow ServletExceptions and RuntimeExceptions as-is
+         if (ex instanceof ServletException) {
+            throw (ServletException) ex;
+         }
+         else if (ex instanceof RuntimeException) {
+            throw (RuntimeException) ex;
+         }
+
+         // Wrap other Exceptions. This shouldn't actually happen
+         // as we've already covered all the possibilities for doFilter
+         throw new RuntimeException(ex);
+      }
+   }
+}
+
+......
+```
+
+**可以看到程序如果没有抛出异常，`ExceptionTranslationFilter`不会做任何事**
+
+```java
+private void handleSpringSecurityException(HttpServletRequest request,
+			HttpServletResponse response, FilterChain chain, RuntimeException exception)
+			throws IOException, ServletException {
+		if (exception instanceof AuthenticationException) {
+			logger.debug(
+					"Authentication exception occurred; redirecting to authentication entry point",
+					exception);
+
+			sendStartAuthentication(request, response, chain,
+					(AuthenticationException) exception);
+		}
+		else if (exception instanceof AccessDeniedException) {
+			Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+			if (authenticationTrustResolver.isAnonymous(authentication) || authenticationTrustResolver.isRememberMe(authentication)) {
+				logger.debug(
+						"Access is denied (user is " + (authenticationTrustResolver.isAnonymous(authentication) ? "anonymous" : "not fully authenticated") + "); redirecting to authentication entry point",
+						exception);
+
+				sendStartAuthentication(
+						request,
+						response,
+						chain,
+						new InsufficientAuthenticationException(
+							messages.getMessage(
+								"ExceptionTranslationFilter.insufficientAuthentication",
+								"Full authentication is required to access this resource")));
+			}
+			else {
+				logger.debug(
+						"Access is denied (user is not anonymous); delegating to AccessDeniedHandler",
+						exception);
+
+				accessDeniedHandler.handle(request, response,
+						(AccessDeniedException) exception);
+			}
+		}
+	}
+```
+
+
+
+![exceptiontranslationfilter](assets/ExceptionTranslationFilter.png)
+
+1. `ExceptionTranslationFilter` 调用 `FilterChain.doFilter(request, response)` 执行后续流程
+
+2. 如果捕获到`AuthenticationException`， 用户`not authenticated` 则开始认证
+
+   > 清理SecurityContextHolder
+   >
+   > `HttpServletRequest` 保存在 `RequestCache`. 当认证成功,  `RequestCache`用来 replay the original request.
+   >
+   > `AuthenticationEntryPoint` 用来像客户端请求用户名密码(`credentials`).例如, it might redirect to a log in page or send a `WWW-Authenticate` header.
+
+3. 如果捕获到`AccessDeniedException`, 将` Access Denied`. `AccessDeniedHandler` 处理`Access Denied`.值得注意的是`authenticationTrustResolver`还有额外处理，如果是匿名(`Anonymous`)登录或者`RememberMe`登录，仍然由`AuthenticationEntryPoint` 引导去`Authentication`.
+
+4. 其他异常将正常抛出.
+
+
 获取用户：
 
-* controller 可以使用 @AuthenticationPrincipal 注解在参数上 来接收 Authentication.getPrincipal() 的值。
+* controller 可以使用 @AuthenticationPrincipal 注解在参数上 来接收 Authentication.getPrincipal() 的值，还可以使用 @CurrentSecurityContext 注解在参数上 来接收 Authentication 的值。
 * 使用 Principal 参数 接收。
 * 使用 Authentication 参数 接收。
 * 使用 SecurityContextHolder 来获取。

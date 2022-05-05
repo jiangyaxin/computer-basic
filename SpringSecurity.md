@@ -885,7 +885,7 @@ CustomUserDetailsService customUserDetailsService() {
 
 `DaoAuthenticationProvider`是`AuthenticationProvider`的实现，使用 `UserDetailsService`和`PasswordEncoder`来进行认证。
 
-![DaoAuthenticationProvider](../picture/DaoAuthenticationProvider.png)
+![DaoAuthenticationProvider](assets/DaoAuthenticationProvider.png)
 
 1.  `UsernamePasswordAuthenticationFilter` 或其他`Filter`读取用户请求生成`UsernamePasswordAuthenticationToken`，并调用`AuthenticationManager`的实现`ProviderManager`。
 2. `ProviderManager`包含多个`AuthenticationProvider`，其中有一个就是`DaoAuthenticationProvider`。
@@ -1248,7 +1248,7 @@ public interface AccessDecisionManager {
 
 ### Voting-Based AccessDecisionManager Implementations
 
-![Access-Decision-Voting](../picture/Access-Decision-Voting.png)
+![Access-Decision-Voting](assets/Access-Decision-Voting.png)
 
  `AccessDecisionManager` 中包含多个 `AccessDecisionVoter` ，通过轮询来实现。 `AccessDecisionManager`根据`AccessDecisionVoter`的投票来决定是否抛出异常。`AbstractAccessDecisionManager`是 `AccessDecisionManager` 的实现，下面有三个具体的子类`AffirmativeBased`、`UnanimousBased`、`ConsensusBased`。
 
@@ -1350,7 +1350,7 @@ public interface AccessDecisionVoter<S> {
 
 ## After Invocation Handling
 
-![After-Invocation](../picture/After-Invocation.png)
+![After-Invocation](assets/After-Invocation.png)
 
  `AfterInvocationManager`包含多个 `AfterInvocationProvider`，每一个`AfterInvocationProvider`都可以修改最后的结果。
 
@@ -1378,7 +1378,7 @@ public interface AccessDecisionVoter<S> {
 
 # Authorize HttpServletRequest with FilterSecurityInterceptor
 
-![FilterSecurityInterceptor](../picture/FilterSecurityInterceptor.png)
+![FilterSecurityInterceptor](assets/FilterSecurityInterceptor.png)
 
 1. 从`SecurityContextHolder`获取`Authentication`。
 2. 使用`HttpServletRequest`、 `HttpServletResponse`、`FilterChain`创建`FilterInvocation`。

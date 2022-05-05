@@ -14,16 +14,16 @@
 2. WebSecurityConfiguration:
   * autowiredWebSecurityConfigurersIgnoreParents: 最先执行，因为需要被下面依赖。
   * setFilterChainProxySecurityConfigurer：负责创建 WebSecurity ,并通过 autowiredWebSecurityConfigurersIgnoreParents 从 BeanFactory 查找所有的 WebSecurityConfigurer，并将其加入到 WebSecurity，
-    2.1. 值得注意的是 WebSecurity 实现 SecurityBuilder<Filter> ，表明它拥有创建 Filter的能力。
-    2.2. WebSecurityConfigurer<T extends SecurityBuilder<Filter>> 继承 SecurityConfigurer<Filter, T> ,这里的T为 WebSecurity。
-    2.3. 所以 WebSecurityConfigurer#init(WebSecurity) 和 WebSecurityConfigurer#config(configure) 可以配置  WebSecurity，最后改变  WebSecurity 创建的 Filter。
-    2.4. WebSecurityConfigurerAdapter 是 WebSecurityConfigurer 默认实现，所有我们通过继承 WebSecurityConfigurerAdapter 可以修改最后的 Filter。
+    1. 值得注意的是 WebSecurity 实现 SecurityBuilder<Filter> ，表明它拥有创建 Filter的能力。
+    2. WebSecurityConfigurer<T extends SecurityBuilder<Filter>> 继承 SecurityConfigurer<Filter, T> ,这里的T为 WebSecurity。
+    3. 所以 WebSecurityConfigurer#init(WebSecurity) 和 WebSecurityConfigurer#config(configure) 可以配置  WebSecurity，最后改变  WebSecurity 创建的 Filter。
+    4. WebSecurityConfigurerAdapter 是 WebSecurityConfigurer 默认实现，所有我们通过继承 WebSecurityConfigurerAdapter 可以修改最后的 Filter。
 3. springSecurityFilterChain：应用 WebSecurityConfigurerAdapter 配置，并build Filter：
    * 调用 WebSecurityConfigurerAdapter#init(WebSecurity) 方法：
-     3.1. 创建 HttpSecurity，HttpSecurity 实现  SecurityBuilder<DefaultSecurityFilterChain>，表明它负责创建 DefaultSecurityFilterChain，DefaultSecurityFilterChain包含一个 List<Filter> 过滤器链。
-     3.2. HttpSecurity 应用 从 SpringFactoriesLoader 获取的 AbstractHttpConfigurer：AbstractHttpConfigurer 继承 SecurityConfigurerAdapter<DefaultSecurityFilterChain, B>，这里 B 为 HttpSecurity，表明 AbstractHttpConfigurer 通过修改 HttpSecurity 最后改变 DefaultSecurityFilterChain。
-     3.2. WebSecurityConfigurerAdapte#configure(HttpSecurity)：该方法是我们常覆盖的，用来配置过滤器链。
-     3.4. WebSecurity 设置 已经创建的 FilterSecurityInterceptor ，若 FilterSecurityInterceptor 这时不存在则为空。
+     1. 创建 HttpSecurity，HttpSecurity 实现  SecurityBuilder<DefaultSecurityFilterChain>，表明它负责创建 DefaultSecurityFilterChain，DefaultSecurityFilterChain包含一个 List<Filter> 过滤器链。
+     2. HttpSecurity 应用 从 SpringFactoriesLoader 获取的 AbstractHttpConfigurer：AbstractHttpConfigurer 继承 SecurityConfigurerAdapter<DefaultSecurityFilterChain, B>，这里 B 为 HttpSecurity，表明 AbstractHttpConfigurer 通过修改 HttpSecurity 最后改变 DefaultSecurityFilterChain。
+     3. WebSecurityConfigurerAdapte#configure(HttpSecurity)：该方法是我们常覆盖的，用来配置过滤器链。
+     4. WebSecurity 设置 已经创建的 FilterSecurityInterceptor ，若 FilterSecurityInterceptor 这时不存在则为空。
    * 调用 WebSecurityConfigurerAdapter#configure(WebSecurity) 方法：空方法，常常覆盖用来配置 WebSecurity，例如忽略某些请求 `webSecurity.ignoring().antMatchers("/sms/send");`
    * 调用 WebSecurity#performBuild() 方法：
 

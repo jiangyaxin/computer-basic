@@ -23,7 +23,7 @@
 9. 调用ApplicationRunner和CommandLineRunner的run方法，我们实现这两个接口可以在spring容器启动后需要的一些东西比如加载一些业务数据等。
 10. 报告启动异常，即若启动过程中抛出异常，此时用FailureAnalyzers来报告异常。
 
-# SpringBoot扩展点
+## SpringBoot扩展点
 
 * org.springframework.context.ApplicationContextInitializer：这时候容器刚刚创建，还未load、refresh，例如 ConfigFileApplicationContextInitializer 在这时候初始化属性。
   生效办法：
@@ -70,7 +70,7 @@
 4. Bean对象初始化前，循环调用实现了BeanPostProcessor接口的预初始化方法（postProcessBeforeInitialization），顺序执行@PostConstruct注解方法。
 5. Bean对象初始化：InitializingBean接口方法、init-method方法。
 6. Bean对象初始化后，循环调用实现了BeanPostProcessor接口的后初始化方法（postProcessAfterInitialization）。
-7. 容器关闭时，执行Bean对象的销毁方法，顺序是：@PreDestroy注解方法、DisposableBean接口方法、destroy-method
+7. 容器关闭时，执行Bean对象的销毁方法，顺序是：@PreDestroy注解方法、DisposableBean接口方法、destroy-method。
 
 # BeanFactory
 
@@ -652,7 +652,190 @@ Mono<Map<Character, String>> animalMapMono = animalFlux.collectMap(a -> a.charAt
 * Spring Data Reactive Repositories 目前只支持 MongoDB、Redis 和 Couchbase 等几种不支持事务管理的 NOSQL。
 * 不能加快响应的速度，可以减少线程数量。
 
-# SpringBootStarter
+# SpringBoot
+
+启用开发热部署：
+
+```java
+<dependencies>
+    <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-devtools</artifactId>
+        // 依赖不会传递
+        <optional>true</optional>
+    </dependency>
+</dependencies>
+```
+
+当使用 java -jar 命令启动时会自动禁用。
+
+
+配置文件加载顺序：按优先级排序，使用优先级高的配置。
+1. 命令行参数：
+
+   ```shell
+   # 多个配置用空格分格 ，格式: --配置项=值 ， -- 是 SpringBoot 解析参数的方式，用来jar后面， -D 是JVM解析参数的方式用在jar前面, -XX: -Xms -Xmx -Xmn -Xss 设置jvm参数，用在jar前面。
+   java -jar app.jar --server.port=8087 --server.context-path=/abc
+   java -jar -Dspring.profiles.active=test -Dserver.port=8081 app.jar
+   java -jar -XX:MetaspaceSize=128m -XX:MaxMetaspaceSize=128m -Xms1024m -Xmx1024m -Xmn256m -Xss256k -XX:SurvivorRatio=8 -XX:+UseConcMarkSweepGC newframe-1.0.0.jar
+   ```
+2. SPRING_APPLICATION_JSON 环境变量：值为一个JSON。
+3. ServletConfig 初始化参数。
+4. ServletContext 初始化参数。
+5. java:comp/env 的JNDI属性。
+6. System.getProperties() JVM系统属性。
+7. 操作系统环境变量。
+8. RandomValuePropertySource，例如 my.secret=${random.value}
+9. 读取配置文件：
+   * jar包外 优先 jar 包内。
+   * config下 优先 根目录下。
+   * application-{profile} 优先 application。
+   * properties 优先 yml。
+10. @PropertySource
+11. SpringApplication.setDefaultProperties
+
+ymal传输到日志配置文件：
+
+| Spring Environment                | System Property               | Comments                                                |
+| --------------------------------- | ----------------------------- | ------------------------------------------------------- |
+| logging.exception-conversion-word | LOG_EXCEPTION_CONVERSION_WORD | 记录异常时使用的转换字。                                |
+| logging.file.name                 | LOG_FILE                      | 如果已定义，它将在默认日志配置中使用。                  |
+| logging.file.path                 | LOG_PATH                      | 如果已定义，它将在默认日志配置中使用。                  |
+| logging.pattern.console           | CONSOLE_LOG_PATTERN           | 在控制台上使用的日志模式 (stdout)。                     |
+| logging.pattern.dateformat        | LOG_DATEFORMAT_PATTERN        | 日志日期格式的附加模式。                                |
+| logging.charset.console           | CONSOLE_LOG_CHARSET           | 用于控制台日志记录的字符集。                            |
+| logging.pattern.file              | FILE_LOG_PATTERN              | 在文件中使用的日志模式（如果LOG_FILE启用）。            |
+| logging.charset.file              | FILE_LOG_CHARSET              | 用于文件日志记录的字符集（如果LOG_FILE启用）。          |
+| logging.pattern.level             | LOG_LEVEL_PATTERN             | 呈现日志级别时使用的格式（默认%5p）。                   |
+| PID                               | PID                           | 当前进程 ID（如果可能且尚未定义为 OS 环境变量时发现）。 |
+
+Logback 额外的配置：
+
+| Spring Environment                                   | System Property                              | Comments                                                       |
+| ---------------------------------------------------- | -------------------------------------------- | -------------------------------------------------------------- |
+| logging.logback.rollingpolicy.file-name-pattern      | LOGBACK_ROLLINGPOLICY_FILE_NAME_PATTERN      | 翻转日志文件名的模式（默认${LOG_FILE}.%d{yyyy-MM-dd}.%i.gz）。 |
+| logging.logback.rollingpolicy.clean-history-on-start | LOGBACK_ROLLINGPOLICY_CLEAN_HISTORY_ON_START | 是否在启动时清理归档日志文件。                                 |
+| logging.logback.rollingpolicy.max-file-size          | LOGBACK_ROLLINGPOLICY_MAX_FILE_SIZE          | 最大日志文件大小。                                             |
+| logging.logback.rollingpolicy.total-size-cap         | LOGBACK_ROLLINGPOLICY_TOTAL_SIZE_CAP         | 要保留的日志备份的总大小。                                     |
+| logging.logback.rollingpolicy.max-history            | LOGBACK_ROLLINGPOLICY_MAX_HISTORY            | 要保留的存档日志文件的最大数量。                               |
+
+自动配置的线程池：
+* applicationTaskExecutor、taskExecutor：ThreadPoolTaskExecutor 类型，使用 spring.task.execution.pool 配置。
+* threadPoolTaskScheduler：ThreadPoolTaskScheduler 类型，使用 spring.task.scheduling 配置。
+
+测试：
+```java
+//示例1
+@SpringBootTest
+@AutoConfigureMockMvc
+class MyMockMvcTests {
+
+    @Test
+    void testWithMockMvc(@Autowired MockMvc mvc) throws Exception {
+        mvc.perform(get("/")).andExpect(status().isOk()).andExpect(content().string("Hello World"));
+    }
+
+    // If Spring WebFlux is on the classpath, you can drive MVC tests with a WebTestClient
+    @Test
+    void testWithWebTestClient(@Autowired WebTestClient webClient) {
+        webClient
+                .get().uri("/")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody(String.class).isEqualTo("Hello World");
+    }
+
+}
+
+//示例2
+public class MockMvcSupport {
+
+    private static final String DEFAULT_TOKEN = "CN_000001_USER_29866cdafe6d40d2aef8fb75df408827-oYggrtSir6s=-1616371700730";
+
+    private static final ObjectWriter OBJECT_WRITER = new ObjectMapper().writer().withDefaultPrettyPrinter();
+
+    public static ResultActions prepareRequest(final MockMvc mockMvc, final MockHttpServletRequestBuilder saveRequestBuilder) throws Exception{
+        return prepareRequest(mockMvc,saveRequestBuilder,DEFAULT_TOKEN,null);
+    }
+    public static ResultActions prepareRequest(final MockMvc mockMvc, final MockHttpServletRequestBuilder saveRequestBuilder, final Object object) throws Exception{
+        return prepareRequest(mockMvc,saveRequestBuilder,DEFAULT_TOKEN,OBJECT_WRITER.writeValueAsString(object));
+    }
+    public static ResultActions prepareRequest(final MockMvc mockMvc, final MockHttpServletRequestBuilder saveRequestBuilder, final String content) throws Exception{
+        return prepareRequest(mockMvc,saveRequestBuilder,DEFAULT_TOKEN,content);
+    }
+    private static ResultActions prepareRequest(final MockMvc mockMvc, final MockHttpServletRequestBuilder saveRequestBuilder, final String token, final String content) throws Exception{
+        saveRequestBuilder.contentType(MediaType.APPLICATION_JSON)
+                .accept(MediaType.APPLICATION_JSON)
+                .header("token", token)
+                .characterEncoding(StandardCharsets.UTF_8.name());
+        if(Objects.nonNull(content)){
+            saveRequestBuilder.content(content);
+        }
+        ResultActions actions = mockMvc.perform(saveRequestBuilder);
+        actions.andReturn().getResponse().setCharacterEncoding(StandardCharsets.UTF_8.name());
+        return actions;
+    }
+}
+
+@SpringBootTest
+public class SignalDownloadTest2 {
+
+    @Autowired
+    private WebApplicationContext webApplicationContext;
+
+    private MockMvc mockMvc;
+
+    @BeforeEach
+    public void setupMockMvc() {
+        mockMvc = MockMvcBuilders.webAppContextSetup(webApplicationContext).addFilter(new UserInfoParamFilter()).build();
+    }
+
+    @Test
+    public void downloadSignalGroupConfig() throws Exception{
+        downloadSignalGroup("/api/v1/ring/download/signalGroup/config");
+    }
+
+    private void downloadSignalGroup(String url) throws Exception{
+    SettingBaseDTO settingBaseDTO=new SettingBaseDTO(663214, 663214, "3e71108323e149e993e96d9e0903cf35");
+    MockHttpServletRequestBuilder downloadRequestBuilder = MockMvcRequestBuilders.post(url);
+    ResultActions actions  = MockMvcSupport.prepareRequest(mockMvc, downloadRequestBuilder, settingBaseDTO);
+       actions.andExpect(status().isBadRequest())
+               .andExpect(jsonPath("$.message",containsString(SIGNAL_NUMBER_NOT_NULL)))
+               .andExpect(jsonPath("$.message",containsString(CROSS_NUMBER_NOT_NULL)))
+               .andExpect(jsonPath("$.message",containsString(CROSS_ID_NOT_NULL)));
+    }
+}
+```
+
+## 自动配置原理
+### @SpringBootApplication 注解
+* @SpringBootConfiguration：继承 @Configuration，和 @Configuration 功能一样。
+* @ComponentScan：自动扫描Bean，默认情况，不指定basePackages，扫描当前类包及其子包。
+* @EnableAutoConfiguration：通过 @Import({AutoConfigurationImportSelector.class}) 实现自动装配。
+
+### 自动装配流程
+1. AutoConfigurationImportSelector 实现 ImportSelector 接口，@Import 会装载 ImportSelector#selectImports 返回的Bean，由 ConfigurationClassParser 来实现。
+2. 在 AutoConfigurationImportSelector#selectImports 中使用 SpringFactoriesLoader.loadFactoryNames(EnableAutoConfiguration.class,getBeanClassLoader()) 加载，会加载 META-INF/spring.factories 中 org.springframework.boot.autoconfigure.EnableAutoConfiguration 的属性。
+3. 通过 @ConditionalOnClass 来完成 添加具体starter 时完成自动加载，stater添加的只是依赖，负责引入依赖包，配置的逻辑存在于 spring-boot-autoconfigure 模块：例如：
+
+   ```java
+   // 只有引入 MongoClient 相关包时才会进行自动配置。
+   @Configuration(proxyBeanMethods = false)
+   @ConditionalOnClass(MongoClient.class)
+   @EnableConfigurationProperties(MongoProperties.class)
+   @ConditionalOnMissingBean(type = "org.springframework.data.mongodb.MongoDatabaseFactory")
+   public class MongoAutoConfiguration {
+  	 @Bean
+  	 @ConditionalOnMissingBean(MongoClient.class)
+  	 public MongoClient mongo(MongoProperties properties, Environment environment,
+  			 ObjectProvider<MongoClientSettingsBuilderCustomizer> builderCustomizers,
+  			 ObjectProvider<MongoClientSettings> settings) {
+  		 return new MongoClientFactory(properties, environment,
+  				 builderCustomizers.orderedStream().collect(Collectors.toList())).createMongoClient(settings.getIfAvailable());
+  	 }
+   }
+   ```
+## Starter
 
 自定义：
 

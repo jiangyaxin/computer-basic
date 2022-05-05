@@ -244,6 +244,143 @@ docker logs -f <container-id>
 docker inspect <container-id>
 ```
 
+## 示例
+```Shell
+#!/bin/bash
+############################################
+# this script function is :
+# deploy new docker container
+#
+# USER        YYYY-MM-DD - ACTION
+# junsansi    2016-01-25 - CREATED
+#
+############################################
+
+parasnum=7
+# function
+help_msg()
+{
+cat << help
++----------------------------------------------------+
++ Error Cause:
++ you enter $# parameters
++ the total paramenter number must be $parasnum
++ 1st :DOCKER_PATH
++ 2nd :DOCKER_NAME
++ 3rd :PROJ_VERSION
++ 4th :SPORT
++ 5th :JAR_NAME
++ 6th :DUGPORT
++ 7th :SPRING_PROFILES_ACTIVE
++----------------------------------------------------+
+help
+}
+
+# ----------------------------------------------------
+# Check parameter number
+# ----------------------------------------------------
+if [ $# -ne ${parasnum} ]
+then
+        help_msg
+        exit
+fi
+
+# ----------------------------------------------------
+# Initialize the parameter.
+# ----------------------------------------------------
+DOCKER_PATH=$1
+DOCKER_NAME=$2
+PROJ_VERSION=$3
+SPORT=$4
+JAR_NAME=$5
+DUGPORT=$6
+SPRING_PROFILES_ACTIVE=$7
+
+DOCKER_FILE="${DOCKER_PATH}/dockerfiles/${DOCKER_NAME}/Dockerfile"
+DOCKER_FILE_DIR=${DOCKER_PATH}/dockerfiles/${DOCKER_NAME}
+if [ ! -d ${DOCKER_FILE_DIR} ]; then
+        mkdir -p ${DOCKER_FILE_DIR}
+fi
+
+# ----------------------------------------------------
+# check docker images
+# ----------------------------------------------------
+DOCKER_IMAGE=`docker images | grep ${DOCKER_NAME} | awk -F ' ' '{print $3}'`
+if [ -n "${DOCKER_IMAGE}" ]; then
+        # check docker container
+        for dc in `docker ps -a | grep ${DOCKER_NAME} | awk -F " " '{print $1}'`
+        do
+                echo "Stop container: ${dc}"
+                docker stop ${dc}
+                # delete while docker container was exists
+                echo "##Delete exists Container_Id: "${dc}
+                docker rm ${dc}
+        done
+
+        # delete while docker image was exists
+        echo "##Delete exists Image: "${DOCKER_IMAGE}
+        docker rmi ${DOCKER_IMAGE}
+fi
+echo ""
+
+# ----------------------------------------------------
+# Init dockerfile
+# ----------------------------------------------------
+echo "**Init dockerfile start: "${DOCKER_FILE}
+
+#第一行必须指令基于的基础镜像
+echo "FROM openjdk:8-jre-alpine" > ${DOCKER_FILE}
+
+#格式为maintainer ，指定维护者的信息
+echo "MAINTAINER wangzunbin <905192187@qq.com>" >> ${DOCKER_FILE}
+
+#指定一个环境变量，会被后续 RUN 指令使用，并在容器运行时保持
+echo "VOLUME /tmp" >> ${DOCKER_FILE}
+
+#增强版的COPY，支持将远程URL的资源加入到镜像的文件系统
+echo "ADD *.jar app.jar" >> ${DOCKER_FILE}
+#格式为Run 或者Run [“executable” ,”Param1”, “param2”]
+#前者在shell终端上运行，即/bin/sh -C，后者使用exec运行。例如：RUN [“/bin/bash”, “-c”,”echo hello”]
+#每条run指令在当前基础镜像执行，并且提交新镜像。当命令比较长时，可以使用“/”换行。
+#echo "RUN bash -c 'touch /app.jar'"  >> ${DOCKER_FILE}
+
+#挂载运行日志
+#VOLUME /var/log/xzn/
+
+#配置容器启动后执行的命令，并且不可被 docker run 提供的参数覆盖。
+#每个Dockerfile中只能有一个 ENTRYPOINT ，当指定多个时，只有最后一个起效。
+echo 'ENTRYPOINT ["sh","-c","java ${JAVA_OPTS} -Dspring.profiles.active=${SPRING_PROFILES_ACTIVE} -Dserver.port=${SERVER_PORT} -jar /app.jar"]' >> ${DOCKER_FILE}
+echo 'EXPOSE ${SERVER_PORT}' >> ${DOCKER_FILE}
+cat ${DOCKER_FILE}
+echo "**Init dockerfile end."
+
+
+
+# ----------------------------------------------------
+# Build dockerfile
+# ----------------------------------------------------
+cd ${DOCKER_FILE_DIR}
+rm *.jar -rf
+mv ${DOCKER_PATH}/${JAR_NAME} ./
+echo ""
+echo "##Build dockerfile for "${DOCKER_NAME}
+docker build -t ${DOCKER_NAME}:${PROJ_VERSION} .
+
+
+# ----------------------------------------------------
+# Run docker container
+# ----------------------------------------------------
+echo ""
+echo "##Running docker container: "${DOCKER_NAME}
+
+#解决时区的问题
+echo docker run --name=${DOCKER_NAME} -e TZ="Asia/Shanghai" -e "SPRING_PROFILES_ACTIVE="${SPRING_PROFILES_ACTIVE} -e "SERVER_PORT="${SPORT} -e "JAVA_OPTS=-Xmx1024m -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address="${DUGPORT} --net host -d ${DOCKER_NAME}:${PROJ_VERSION}
+
+docker run --name=${DOCKER_NAME} -e TZ="Asia/Shanghai" -e "SPRING_PROFILES_ACTIVE="${SPRING_PROFILES_ACTIVE} -e "SERVER_PORT="${SPORT} -e "JAVA_OPTS=-Xmx1024m -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address="${DUGPORT} --net host -d ${DOCKER_NAME}:${PROJ_VERSION}
+
+echo ""
+```
+
 ## Docker组件
 
 Docker组件分为 Docker client、Docker daemon、containerd、runc，Docker client和Docker daemon在 Linux 中使用 UNIX Socket 通信。

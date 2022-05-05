@@ -652,6 +652,58 @@ Mono<Map<Character, String>> animalMapMono = animalFlux.collectMap(a -> a.charAt
 * Spring Data Reactive Repositories 目前只支持 MongoDB、Redis 和 Couchbase 等几种不支持事务管理的 NOSQL。
 * 不能加快响应的速度，可以减少线程数量。
 
+# 缓存
+
+@Cacheable 和 @CachePut 属性：
+
+| 属性      | 类型     | 描述                                                               |
+| ----------- | ---------- | -------------------------------------------------------------------- |
+| value     | String[] | 要使用的缓存名称                                                   |
+| condition | String   | SpEL 表达式，如果得到的值是 false 的话，不会将缓存应用到方法调用上 |
+| key       | String   | SpEL 表达式，用来计算自定义的缓存key                               |
+| unless    | String   | SpEL 表达式，如果得到的值是 true 的话，返回值不会放到缓存之中      |
+
+自定义缓存 key：
+
+| 表达式            | 描述                                                       |
+| ------------------- | ------------------------------------------------------------ |
+| #root.args        | 传递给缓存方法的参数，形式为数组                           |
+| #root.caches      | 该方法执行时所对应的缓存，形式为数组                       |
+| #root.target      | 目标对象                                                   |
+| #root.targetClass | 目标对象的类，是 #root.target.class 的简写形式             |
+| #root.method      | 缓存方法                                                   |
+| #root.methodName  | 缓存方法的名字，是 #root.method.name 的简写形式            |
+| #result           | 方法调用的返回值（不能用在 @Cacheable 注解上）             |
+| #Argument         | 任意的方法参数名（如 #argName）或参数索引（如 #a0 或 #p0） |
+
+@CacheEvict 属性：
+
+| 属性             | 类型     | 描述                                                                                               |
+| ------------------ | ---------- | ---------------------------------------------------------------------------------------------------- |
+| value            | String[] | 要使用的缓存名称                                                                                   |
+| condition        | String   | SpEL 表达式，如果得到的值是 false 的话，缓存不会应用到方法调用上                                   |
+| key              | String   | SpEL 表达式，用来计算自定义的缓存key                                                               |
+| allEntries       | boolean  | 如果为 true 的话，特定缓存的所有条目都会被移除掉                                                   |
+| beforeInvocation | boolean  | 如果为 true 的话，在方法调用之前移除条目。如果为 false（默认值）的话，在方法成功调用之后再移除条目 |
+
+# SpringBootActuator
+
+| HTTP 方法 | 路径            | 描述                                                            |
+| ----------- | ----------------- | ----------------------------------------------------------------- |
+| GET       | /autoconfig     | 提供了一份自动配置报告，记录哪些自动配置条件通过了，哪些没通过  |
+| GET       | /configprops    | 描述配置属性(包含默认值)如何注入Bean                            |
+| GET       | /beans          | 描述应用程序上下文里全部的Bean，以及它们的关系                  |
+| GET       | /dump           | 获取线程活动的快照                                              |
+| GET       | /env            | 获取全部环境属性                                                |
+| GET       | /env/{name}     | 根据名称获取特定的环境属性值                                    |
+| GET       | /health         | 报告应用程序的健康指标，这些值由HealthIndicator的实现类提供     |
+| GET       | /info           | 获取应用程序的定制信息，这些信息由info打头的属性提供            |
+| GET       | /mappings       | 描述全部的URI路径，以及它们和控制器(包含Actuator端点)的映射关系 |
+| GET       | /metrics        | 报告各种应用程序度量信息，比如内存用量和HTTP请求计数            |
+| GET       | /metrics/{name} | 报告指定名称的应用程序度量值                                    |
+| POST      | /shutdown       | 关闭应用程序，要求endpoints.shutdown.enabled设置为true          |
+| GET       | /trace          | 提供基本的HTTP请求跟踪信息(时间戳、HTTP头等)                    |
+
 # SpringBoot
 
 启用开发热部署：

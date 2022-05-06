@@ -337,6 +337,209 @@ HMACSHA256(base64UrlEncode(header) + "." +base64UrlEncode(payload),secret)
 
 最后签名以后，把`header`、`payload`、`signature` 三个部分拼成一个字符串，每个部分之间用"点"（.）分隔，就构成整个令牌。
 
+# 登录
+
+举例Google:
+
+1. 首先登陆`Google API Console`，获取` OAuth 2.0 credentials`,即`Client ID`和` Client Secret`。
+2. 设置登陆重定向地址为`http://localhost:8080/login/oauth2/code/google`，默认`URI Template`为`{baseUrl}/login/oauth2/code/{registrationId}`.
+3. 设置`application.yml`：
+
+```yaml
+spring:
+ security:
+   oauth2:
+     client:
+       registration:
+         google:
+           client-id: google-client-id
+           client-secret: google-client-secret
+```
+
+## Login授权流程
+
+1. 当`FilterSecurityInterceptor`鉴权失败时，由`ExceptionTranslationFilter`使用`AuthenticationEntryPoint`重定向到`/oauth2/authorization/{registrationId}`。
+2. 当`requet`可以匹配到`DEFAULT_AUTHORIZATION_REQUEST_BASE_URI = "/oauth2/authorization/{registrationId}"`时，`OAuth2AuthorizationRequestRedirectFilter`会根据`registrationId`获得对应的`ClientRegistration`，然后构造出`OAuth2AuthorizationRequest`重定向到`authorizationUri`。
+3. 填写用户名密码，认证通过`Authorization Server`回调备案地址(如上面例子中`http://localhost:8080/login/oauth2/code/google`)并携带`code`
+
+参数，**备案地址需要匹配`AbstractAuthenticationProcessingFilter`中`requiresAuthenticationRequestMatcher`，可以通过`defaultFilterProcessesUrl`修改，默认值为`DEFAULT_FILTER_PROCESSES_URI = "/login/oauth2/code/*"`。**
+
+4. 由`OAuth2LoginAuthenticationFilter`拦截到`http://localhost:8080/login/oauth2/code/google`开始`POST`调用`tokenUri`并携带上一步得到的`code`参数，获取到`access_token`后重定向回最开始用户想访问的`URL`并设置`cookie`。
+5. 然后带着`cookie`访问。
+6.
+
+### Spring Boot 2.x Property Mappings
+
+
+| Spring Boot 2.x                                                                              | ClientRegistration                                       |
+| :--------------------------------------------------------------------------------------------- | :--------------------------------------------------------- |
+| `spring.security.oauth2.client.registration.*[registrationId]*`                              | `registrationId`                                         |
+| `spring.security.oauth2.client.registration.*[registrationId]*.client-id`                    | `clientId`                                               |
+| `spring.security.oauth2.client.registration.*[registrationId]*.client-secret`                | `clientSecret`                                           |
+| `spring.security.oauth2.client.registration.*[registrationId]*.client-authentication-method` | `clientAuthenticationMethod`                             |
+| `spring.security.oauth2.client.registration.*[registrationId]*.authorization-grant-type`     | `authorizationGrantType`                                 |
+| `spring.security.oauth2.client.registration.*[registrationId]*.redirect-uri`                 | `redirectUri`                                            |
+| `spring.security.oauth2.client.registration.*[registrationId]*.scope`                        | `scopes`                                                 |
+| `spring.security.oauth2.client.registration.*[registrationId]*.client-name`                  | `clientName`                                             |
+| `spring.security.oauth2.client.provider.*[providerId]*.authorization-uri`                    | `providerDetails.authorizationUri`                       |
+| `spring.security.oauth2.client.provider.*[providerId]*.token-uri`                            | `providerDetails.tokenUri`                               |
+| `spring.security.oauth2.client.provider.*[providerId]*.jwk-set-uri`                          | `providerDetails.jwkSetUri`                              |
+| `spring.security.oauth2.client.provider.*[providerId]*.issuer-uri`                           | `providerDetails.issuerUri`                              |
+| `spring.security.oauth2.client.provider.*[providerId]*.user-info-uri`                        | `providerDetails.userInfoEndpoint.uri`                   |
+| `spring.security.oauth2.client.provider.*[providerId]*.user-info-authentication-method`      | `providerDetails.userInfoEndpoint.authenticationMethod`  |
+| `spring.security.oauth2.client.provider.*[providerId]*.user-name-attribute`                  | `providerDetails.userInfoEndpoint.userNameAttributeName` |
+
+### CommonOAuth2Provider
+
+`CommonOAuth2Provider`预定义 `Google`、`GitHub`、`Facebook`、 `Okta`的默认配置。
+
+## Configuring Custom Provider Properties
+
+```yaml
+spring:
+ security:
+   oauth2:
+     client:
+       registration:
+         okta:
+           client-id: okta-client-id
+           client-secret: okta-client-secret
+       provider:
+         okta:
+           authorization-uri: https://your-subdomain.oktapreview.com/oauth2/v1/authorize
+           token-uri: https://your-subdomain.oktapreview.com/oauth2/v1/token
+           user-info-uri: https://your-subdomain.oktapreview.com/oauth2/v1/userinfo
+           user-name-attribute: sub
+           jwk-set-uri: https://your-subdomain.oktapreview.com/oauth2/v1/keys
+```
+
+### Overriding Spring Boot 2.x Auto-configuration
+
+如果使用`CommonOAuth2Provider`，需要配置`ClientRegistrationRepository`，`httpSecurity.oauth2Login()`。
+
+```java
+@Configuration
+public class OAuth2LoginConfig {
+
+	@EnableWebSecurity
+	public static class OAuth2LoginSecurityConfig extends WebSecurityConfigurerAdapter {
+
+		@Override
+		protected void configure(HttpSecurity http) throws Exception {
+			http
+				.authorizeHttpRequests(authorize -> authorize
+					.anyRequest().authenticated()
+				)
+				.oauth2Login(withDefaults());
+		}
+	}
+
+	@Bean
+	public ClientRegistrationRepository clientRegistrationRepository() {
+		return new InMemoryClientRegistrationRepository(this.googleClientRegistration());
+	}
+
+	private ClientRegistration googleClientRegistration() {
+		return ClientRegistration.withRegistrationId("google")
+			.clientId("google-client-id")
+			.clientSecret("google-client-secret")
+			.clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
+			.authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
+			.redirectUri("{baseUrl}/login/oauth2/code/{registrationId}")
+			.scope("openid", "profile", "email", "address", "phone")
+			.authorizationUri("https://accounts.google.com/o/oauth2/v2/auth")
+			.tokenUri("https://www.googleapis.com/oauth2/v4/token")
+			.userInfoUri("https://www.googleapis.com/oauth2/v3/userinfo")
+			.userNameAttributeName(IdTokenClaimNames.SUB)
+			.jwkSetUri("https://www.googleapis.com/oauth2/v3/certs")
+			.clientName("Google")
+			.build();
+	}
+}
+```
+
+如果无法使用`CommonOAuth2Provider`，配置:
+
+```java
+@Configuration
+public class OAuth2LoginConfig {
+
+	@EnableWebSecurity
+	public static class OAuth2LoginSecurityConfig extends WebSecurityConfigurerAdapter {
+
+		@Override
+		protected void configure(HttpSecurity http) throws Exception {
+			http
+				.authorizeHttpRequests(authorize -> authorize
+					.anyRequest().authenticated()
+				)
+				.oauth2Login(withDefaults());
+		}
+	}
+
+	@Bean
+	public ClientRegistrationRepository clientRegistrationRepository() {
+		return new InMemoryClientRegistrationRepository(this.googleClientRegistration());
+	}
+
+	@Bean
+	public OAuth2AuthorizedClientService authorizedClientService(
+			ClientRegistrationRepository clientRegistrationRepository) {
+		return new InMemoryOAuth2AuthorizedClientService(clientRegistrationRepository);
+	}
+
+	@Bean
+	public OAuth2AuthorizedClientRepository authorizedClientRepository(
+			OAuth2AuthorizedClientService authorizedClientService) {
+		return new AuthenticatedPrincipalOAuth2AuthorizedClientRepository(authorizedClientService);
+	}
+
+	private ClientRegistration googleClientRegistration() {
+		return CommonOAuth2Provider.GOOGLE.getBuilder("google")
+			.clientId("google-client-id")
+			.clientSecret("google-client-secret")
+			.build();
+	}
+}
+```
+
+## Advanced Configuration
+
+`HttpSecurity.oauth2Login()`提供一些自定义配置，例如：
+
+```java
+@EnableWebSecurity
+public class OAuth2LoginSecurityConfig extends WebSecurityConfigurerAdapter {
+
+	@Override
+	protected void configure(HttpSecurity http) throws Exception {
+		http
+			.oauth2Login(oauth2 -> oauth2
+			    .clientRegistrationRepository(this.clientRegistrationRepository())
+			    .authorizedClientRepository(this.authorizedClientRepository())
+			    .authorizedClientService(this.authorizedClientService())
+			    .loginPage("/login")
+			    .authorizationEndpoint(authorization -> authorization
+			        .baseUri(this.authorizationRequestBaseUri())
+			        .authorizationRequestRepository(this.authorizationRequestRepository())
+			        .authorizationRequestResolver(this.authorizationRequestResolver())
+			    )
+			    .redirectionEndpoint(redirection -> redirection
+			        .baseUri(this.authorizationResponseBaseUri())
+			    )
+			    .tokenEndpoint(token -> token
+			        .accessTokenResponseClient(this.accessTokenResponseClient())
+			    )
+			    .userInfoEndpoint(userInfo -> userInfo
+			        .userAuthoritiesMapper(this.userAuthoritiesMapper())
+			        .userService(this.oauth2UserService())
+			        .oidcUserService(this.oidcUserService())
+			    )
+			);
+	}
+}
+```
+
 # 客户端
 
 使用`HttpSecurity.oauth2Client()`进行配置`Client`。
@@ -658,209 +861,6 @@ spring:
 ### JWT Bearer
 
 `DefaultJwtBearerTokenResponseClient`是`JWT Bearer`模式下 `OAuth2AccessTokenResponseClient` 的默认实现。
-
-# Login
-
-举例Google:
-
-1. 首先登陆`Google API Console`，获取` OAuth 2.0 credentials`,即`Client ID`和` Client Secret`。
-2. 设置登陆重定向地址为`http://localhost:8080/login/oauth2/code/google`，默认`URI Template`为`{baseUrl}/login/oauth2/code/{registrationId}`.
-3. 设置`application.yml`：
-
-```yaml
-spring:
- security:
-   oauth2:
-     client:
-       registration:
-         google:
-           client-id: google-client-id
-           client-secret: google-client-secret
-```
-
-## Login授权流程
-
-1. 当`FilterSecurityInterceptor`鉴权失败时，由`ExceptionTranslationFilter`使用`AuthenticationEntryPoint`重定向到`/oauth2/authorization/{registrationId}`。
-2. 当`requet`可以匹配到`DEFAULT_AUTHORIZATION_REQUEST_BASE_URI = "/oauth2/authorization/{registrationId}"`时，`OAuth2AuthorizationRequestRedirectFilter`会根据`registrationId`获得对应的`ClientRegistration`，然后构造出`OAuth2AuthorizationRequest`重定向到`authorizationUri`。
-3. 填写用户名密码，认证通过`Authorization Server`回调备案地址(如上面例子中`http://localhost:8080/login/oauth2/code/google`)并携带`code`
-
-参数，**备案地址需要匹配`AbstractAuthenticationProcessingFilter`中`requiresAuthenticationRequestMatcher`，可以通过`defaultFilterProcessesUrl`修改，默认值为`DEFAULT_FILTER_PROCESSES_URI = "/login/oauth2/code/*"`。**
-
-4. 由`OAuth2LoginAuthenticationFilter`拦截到`http://localhost:8080/login/oauth2/code/google`开始`POST`调用`tokenUri`并携带上一步得到的`code`参数，获取到`access_token`后重定向回最开始用户想访问的`URL`并设置`cookie`。
-5. 然后带着`cookie`访问。
-6.
-
-### Spring Boot 2.x Property Mappings
-
-
-| Spring Boot 2.x                                                                              | ClientRegistration                                       |
-| :--------------------------------------------------------------------------------------------- | :--------------------------------------------------------- |
-| `spring.security.oauth2.client.registration.*[registrationId]*`                              | `registrationId`                                         |
-| `spring.security.oauth2.client.registration.*[registrationId]*.client-id`                    | `clientId`                                               |
-| `spring.security.oauth2.client.registration.*[registrationId]*.client-secret`                | `clientSecret`                                           |
-| `spring.security.oauth2.client.registration.*[registrationId]*.client-authentication-method` | `clientAuthenticationMethod`                             |
-| `spring.security.oauth2.client.registration.*[registrationId]*.authorization-grant-type`     | `authorizationGrantType`                                 |
-| `spring.security.oauth2.client.registration.*[registrationId]*.redirect-uri`                 | `redirectUri`                                            |
-| `spring.security.oauth2.client.registration.*[registrationId]*.scope`                        | `scopes`                                                 |
-| `spring.security.oauth2.client.registration.*[registrationId]*.client-name`                  | `clientName`                                             |
-| `spring.security.oauth2.client.provider.*[providerId]*.authorization-uri`                    | `providerDetails.authorizationUri`                       |
-| `spring.security.oauth2.client.provider.*[providerId]*.token-uri`                            | `providerDetails.tokenUri`                               |
-| `spring.security.oauth2.client.provider.*[providerId]*.jwk-set-uri`                          | `providerDetails.jwkSetUri`                              |
-| `spring.security.oauth2.client.provider.*[providerId]*.issuer-uri`                           | `providerDetails.issuerUri`                              |
-| `spring.security.oauth2.client.provider.*[providerId]*.user-info-uri`                        | `providerDetails.userInfoEndpoint.uri`                   |
-| `spring.security.oauth2.client.provider.*[providerId]*.user-info-authentication-method`      | `providerDetails.userInfoEndpoint.authenticationMethod`  |
-| `spring.security.oauth2.client.provider.*[providerId]*.user-name-attribute`                  | `providerDetails.userInfoEndpoint.userNameAttributeName` |
-
-### CommonOAuth2Provider
-
-`CommonOAuth2Provider`预定义 `Google`、`GitHub`、`Facebook`、 `Okta`的默认配置。
-
-## Configuring Custom Provider Properties
-
-```yaml
-spring:
- security:
-   oauth2:
-     client:
-       registration:
-         okta:
-           client-id: okta-client-id
-           client-secret: okta-client-secret
-       provider:
-         okta:
-           authorization-uri: https://your-subdomain.oktapreview.com/oauth2/v1/authorize
-           token-uri: https://your-subdomain.oktapreview.com/oauth2/v1/token
-           user-info-uri: https://your-subdomain.oktapreview.com/oauth2/v1/userinfo
-           user-name-attribute: sub
-           jwk-set-uri: https://your-subdomain.oktapreview.com/oauth2/v1/keys
-```
-
-### Overriding Spring Boot 2.x Auto-configuration
-
-如果使用`CommonOAuth2Provider`，需要配置`ClientRegistrationRepository`，`httpSecurity.oauth2Login()`。
-
-```java
-@Configuration
-public class OAuth2LoginConfig {
-
-	@EnableWebSecurity
-	public static class OAuth2LoginSecurityConfig extends WebSecurityConfigurerAdapter {
-
-		@Override
-		protected void configure(HttpSecurity http) throws Exception {
-			http
-				.authorizeHttpRequests(authorize -> authorize
-					.anyRequest().authenticated()
-				)
-				.oauth2Login(withDefaults());
-		}
-	}
-
-	@Bean
-	public ClientRegistrationRepository clientRegistrationRepository() {
-		return new InMemoryClientRegistrationRepository(this.googleClientRegistration());
-	}
-
-	private ClientRegistration googleClientRegistration() {
-		return ClientRegistration.withRegistrationId("google")
-			.clientId("google-client-id")
-			.clientSecret("google-client-secret")
-			.clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
-			.authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
-			.redirectUri("{baseUrl}/login/oauth2/code/{registrationId}")
-			.scope("openid", "profile", "email", "address", "phone")
-			.authorizationUri("https://accounts.google.com/o/oauth2/v2/auth")
-			.tokenUri("https://www.googleapis.com/oauth2/v4/token")
-			.userInfoUri("https://www.googleapis.com/oauth2/v3/userinfo")
-			.userNameAttributeName(IdTokenClaimNames.SUB)
-			.jwkSetUri("https://www.googleapis.com/oauth2/v3/certs")
-			.clientName("Google")
-			.build();
-	}
-}
-```
-
-如果无法使用`CommonOAuth2Provider`，配置:
-
-```java
-@Configuration
-public class OAuth2LoginConfig {
-
-	@EnableWebSecurity
-	public static class OAuth2LoginSecurityConfig extends WebSecurityConfigurerAdapter {
-
-		@Override
-		protected void configure(HttpSecurity http) throws Exception {
-			http
-				.authorizeHttpRequests(authorize -> authorize
-					.anyRequest().authenticated()
-				)
-				.oauth2Login(withDefaults());
-		}
-	}
-
-	@Bean
-	public ClientRegistrationRepository clientRegistrationRepository() {
-		return new InMemoryClientRegistrationRepository(this.googleClientRegistration());
-	}
-
-	@Bean
-	public OAuth2AuthorizedClientService authorizedClientService(
-			ClientRegistrationRepository clientRegistrationRepository) {
-		return new InMemoryOAuth2AuthorizedClientService(clientRegistrationRepository);
-	}
-
-	@Bean
-	public OAuth2AuthorizedClientRepository authorizedClientRepository(
-			OAuth2AuthorizedClientService authorizedClientService) {
-		return new AuthenticatedPrincipalOAuth2AuthorizedClientRepository(authorizedClientService);
-	}
-
-	private ClientRegistration googleClientRegistration() {
-		return CommonOAuth2Provider.GOOGLE.getBuilder("google")
-			.clientId("google-client-id")
-			.clientSecret("google-client-secret")
-			.build();
-	}
-}
-```
-
-## Advanced Configuration
-
-`HttpSecurity.oauth2Login()`提供一些自定义配置，例如：
-
-```java
-@EnableWebSecurity
-public class OAuth2LoginSecurityConfig extends WebSecurityConfigurerAdapter {
-
-	@Override
-	protected void configure(HttpSecurity http) throws Exception {
-		http
-			.oauth2Login(oauth2 -> oauth2
-			    .clientRegistrationRepository(this.clientRegistrationRepository())
-			    .authorizedClientRepository(this.authorizedClientRepository())
-			    .authorizedClientService(this.authorizedClientService())
-			    .loginPage("/login")
-			    .authorizationEndpoint(authorization -> authorization
-			        .baseUri(this.authorizationRequestBaseUri())
-			        .authorizationRequestRepository(this.authorizationRequestRepository())
-			        .authorizationRequestResolver(this.authorizationRequestResolver())
-			    )
-			    .redirectionEndpoint(redirection -> redirection
-			        .baseUri(this.authorizationResponseBaseUri())
-			    )
-			    .tokenEndpoint(token -> token
-			        .accessTokenResponseClient(this.accessTokenResponseClient())
-			    )
-			    .userInfoEndpoint(userInfo -> userInfo
-			        .userAuthoritiesMapper(this.userAuthoritiesMapper())
-			        .userService(this.oauth2UserService())
-			        .oidcUserService(this.oidcUserService())
-			    )
-			);
-	}
-}
-```
 
 # RBAC
 

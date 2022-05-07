@@ -814,12 +814,9 @@ public class OAuth2LoginAuthenticationToken extends AbstractAuthenticationToken 
 1. 当 FilterSecurityInterceptor 鉴权失败时，由 ExceptionTranslationFilter 使用 LoginUrlAuthenticationEntryPoint  重定向到 loginFormUrl 默认为 /login,可以通过 `http.oauth2Login(httpSecurityOAuth2LoginConfigurer -> httpSecurityOAuth2LoginConfigurer.loginPage("xxxx"))` 或者 `http.formLogin(httpSecurityFormLoginConfigurer -> httpSecurityFormLoginConfigurer.loginPage("/2"))`更改。
 2. 用户点击 google 登陆，发送请求`/oauth2/authorization/{registrationId}`。
 3. 当 requet 可以匹配到`DEFAULT_AUTHORIZATION_REQUEST_BASE_URI = "/oauth2/authorization/{registrationId}"`时， OAuth2AuthorizationRequestRedirectFilter 会根据 registrationId 获得对应的 ClientRegistration ，然后构造出 OAuth2AuthorizationRequest 重定向到 authorizationUri 。
-4. 填写用户名密码，认证通过`Authorization Server`回调备案地址(如上面例子中`http://localhost:8080/login/oauth2/code/google`)并携带`code`
-
-参数，**备案地址需要匹配 AbstractAuthenticationProcessingFilter 中`requiresAuthenticationRequestMatcher`，可以通过`defaultFilterProcessesUrl`修改，默认值为`DEFAULT_FILTER_PROCESSES_URI = "/login/oauth2/code/*"`。**
-
-4. 由`OAuth2LoginAuthenticationFilter`拦截到`http://localhost:8080/login/oauth2/code/google`开始`POST`调用`tokenUri`并携带上一步得到的`code`参数，获取到`access_token`后重定向回最开始用户想访问的`URL`并设置`cookie`。
-5. 然后带着`cookie`访问。
+4. 填写用户名密码，认证通过`Authorization Server`回调备案地址(如上面例子中`http://localhost:8080/login/oauth2/code/google`)并携带`code`参数，**备案地址需要匹配 AbstractAuthenticationProcessingFilter 中`requiresAuthenticationRequestMatcher`，可以通过`defaultFilterProcessesUrl`修改，默认值为`DEFAULT_FILTER_PROCESSES_URI = "/login/oauth2/code/*"`。**
+5. 由`OAuth2LoginAuthenticationFilter`拦截到`http://localhost:8080/login/oauth2/code/google`开始`POST`调用`tokenUri`并携带上一步得到的`code`参数，获取到`access_token`后重定向回最开始用户想访问的`URL`并设置`cookie`。
+6. 然后带着`cookie`访问。
 
 ## ClientRegistration 属性配置
 

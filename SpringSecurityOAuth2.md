@@ -731,8 +731,8 @@ public class OAuth2AuthorizationRequestRedirectFilter extends OncePerRequestFilt
 
 负责完成 OAuth2 的第一步。
 
-1. 负责拦截 authorizationRequestBaseUri(默认为 OAuth2AuthorizationRequestRedirectFilter.DEFAULT_AUTHORIZATION_REQUEST_BASE_URI,即 /oauth2/authorization) 前缀的请求,所以当使用第三方登陆按钮关联的连接应该是 /oauth2/authorization/{registrationId}
-2. 使用 OAuth2AuthorizationRequestResolver(默认为 DefaultOAuth2AuthorizationRequestResolver) 从 request 中按照 /oauth2/authorization/{registrationId} 解析出 registrationId，再通过 registrationId 从  ClientRegistrationRepository 获取 ClientRegistration，最后使用 ClientRegistration 构建 OAuth2AuthorizationRequest，OAuth2AuthorizationRequest 包含重定向地址，例如：
+1. 负责拦截 authorizationRequestBaseUri(默认为 OAuth2AuthorizationRequestRedirectFilter.DEFAULT_AUTHORIZATION_REQUEST_BASE_URI,即 `/oauth2/authorization`) 前缀的请求,所以当使用第三方登陆按钮关联的连接应该是 /oauth2/authorization/{registrationId}
+2. 使用 OAuth2AuthorizationRequestResolver(默认为 DefaultOAuth2AuthorizationRequestResolver) 从 request 中按照 `/oauth2/authorization/{registrationId}` 解析出 registrationId，再通过 registrationId 从  ClientRegistrationRepository 获取 ClientRegistration，最后使用 ClientRegistration 构建 OAuth2AuthorizationRequest，OAuth2AuthorizationRequest 包含重定向地址，例如：
 
 ```http
 https://accounts.google.com/o/oauth2/v2/auth?response_type=code&client_id=137558705174-hgc0dv0rsd2mdu68c95jq98oialasv32.apps.googleusercontent.com&scope=openid%20profile%20email&state=nwFMHMpyu-4K5l6I4oHk5py7HGlmnfidi-s4PcPeWVk%3D&redirect_uri=http://localhost:30011/login/oauth2/code/google&nonce=OZ5cbAKOiOScnzEKb7km3od3rTrGBTCnCG7eIaZjpFI
@@ -742,7 +742,7 @@ https://accounts.google.com/o/oauth2/v2/auth?response_type=code&client_id=137558
 3. OAuth2AuthorizationRequest 包含一个 32 位的随机state值， 将 OAuth2AuthorizationRequest 缓存在 HttpSessionOAuth2AuthorizationRequestRepository的map中，key 为 state，value 为 OAuth2AuthorizationRequest，state 会发送给 认证服务器，认证服务器认证完成之后会发送回来。
 4. 使用 DefaultRedirectStrategy 将 OAuth2AuthorizationRequest 中重定向地址设置到 HttpServletResponse 中，然后返回给浏览器，将浏览器重定向到认证中心登陆页面。
 
-**authorizationRequestBaseUri 通过 http.oauth2Login(loginConfigurer -> loginConfigurer.authorizationEndpoint(authorizationEndpointConfig -> authorizationEndpointConfig.baseUri("xxxxx"))); 设置授权端点。**
+**authorizationRequestBaseUri 通过 `http.oauth2Login(loginConfigurer -> loginConfigurer.authorizationEndpoint(authorizationEndpointConfig -> authorizationEndpointConfig.baseUri("xxxxx")))` 设置授权端点。**
 
 ### OAuth2AuthorizationRequestRedirectFilter
 

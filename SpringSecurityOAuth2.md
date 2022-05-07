@@ -337,13 +337,67 @@ HMACSHA256(base64UrlEncode(header) + "." +base64UrlEncode(payload),secret)
 
 最后签名以后，把`header`、`payload`、`signature` 三个部分拼成一个字符串，每个部分之间用"点"（.）分隔，就构成整个令牌。
 
+# 认证中心
+
+## 使用
+
+```xml
+<!-- 需要同时引入这两个包 -->
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-security</artifactId>
+</dependency>
+
+<dependency>
+    <groupId>org.springframework.security</groupId>
+    <artifactId>spring-security-oauth2-authorization-server</artifactId>
+    <version>${spring-security-oauth2-authorization-server.version}</version>
+</dependency>
+```
+
+目前还没有 authorization-server 的自动配置，需要手动配置。
+
 # 登录
 
-举例Google:
+## 使用Google举例
 
 1. 首先登陆`Google API Console`，获取` OAuth 2.0 credentials`,即`Client ID`和` Client Secret`。
 2. 设置登陆重定向地址为`http://localhost:8080/login/oauth2/code/google`，默认`URI Template`为`{baseUrl}/login/oauth2/code/{registrationId}`.
-3. 设置`application.yml`：
+3. 引入依赖。
+
+```xml
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-security</artifactId>
+</dependency>
+
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-oauth2-client</artifactId>
+</dependency>
+```
+
+4. 配置 Security。
+
+```java
+@Configuration
+public class Oauth2LoginConfig extends WebSecurityConfigurerAdapter {
+
+    @Override
+    protected void configure(HttpSecurity http) throws Exception {
+        http
+                .sessionManagement(sessionManagement -> sessionManagement.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .csrf(AbstractHttpConfigurer::disable)
+                .antMatcher("/**").authorizeRequests()
+                .antMatchers("/index.html").permitAll()
+                .anyRequest().authenticated()
+                .and()
+                .oauth2Login();
+    }
+}
+```
+
+5. 设置`application.yml`：
 
 ```yaml
 spring:
@@ -356,19 +410,418 @@ spring:
            client-secret: google-client-secret
 ```
 
+该配置会注入到 OAuth2ClientProperties：
+
+```java
+@ConfigurationProperties(prefix = "spring.security.oauth2.client")
+public class OAuth2ClientProperties implements InitializingBean {
+
+	private final Map<String, Provider> provider = new HashMap<>();
+
+	private final Map<String, Registration> registration = new HashMap<>();
+```
+
+## 核心接口
+
+### ClientRegistration
+
+`ClientRegistration`表示注册在`OAuth 2.0`或`OpenID Connect 1.0`服务器的客户端信息 。
+
+```java
+public final class ClientRegistration {
+	private String registrationId;
+	private String clientId;
+	private String clientSecret;
+	private ClientAuthenticationMethod clientAuthenticationMethod;
+	private AuthorizationGrantType authorizationGrantType;
+	private String redirectUriTemplate;
+	private Set<String> scopes;
+	private ProviderDetails providerDetails;
+	private String clientName;
+
+	public class ProviderDetails {
+		private String authorizationUri;
+		private String tokenUri;
+		private UserInfoEndpoint userInfoEndpoint;
+		private String jwkSetUri;
+		private String issuerUri;
+        private Map<String, Object> configurationMetadata;
+
+		public class UserInfoEndpoint {
+			private String uri;
+            private AuthenticationMethod authenticationMethod;
+			private String userNameAttributeName;
+
+		}
+	}
+}
+```
+
+1. `registrationId`： `ClientRegistration` 的唯一`ID`。
+2. `clientId`：该`Client`在`OAuth 2.0`或`OpenID Connect 1.0`申请备案的`ID`,比如在`Google API Console`申请的`ID`。
+3. `clientSecret`：`clientId`对应的密码。
+4. `clientAuthenticationMethod`：使用`Provider`对客户端进行身份验证的方法。支持`basic`、`post`、none。
+5. `authorizationGrantType`：授权类型。支持`authorization_code`, `implicit`，`refresh_token`，`client_credentials`，`password`。
+6. `redirectUriTemplate`：用户 在`Authorization Server`完成认证授权后被重定向的地址。默认的重定向URI模板是`{baseUrl}/login/oauth2/code/{registrationId}`。
+7. `scopes`：授权请求流程中客户端请求的范围。
+8. `clientName`：`Client`名称。
+9. `authorizationUri`：`Authorization Server`的授权地址（`Authorization Endpoint`）。
+10. `tokenUri`：`Authorization Server`的令牌地址（`Token Endpoint`）。
+11. `jwkSetUri`：从`Authorization Server`检索`JWK`的地址，从而获得`JWS`和`UserInfo`。
+12. `(userInfoEndpoint)uri`：用来获取已认证用户的属性。
+13. `(userInfoEndpoint)authenticationMethod`：将`access token `发到`UserInfo Endpoint`使用的方法，支持`header`、`form`、`query`。
+14. `userNameAttributeName`：`UserInfo Response`中返回的用户`ID`的`key`，例如`sub`、`id`。
+
+`ClientRegistration`除了手动配置外还可以使用`Authorization Server`的`Metadata endpoint`进行自动配置。
+
+例如:
+
+```java
+ClientRegistration clientRegistration =
+    ClientRegistrations.fromIssuerLocation("https://idp.example.com/issuer").build();
+```
+
+#### CommonOAuth2Provider
+
+`CommonOAuth2Provider`预定义 `Google`、`GitHub`、`Facebook`、 `Okta`的默认配置。
+
+* 当配置  OAuth2ClientProperties 后，引入 spring-boot-starter-oauth2-client 会进行自动装配。
+* OAuth2ClientRegistrationRepositoryConfiguration 利用 OAuth2ClientPropertiesRegistrationAdapter 通过 CommonOAuth2Provider 获取对应的配置。
+* 然后保存在 InMemoryClientRegistrationRepository(继承ClientRegistrationRepository)。
+
+### ClientRegistrationRepository
+
+`ClientRegistrationRepository`是`ClientRegistration`储存库，默认是`InMemoryClientRegistrationRepository`，并且已经注册为`Bean`。
+
+`spring.security.oauth2.client.registration.[registrationId]`下的属性将会自动绑定到`ClientRegistration`。
+
+### OAuth2AuthorizedClient
+
+描述一个用户的已经授权的客户端，可以理解为授权用户，包含用户的principalName、 accessToken、refreshToken、clientRegistration。
+
+`OAuth2AuthorizedClient`是` an Authorized Client`。当用户给客户端授权时，客户端被认为已经被授权。
+
+`OAuth2AuthorizedClient`将` OAuth2AccessToken`(或`OAuth2RefreshToken`)与`ClientRegistration`、用户相关联。
+
+```java
+public class OAuth2AuthorizedClient {
+	private static final long serialVersionUID = SpringSecurityCoreVersion.SERIAL_VERSION_UID;
+	private final ClientRegistration clientRegistration;
+	private final String principalName;
+	private final OAuth2AccessToken accessToken;
+	private final OAuth2RefreshToken refreshToken;
+}
+```
+
+clientRegistrationId、principalName 可以唯一确定一个用户 OAuth2AuthorizedClient。
+
+### OAuth2AuthorizedClientRepository / OAuth2AuthorizedClientService
+
+用来储存已经授权的用户，即OAuth2AuthorizedClient。
+
+`OAuth2AuthorizedClientService` 默认使用 `InMemoryOAuth2AuthorizedClientService`，也可以使用 `JdbcOAuth2AuthorizedClientService` ，需要创建表：
+
+```sql
+CREATE TABLE oauth2_authorized_client (
+  client_registration_id varchar(100) NOT NULL,
+  principal_name varchar(200) NOT NULL,
+  access_token_type varchar(100) NOT NULL,
+  access_token_value blob NOT NULL,
+  access_token_issued_at timestamp NOT NULL,
+  access_token_expires_at timestamp NOT NULL,
+  access_token_scopes varchar(1000) DEFAULT NULL,
+  refresh_token_value blob DEFAULT NULL,
+  refresh_token_issued_at timestamp DEFAULT NULL,
+  created_at timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  PRIMARY KEY (client_registration_id, principal_name)
+);
+```
+
+`OAuth2AuthorizedClientRepository` 默认使用 `AuthenticatedPrincipalOAuth2AuthorizedClientRepository`。
+`AuthenticatedPrincipalOAuth2AuthorizedClientRepository` 包含 `OAuth2AuthorizedClientService`，除此之外还有一个 `HttpSessionOAuth2AuthorizedClientRepository` ，用来保存匿名用户。
+
+`OAuth2AuthorizedClientRepository`用来保存 `OAuth2AuthorizedClient`，本质上还是调用`OAuth2AuthorizedClientService`。
+
+```java
+@Configuration(proxyBeanMethods = false)
+@ConditionalOnBean(ClientRegistrationRepository.class)
+class OAuth2WebSecurityConfiguration {
+
+	@Bean
+	@ConditionalOnMissingBean
+	OAuth2AuthorizedClientService authorizedClientService(ClientRegistrationRepository clientRegistrationRepository) {
+		return new InMemoryOAuth2AuthorizedClientService(clientRegistrationRepository);
+	}
+
+	@Bean
+	@ConditionalOnMissingBean
+	OAuth2AuthorizedClientRepository authorizedClientRepository(OAuth2AuthorizedClientService authorizedClientService) {
+		return new AuthenticatedPrincipalOAuth2AuthorizedClientRepository(authorizedClientService);
+	}
+}
+```
+
+`OAuth2AuthorizedClientService`在程序中调用示例:
+
+```java
+@Controller
+public class OAuth2ClientController {
+
+    @Autowired
+    private OAuth2AuthorizedClientService authorizedClientService;
+
+    @GetMapping("/")
+    public String index(Authentication authentication) {
+        OAuth2AuthorizedClient authorizedClient =
+            this.authorizedClientService.loadAuthorizedClient("okta", authentication.getName());
+
+        OAuth2AccessToken accessToken = authorizedClient.getAccessToken();
+
+        ...
+
+        return "index";
+    }
+}
+```
+
+### OAuth2AuthorizedClientManager / OAuth2AuthorizedClientProvider
+
+OAuth2AuthorizedClientProvider 负责使用 OAuth2AuthorizationContext 请求认证服务器，并且对认证成功的用户创建 OAuth2AuthorizedClient 。
+OAuth2AuthorizedClientProvider 有多种实现：AuthorizationCodeOAuth2AuthorizedClientProvider 、 ClientCredentialsOAuth2AuthorizedClientProvider 、PasswordOAuth2AuthorizedClientProvider、RefreshTokenOAuth2AuthorizedClientProvider 对应 OAuth2 不同的认证模式。
+除此之外还有 DelegatingOAuth2AuthorizedClientProvider，它可以完成对多种 OAuth2AuthorizedClientProvider 的代理。
+
+`OAuth2AuthorizedClientProvider`实现` OAuth 2.0 Client`，有不同的种类，例如`authorization_code`, `client_credentials`等。可以使用`OAuth2AuthorizedClientProviderBuilder`来构建`DelegatingOAuth2AuthorizedClientProvider`。
+
+例如：
+
+```java
+@Bean
+public OAuth2AuthorizedClientManager authorizedClientManager(
+		ClientRegistrationRepository clientRegistrationRepository,
+		OAuth2AuthorizedClientRepository authorizedClientRepository) {
+
+	OAuth2AuthorizedClientProvider authorizedClientProvider =
+			OAuth2AuthorizedClientProviderBuilder.builder()
+					.authorizationCode()
+					.refreshToken()
+					.clientCredentials()
+					.password()
+					.build();
+
+	DefaultOAuth2AuthorizedClientManager authorizedClientManager =
+			new DefaultOAuth2AuthorizedClientManager(
+					clientRegistrationRepository, authorizedClientRepository);
+	authorizedClientManager.setAuthorizedClientProvider(authorizedClientProvider);
+
+	return authorizedClientManager;
+}
+```
+
+`OAuth2AuthorizedClientManager`：`DefaultOAuth2AuthorizedClientManager`是它的默认实现，负责利用 OAuth2AuthorizeRequest 构建 OAuth2AuthorizationContext，并使用`DelegatingOAuth2AuthorizedClientProvider` 完成认证，并将 OAuth2AuthorizedClient 保存在 OAuth2AuthorizedClientService 中 。
+
+主要功能包括：
+
+- 使用`OAuth2AuthorizedClientProvider`授权客户端。
+- 使用`OAuth2AuthorizedClientService`持久化 `OAuth2AuthorizedClient`。
+- 授权成功后调用` OAuth2AuthorizationSuccessHandler`。
+- 授权失败后调用`OAuth2AuthorizationFailureHandler`。
+
+当授权成功后，`DefaultOAuth2AuthorizedClientManager `调用`OAuth2AuthorizationSuccessHandler`，`OAuth2AuthorizationSuccessHandler`使用`OAuth2AuthorizedClientRepository`保存`OAuth2AuthorizedClient`，当重新授权失败(例如`refresh token`失效)后，`RemoveAuthorizedClientOAuth2AuthorizationFailureHandler`会把`OAuth2AuthorizedClient`从`OAuth2AuthorizedClientRepository`删除。
+
+`DefaultOAuth2AuthorizedClientManager `另外还包含`Function<OAuth2AuthorizeRequest, Map<String, Object>>`类型的`contextAttributesMapper `，它负责将属性从`OAuth2AuthorizeRequest `映射到`OAuth2AuthorizationContext `。当使用`OAuth2AuthorizedClientProvider`时`OAuth2AuthorizationContext `会很有用，例如`PasswordOAuth2AuthorizedClientProvider`通过
+
+`OAuth2AuthorizationContext.getAttributes()`获取`username` 、`password` ：
+
+```java
+public OAuth2AuthorizedClientManager authorizedClientManager(
+		ClientRegistrationRepository clientRegistrationRepository,
+		OAuth2AuthorizedClientRepository authorizedClientRepository) {
+
+	OAuth2AuthorizedClientProvider authorizedClientProvider =
+			OAuth2AuthorizedClientProviderBuilder.builder()
+					.password()
+					.refreshToken()
+					.build();
+
+	DefaultOAuth2AuthorizedClientManager authorizedClientManager =
+			new DefaultOAuth2AuthorizedClientManager(
+					clientRegistrationRepository, authorizedClientRepository);
+	authorizedClientManager.setAuthorizedClientProvider(authorizedClientProvider);
+
+	// Assuming the `username` and `password` are supplied as `HttpServletRequest` parameters,
+	// map the `HttpServletRequest` parameters to `OAuth2AuthorizationContext.getAttributes()`
+	authorizedClientManager.setContextAttributesMapper(contextAttributesMapper());
+
+	return authorizedClientManager;
+}
+
+private Function<OAuth2AuthorizeRequest, Map<String, Object>> contextAttributesMapper() {
+	return authorizeRequest -> {
+		Map<String, Object> contextAttributes = Collections.emptyMap();
+		HttpServletRequest servletRequest = authorizeRequest.getAttribute(HttpServletRequest.class.getName());
+		String username = servletRequest.getParameter(OAuth2ParameterNames.USERNAME);
+		String password = servletRequest.getParameter(OAuth2ParameterNames.PASSWORD);
+		if (StringUtils.hasText(username) && StringUtils.hasText(password)) {
+			contextAttributes = new HashMap<>();
+
+			// `PasswordOAuth2AuthorizedClientProvider` requires both attributes
+			contextAttributes.put(OAuth2AuthorizationContext.USERNAME_ATTRIBUTE_NAME, username);
+			contextAttributes.put(OAuth2AuthorizationContext.PASSWORD_ATTRIBUTE_NAME, password);
+		}
+		return contextAttributes;
+	};
+}
+```
+
+`DefaultOAuth2AuthorizedClientManager `主要用于操作`web HttpServletRequest`，如果是`HttpServletRequest`之外，改用`AuthorizedClientServiceOAuth2AuthorizedClientManager`，例如，程序内部一般在后台运行，没有和用户交互，`Client`使用`client_credentials`方式访问：
+
+```java
+@Bean
+public OAuth2AuthorizedClientManager authorizedClientManager(
+		ClientRegistrationRepository clientRegistrationRepository,
+		OAuth2AuthorizedClientService authorizedClientService) {
+
+	OAuth2AuthorizedClientProvider authorizedClientProvider =
+			OAuth2AuthorizedClientProviderBuilder.builder()
+					.clientCredentials()
+					.build();
+
+	AuthorizedClientServiceOAuth2AuthorizedClientManager authorizedClientManager =
+			new AuthorizedClientServiceOAuth2AuthorizedClientManager(
+					clientRegistrationRepository, authorizedClientService);
+	authorizedClientManager.setAuthorizedClientProvider(authorizedClientProvider);
+
+	return authorizedClientManager;
+}
+```
+
+DefaultOAuth2AuthorizedClientManager 用于 OAuth2AuthorizedClientArgumentResolver 处理 @RegisteredOAuth2AuthorizedClient 注解获取 OAuth2AuthorizedClient。
+
+## 启动
+
+1. 通过使用 http.oauth2Login 创建 OAuth2LoginConfigurer 并配置 http 。
+2. 自动装配。
+   * SpringSecurity 主流程。
+   * OAuth2ClientConfiguration：添加 OAuth2AuthorizedClientArgumentResolver 处理 @RegisteredOAuth2AuthorizedClient。
+   * OAuth2ClientAutoConfiguration：添加 InMemoryClientRegistrationRepository 、OAuth2AuthorizedClientService、OAuth2AuthorizedClientRepository。
+
+### OAuth2LoginConfigurer配置内容
+
+继承 AbstractAuthenticationFilterConfigurer<B, OAuth2LoginConfigurer<B>, OAuth2LoginAuthenticationFilter>, 表明 它负责创建 OAuth2LoginAuthenticationFilter、OAuth2AuthorizationRequestRedirectFilter ，最后会将它添加到过滤器链，OAuth2LoginAuthenticationFilter 使用 LoginUrlAuthenticationEntryPoint 作为 LoginUrlAuthenticationEntryPoint。
+
+可以通过 http.oauth2Login 配置 ClientRegistrationRepository、OAuth2AuthorizedClientRepository、OAuth2AuthorizedClientService(最后也是配置一个AuthenticatedPrincipalOAuth2AuthorizedClientRepository)。
+
+### OAuth2AuthorizationRequestRedirectFilter
+
+```java
+public class OAuth2AuthorizationRequestRedirectFilter extends OncePerRequestFilter {
+	/**
+	 * The default base {@code URI} used for authorization requests.
+	 */
+	public static final String DEFAULT_AUTHORIZATION_REQUEST_BASE_URI = "/oauth2/authorization";
+	private final ThrowableAnalyzer throwableAnalyzer = new DefaultThrowableAnalyzer();
+	private final RedirectStrategy authorizationRedirectStrategy = new DefaultRedirectStrategy();
+	private OAuth2AuthorizationRequestResolver authorizationRequestResolver;
+	private AuthorizationRequestRepository<OAuth2AuthorizationRequest> authorizationRequestRepository = new HttpSessionOAuth2AuthorizationRequestRepository();
+	private RequestCache requestCache = new HttpSessionRequestCache();
+}
+```
+
+主要功能：
+
+负责完成 OAuth2 的第一步。
+
+1. 负责拦截 authorizationRequestBaseUri(默认为 OAuth2AuthorizationRequestRedirectFilter.DEFAULT_AUTHORIZATION_REQUEST_BASE_URI,即 /oauth2/authorization) 前缀的请求,所以当使用第三方登陆按钮关联的连接应该是 /oauth2/authorization/{registrationId}
+2. 使用 OAuth2AuthorizationRequestResolver(默认为 DefaultOAuth2AuthorizationRequestResolver) 从 request 中按照 /oauth2/authorization/{registrationId} 解析出 registrationId，再通过 registrationId 从  ClientRegistrationRepository 获取 ClientRegistration，最后使用 ClientRegistration 构建 OAuth2AuthorizationRequest，OAuth2AuthorizationRequest 包含重定向地址，例如：
+
+```http
+https://accounts.google.com/o/oauth2/v2/auth?response_type=code&client_id=137558705174-hgc0dv0rsd2mdu68c95jq98oialasv32.apps.googleusercontent.com&scope=openid%20profile%20email&state=nwFMHMpyu-4K5l6I4oHk5py7HGlmnfidi-s4PcPeWVk%3D&redirect_uri=http://localhost:30011/login/oauth2/code/google&nonce=OZ5cbAKOiOScnzEKb7km3od3rTrGBTCnCG7eIaZjpFI
+```
+
+即授权码模式的第一步。
+3. OAuth2AuthorizationRequest 包含一个 32 位的随机state值， 将 OAuth2AuthorizationRequest 缓存在 HttpSessionOAuth2AuthorizationRequestRepository的map中，key 为 state，value 为 OAuth2AuthorizationRequest，state 会发送给 认证服务器，认证服务器认证完成之后会发送回来。
+4. 使用 DefaultRedirectStrategy 将 OAuth2AuthorizationRequest 中重定向地址设置到 HttpServletResponse 中，然后返回给浏览器，将浏览器重定向到认证中心登陆页面。
+
+**authorizationRequestBaseUri 通过 http.oauth2Login(loginConfigurer -> loginConfigurer.authorizationEndpoint(authorizationEndpointConfig -> authorizationEndpointConfig.baseUri("xxxxx"))); 设置授权端点。**
+
+### OAuth2AuthorizationRequestRedirectFilter
+
+```java
+public class OAuth2LoginAuthenticationFilter extends AbstractAuthenticationProcessingFilter {
+	/**
+	 * The default {@code URI} where this {@code Filter} processes authentication requests.
+	 */
+	public static final String DEFAULT_FILTER_PROCESSES_URI = "/login/oauth2/code/*";
+	private static final String AUTHORIZATION_REQUEST_NOT_FOUND_ERROR_CODE = "authorization_request_not_found";
+	private static final String CLIENT_REGISTRATION_NOT_FOUND_ERROR_CODE = "client_registration_not_found";
+	private ClientRegistrationRepository clientRegistrationRepository;
+	private OAuth2AuthorizedClientRepository authorizedClientRepository;
+	private AuthorizationRequestRepository<OAuth2AuthorizationRequest> authorizationRequestRepository = new HttpSessionOAuth2AuthorizationRequestRepository();
+}
+```
+
+主要功能：
+
+负责完成 OAuth2 的第二步。
+
+1. 负责拦截 filterProcessesUrl(默认为 OAuth2LoginAuthenticationFilter.DEFAULT_FILTER_PROCESSES_URI,即 `/login/oauth2/code/` ) 前缀的请求。
+
+   * 所以 认证服务器注册的回调地址应该为 http://localhost:8080/login/oauth2/code/google ，这样认证服务器认证完成之后会回调该地址，然后被 OAuth2LoginAuthenticationFilter 拦截。
+   * 可通过 `http..oauth2Login(httpSecurityOAuth2LoginConfigurer -> httpSecurityOAuth2LoginConfigurer.loginProcessingUrl("xxxxx"))` 修改。
+2. 获取认证服务器回调地址中的参数，即 state、code(AUTHORIZATION_CODE 即授权码)、scope等。
+3. 根据state从HttpSessionOAuth2AuthorizationRequestRepository 取 OAuth2AuthorizationRequest，这是在OAuth2AuthorizationRequestRedirectFilter 保存进去的。
+4. 使用 clientRegistration 、authorizationRequest、 authorizationResponse 生成 OAuth2LoginAuthenticationToken,这时还没有 acessToken 和 refreshToken。
+
+```java
+public class OAuth2LoginAuthenticationToken extends AbstractAuthenticationToken {
+	private OAuth2User principal;
+	private ClientRegistration clientRegistration;
+	private OAuth2AuthorizationExchange authorizationExchange;
+	private OAuth2AccessToken accessToken;
+	private OAuth2RefreshToken refreshToken;
+}
+```
+
+4. 使用 AuthenticationManager 对 OAuth2LoginAuthenticationToken 进行认证，有两个AuthenticationProvider 支持OAuth2LoginAuthenticationToken：
+
+* OAuth2LoginAuthenticationProvider 负责 scope 不包含 openid 的 request，即负责OAuth2的认证。
+
+  1. 重新构建 OAuth2AuthorizationCodeAuthenticationToken 将其委托给 OAuth2AuthorizationCodeAuthenticationProvider 认证，最后由 DefaultAuthorizationCodeTokenResponseClient 向 tokenUri 发送请求，获取 accessToken。
+  2. DefaultOAuth2UserService 使用 accessToken 向 userInfoUri 获取 DefaultOAuth2User。
+  3. 构建 OAuth2LoginAuthenticationToken。
+* OidcAuthorizationCodeAuthenticationProvider 负责 scope 包含 openid 的 request，即负责OCID的认证。
+
+  1. 使用 DefaultAuthorizationCodeTokenResponseClient 发送请求，获取 Respose，请求实例：
+
+  ```http
+  # Post 请求
+  https://www.googleapis.com/oauth2/v4/token
+  # 表单参数
+  grant_type -> authorization_code
+  code -> 4/0AX4XfWhfwu31rRMjyTpqxDn7SeI9CiZ8HbL_WK2E0Edj7Eqt5l2a1b5Co7_Dw5sO97Zk8Q(收钱码)
+  redirect_uri -> http://localhost:30011/login/oauth2/code/google
+  ```
+
+  2. 使用 JWT 解析Respose 中额外参数 id_token 构建 OidcIdToken。
+  3. OidcUserService 加载用户信息、权限信息，构建OidcUser。
+  4. 构建 OAuth2LoginAuthenticationToken。
+
+4. 使用  OAuth2AuthorizedClientRepository 保存 OAuth2LoginAuthenticationToken 和  OAuth2AuthorizedClient。
+5. 认证成功后 由 SavedRequestAwareAuthenticationSuccessHandler 重定向到最开始页面。
+
 ## Login授权流程
 
-1. 当`FilterSecurityInterceptor`鉴权失败时，由`ExceptionTranslationFilter`使用`AuthenticationEntryPoint`重定向到`/oauth2/authorization/{registrationId}`。
-2. 当`requet`可以匹配到`DEFAULT_AUTHORIZATION_REQUEST_BASE_URI = "/oauth2/authorization/{registrationId}"`时，`OAuth2AuthorizationRequestRedirectFilter`会根据`registrationId`获得对应的`ClientRegistration`，然后构造出`OAuth2AuthorizationRequest`重定向到`authorizationUri`。
-3. 填写用户名密码，认证通过`Authorization Server`回调备案地址(如上面例子中`http://localhost:8080/login/oauth2/code/google`)并携带`code`
+1. 当 FilterSecurityInterceptor 鉴权失败时，由 ExceptionTranslationFilter 使用 LoginUrlAuthenticationEntryPoint  重定向到 loginFormUrl 默认为 /login,可以通过 `http.oauth2Login(httpSecurityOAuth2LoginConfigurer -> httpSecurityOAuth2LoginConfigurer.loginPage("xxxx"))` 或者 `http.formLogin(httpSecurityFormLoginConfigurer -> httpSecurityFormLoginConfigurer.loginPage("/2"))`更改。
+2. 用户点击 google 登陆，发送请求`/oauth2/authorization/{registrationId}`。
+3. 当 requet 可以匹配到`DEFAULT_AUTHORIZATION_REQUEST_BASE_URI = "/oauth2/authorization/{registrationId}"`时， OAuth2AuthorizationRequestRedirectFilter 会根据 registrationId 获得对应的 ClientRegistration ，然后构造出 OAuth2AuthorizationRequest 重定向到 authorizationUri 。
+4. 填写用户名密码，认证通过`Authorization Server`回调备案地址(如上面例子中`http://localhost:8080/login/oauth2/code/google`)并携带`code`
 
-参数，**备案地址需要匹配`AbstractAuthenticationProcessingFilter`中`requiresAuthenticationRequestMatcher`，可以通过`defaultFilterProcessesUrl`修改，默认值为`DEFAULT_FILTER_PROCESSES_URI = "/login/oauth2/code/*"`。**
+参数，**备案地址需要匹配 AbstractAuthenticationProcessingFilter 中`requiresAuthenticationRequestMatcher`，可以通过`defaultFilterProcessesUrl`修改，默认值为`DEFAULT_FILTER_PROCESSES_URI = "/login/oauth2/code/*"`。**
 
 4. 由`OAuth2LoginAuthenticationFilter`拦截到`http://localhost:8080/login/oauth2/code/google`开始`POST`调用`tokenUri`并携带上一步得到的`code`参数，获取到`access_token`后重定向回最开始用户想访问的`URL`并设置`cookie`。
 5. 然后带着`cookie`访问。
-6.
 
-### Spring Boot 2.x Property Mappings
+## ClientRegistration 属性配置
 
 
 | Spring Boot 2.x                                                                              | ClientRegistration                                       |
@@ -389,11 +842,7 @@ spring:
 | `spring.security.oauth2.client.provider.*[providerId]*.user-info-authentication-method`      | `providerDetails.userInfoEndpoint.authenticationMethod`  |
 | `spring.security.oauth2.client.provider.*[providerId]*.user-name-attribute`                  | `providerDetails.userInfoEndpoint.userNameAttributeName` |
 
-### CommonOAuth2Provider
-
-`CommonOAuth2Provider`预定义 `Google`、`GitHub`、`Facebook`、 `Okta`的默认配置。
-
-## Configuring Custom Provider Properties
+## 自定义 ClientRegistration 实例
 
 ```yaml
 spring:
@@ -413,7 +862,7 @@ spring:
            jwk-set-uri: https://your-subdomain.oktapreview.com/oauth2/v1/keys
 ```
 
-### Overriding Spring Boot 2.x Auto-configuration
+## 覆盖自动装配
 
 如果使用`CommonOAuth2Provider`，需要配置`ClientRegistrationRepository`，`httpSecurity.oauth2Login()`。
 
@@ -503,7 +952,7 @@ public class OAuth2LoginConfig {
 }
 ```
 
-## Advanced Configuration
+## 高级配置
 
 `HttpSecurity.oauth2Login()`提供一些自定义配置，例如：
 
@@ -596,235 +1045,11 @@ public OAuth2AuthorizedClientManager authorizedClientManager(
 }
 ```
 
-## 核心接口
-
-### ClientRegistration
-
-`ClientRegistration`表示注册在`OAuth 2.0`或`OpenID Connect 1.0`服务器的客户端信息 。
-
-```java
-public final class ClientRegistration {
-	private String registrationId;
-	private String clientId;
-	private String clientSecret;
-	private ClientAuthenticationMethod clientAuthenticationMethod;
-	private AuthorizationGrantType authorizationGrantType;
-	private String redirectUriTemplate;
-	private Set<String> scopes;
-	private ProviderDetails providerDetails;
-	private String clientName;
-
-	public class ProviderDetails {
-		private String authorizationUri;
-		private String tokenUri;
-		private UserInfoEndpoint userInfoEndpoint;
-		private String jwkSetUri;
-		private String issuerUri;
-        private Map<String, Object> configurationMetadata;
-
-		public class UserInfoEndpoint {
-			private String uri;
-            private AuthenticationMethod authenticationMethod;
-			private String userNameAttributeName;
-
-		}
-	}
-}
-```
-
-1. `registrationId`： `ClientRegistration` 的唯一`ID`。
-2. `clientId`：该`Client`在`OAuth 2.0`或`OpenID Connect 1.0`申请备案的`ID`,比如在`Google API Console`申请的`ID`。
-3. `clientSecret`：`clientId`对应的密码。
-4. `clientAuthenticationMethod`：使用`Provider`对客户端进行身份验证的方法。支持`basic`、`post`、none。
-5. `authorizationGrantType`：授权类型。支持`authorization_code`, `implicit`，`refresh_token`，`client_credentials`，`password`。
-6. `redirectUriTemplate`：用户 在`Authorization Server`完成认证授权后被重定向的地址。默认的重定向URI模板是`{baseUrl}/login/oauth2/code/{registrationId}`。
-7. `scopes`：授权请求流程中客户端请求的范围。
-8. `clientName`：`Client`名称。
-9. `authorizationUri`：`Authorization Server`的授权地址（`Authorization Endpoint`）。
-10. `tokenUri`：`Authorization Server`的令牌地址（`Token Endpoint`）。
-11. `jwkSetUri`：从`Authorization Server`检索`JWK`的地址，从而获得`JWS`和`UserInfo`。
-12. `(userInfoEndpoint)uri`：用来获取已认证用户的属性。
-13. `(userInfoEndpoint)authenticationMethod`：将`access token `发到`UserInfo Endpoint`使用的方法，支持`header`、`form`、`query`。
-14. `userNameAttributeName`：`UserInfo Response`中返回的用户`ID`的`key`，例如`sub`、`id`。
-
-`ClientRegistration`除了手动配置外还可以使用`Authorization Server`的`Metadata endpoint`进行自动配置。
-
-例如:
-
-```java
-ClientRegistration clientRegistration =
-    ClientRegistrations.fromIssuerLocation("https://idp.example.com/issuer").build();
-```
-
-### ClientRegistrationRepository
-
-`ClientRegistrationRepository`是`ClientRegistration`储存库，默认是`InMemoryClientRegistrationRepository`，并且已经注册为`Bean`。
-
-`spring.security.oauth2.client.registration.[registrationId]`下的属性将会自动绑定到`ClientRegistration`。
-
-### OAuth2AuthorizedClient
-
-`OAuth2AuthorizedClient`是` an Authorized Client`。当用户给客户端授权时，客户端被认为已经被授权。
-
-`OAuth2AuthorizedClient`将` OAuth2AccessToken`(或`OAuth2RefreshToken`)与`ClientRegistration`、用户相关联。
-
-### OAuth2AuthorizedClientRepository / OAuth2AuthorizedClientService
-
-`OAuth2AuthorizedClientRepository`在框架中用户持久化 `OAuth2AuthorizedClient`，`OAuth2AuthorizedClientService`可以在程序中调用， 默认使用`InMemoryOAuth2AuthorizedClientService`。`OAuth2AuthorizedClientRepository`本质上还是调用`OAuth2AuthorizedClientService`。
-
-`OAuth2AuthorizedClientService`在程序中调用示例:
-
-```java
-@Controller
-public class OAuth2ClientController {
-
-    @Autowired
-    private OAuth2AuthorizedClientService authorizedClientService;
-
-    @GetMapping("/")
-    public String index(Authentication authentication) {
-        OAuth2AuthorizedClient authorizedClient =
-            this.authorizedClientService.loadAuthorizedClient("okta", authentication.getName());
-
-        OAuth2AccessToken accessToken = authorizedClient.getAccessToken();
-
-        ...
-
-        return "index";
-    }
-}
-```
-
-`OAuth2AuthorizedClient`建表语句：
-
-```sql
-CREATE TABLE oauth2_authorized_client (
-  client_registration_id varchar(100) NOT NULL,
-  principal_name varchar(200) NOT NULL,
-  access_token_type varchar(100) NOT NULL,
-  access_token_value blob NOT NULL,
-  access_token_issued_at timestamp NOT NULL,
-  access_token_expires_at timestamp NOT NULL,
-  access_token_scopes varchar(1000) DEFAULT NULL,
-  refresh_token_value blob DEFAULT NULL,
-  refresh_token_issued_at timestamp DEFAULT NULL,
-  created_at timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL,
-  PRIMARY KEY (client_registration_id, principal_name)
-);
-```
-
-### OAuth2AuthorizedClientManager / OAuth2AuthorizedClientProvider
-
-`OAuth2AuthorizedClientManager`负责`OAuth2AuthorizedClient`的整体管理，间接包含多个`OAuth2AuthorizedClientProvider`，使用`DelegatingOAuth2AuthorizedClientProvider`代理。`DefaultOAuth2AuthorizedClientManager`是`OAuth2AuthorizedClientManager`的默认实现。
-
-主要功能包括：
-
-- 使用`OAuth2AuthorizedClientProvider`授权客户端。
-- 使用`OAuth2AuthorizedClientRepository`持久化 `OAuth2AuthorizedClient`。
-- 授权成功后调用` OAuth2AuthorizationSuccessHandler`。
-- 授权失败后调用`OAuth2AuthorizationFailureHandler`。
-
-`OAuth2AuthorizedClientProvider`实现` OAuth 2.0 Client`，有不同的种类，例如`authorization_code`, `client_credentials`等。可以使用`OAuth2AuthorizedClientProviderBuilder`来构建`DelegatingOAuth2AuthorizedClientProvider`。
-
-例如：
-
-```java
-@Bean
-public OAuth2AuthorizedClientManager authorizedClientManager(
-		ClientRegistrationRepository clientRegistrationRepository,
-		OAuth2AuthorizedClientRepository authorizedClientRepository) {
-
-	OAuth2AuthorizedClientProvider authorizedClientProvider =
-			OAuth2AuthorizedClientProviderBuilder.builder()
-					.authorizationCode()
-					.refreshToken()
-					.clientCredentials()
-					.password()
-					.build();
-
-	DefaultOAuth2AuthorizedClientManager authorizedClientManager =
-			new DefaultOAuth2AuthorizedClientManager(
-					clientRegistrationRepository, authorizedClientRepository);
-	authorizedClientManager.setAuthorizedClientProvider(authorizedClientProvider);
-
-	return authorizedClientManager;
-}
-```
-
-当授权成功后，`DefaultOAuth2AuthorizedClientManager `调用`OAuth2AuthorizationSuccessHandler`，`OAuth2AuthorizationSuccessHandler`使用`OAuth2AuthorizedClientRepository`保存`OAuth2AuthorizedClient`，当重新授权失败(例如`refresh token`失效)后，`RemoveAuthorizedClientOAuth2AuthorizationFailureHandler`会把`OAuth2AuthorizedClient`从`OAuth2AuthorizedClientRepository`删除。
-
-`DefaultOAuth2AuthorizedClientManager `另外还包含`Function<OAuth2AuthorizeRequest, Map<String, Object>>`类型的`contextAttributesMapper `，它负责将属性从`OAuth2AuthorizeRequest `映射到`OAuth2AuthorizationContext `。当使用`OAuth2AuthorizedClientProvider`时`OAuth2AuthorizationContext `会很有用，例如`PasswordOAuth2AuthorizedClientProvider`通过
-
-`OAuth2AuthorizationContext.getAttributes()`获取`username` 、`password` ：
-
-```java
-public OAuth2AuthorizedClientManager authorizedClientManager(
-		ClientRegistrationRepository clientRegistrationRepository,
-		OAuth2AuthorizedClientRepository authorizedClientRepository) {
-
-	OAuth2AuthorizedClientProvider authorizedClientProvider =
-			OAuth2AuthorizedClientProviderBuilder.builder()
-					.password()
-					.refreshToken()
-					.build();
-
-	DefaultOAuth2AuthorizedClientManager authorizedClientManager =
-			new DefaultOAuth2AuthorizedClientManager(
-					clientRegistrationRepository, authorizedClientRepository);
-	authorizedClientManager.setAuthorizedClientProvider(authorizedClientProvider);
-
-	// Assuming the `username` and `password` are supplied as `HttpServletRequest` parameters,
-	// map the `HttpServletRequest` parameters to `OAuth2AuthorizationContext.getAttributes()`
-	authorizedClientManager.setContextAttributesMapper(contextAttributesMapper());
-
-	return authorizedClientManager;
-}
-
-private Function<OAuth2AuthorizeRequest, Map<String, Object>> contextAttributesMapper() {
-	return authorizeRequest -> {
-		Map<String, Object> contextAttributes = Collections.emptyMap();
-		HttpServletRequest servletRequest = authorizeRequest.getAttribute(HttpServletRequest.class.getName());
-		String username = servletRequest.getParameter(OAuth2ParameterNames.USERNAME);
-		String password = servletRequest.getParameter(OAuth2ParameterNames.PASSWORD);
-		if (StringUtils.hasText(username) && StringUtils.hasText(password)) {
-			contextAttributes = new HashMap<>();
-
-			// `PasswordOAuth2AuthorizedClientProvider` requires both attributes
-			contextAttributes.put(OAuth2AuthorizationContext.USERNAME_ATTRIBUTE_NAME, username);
-			contextAttributes.put(OAuth2AuthorizationContext.PASSWORD_ATTRIBUTE_NAME, password);
-		}
-		return contextAttributes;
-	};
-}
-```
-
-`DefaultOAuth2AuthorizedClientManager `主要用于操作`web HttpServletRequest`，如果是`HttpServletRequest`之外，改用`AuthorizedClientServiceOAuth2AuthorizedClientManager`，例如，程序内部一般在后台运行，没有和用户交互，`Client`使用`client_credentials`方式访问：
-
-```java
-@Bean
-public OAuth2AuthorizedClientManager authorizedClientManager(
-		ClientRegistrationRepository clientRegistrationRepository,
-		OAuth2AuthorizedClientService authorizedClientService) {
-
-	OAuth2AuthorizedClientProvider authorizedClientProvider =
-			OAuth2AuthorizedClientProviderBuilder.builder()
-					.clientCredentials()
-					.build();
-
-	AuthorizedClientServiceOAuth2AuthorizedClientManager authorizedClientManager =
-			new AuthorizedClientServiceOAuth2AuthorizedClientManager(
-					clientRegistrationRepository, authorizedClientService);
-	authorizedClientManager.setAuthorizedClientProvider(authorizedClientProvider);
-
-	return authorizedClientManager;
-}
-```
-
 ## Authorization Grant Support
 
 ### Authorization Code
 
-`OAuth2AuthorizationRequestRedirectFilter`通过 `OAuth2AuthorizationRequestResolver`解析`HttpServletRequest`来构建 `OAuth2AuthorizationRequest` ，并重定向到`Authorization Server's Authorization Endpoint`（`authorization-uri`）对用户进行授权。
+`OAuth2AuthorizationRequestRedirectFilter`通过 `OAuth2AuthorizationRequestResolver`解析`HttpServletRequest`来构建 `OAuth2AuthorizationRequest` ，并重定向到`Authorization Server Authorization Endpoint`（`authorization-uri`）对用户进行授权。
 
 `OAuth2AuthorizationRequestResolver`默认实现是 `DefaultOAuth2AuthorizationRequestResolver `，会匹配`/oauth2/authorization/{registrationId} `，提取`registrationId `，并使用它为关联的 `ClientRegistration `构建 `OAuth2AuthorizationRequest`。
 
@@ -850,7 +1075,7 @@ spring:
 
 #### Requesting an Access Token/Refreshing an Access Token
 
-`DefaultAuthorizationCodeTokenResponseClient`、`DefaultRefreshTokenTokenResponseClient`是授权码模式下 `OAuth2AccessTokenResponseClient` 的默认实现，使用 `RestOperations` 请求`Authorization Server's Authorization Endpoint`（`authorization-uri`）获取`access token`。
+`DefaultAuthorizationCodeTokenResponseClient`、`DefaultRefreshTokenTokenResponseClient`是授权码模式下 `OAuth2AccessTokenResponseClient` 的默认实现，使用 `RestOperations` 请求`Authorization Server Authorization Endpoint`（`authorization-uri`）获取`access token`。
 
 `DefaultAuthorizationCodeTokenResponseClient`、`DefaultRefreshTokenTokenResponseClient`允许操作`the pre-processing of the Token Request `或`post-handling of the Token Response`。
 
@@ -914,9 +1139,9 @@ RBAC96是一个模型族，其中包括RBAC0~RBAC3四个概念性模型。
 
 2、RBAC1和RBAC2两者都包含RBAC0，但各自都增加了独立的特点，它们被称为高级模型。
 
-   RBAC1中增加了角色分级的概念，一个角色可以从另一个角色继承许可权。
+RBAC1中增加了角色分级的概念，一个角色可以从另一个角色继承许可权。
 
-   RBAC2中增加了一些限制，强调在RBAC的不同组件中在配置方面的一些限制。
+RBAC2中增加了一些限制，强调在RBAC的不同组件中在配置方面的一些限制。
 
 3、RBAC3称为统一模型，它包含了RBAC1和RBAC2，利用传递性，也把RBAC0包括在内。这些模型构成了RBAC96模型族。
 

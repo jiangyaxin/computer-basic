@@ -66,6 +66,7 @@ SecurityFilterAutoConfiguration在SecurityAutoConfiguration后执行，配置 De
 
 ## Filters
 
+| Filter | Configurer | Method |
 - ChannelProcessingFilter
 - WebAsyncManagerIntegrationFilter
 - SecurityContextPersistenceFilter
@@ -73,12 +74,12 @@ SecurityFilterAutoConfiguration在SecurityAutoConfiguration后执行，配置 De
 - CorsFilter
 - CsrfFilter
 - LogoutFilter
-- OAuth2AuthorizationRequestRedirectFilter
+| OAuth2AuthorizationRequestRedirectFilter | OAuth2LoginConfigurer | http.oauth2Login() |
 - Saml2WebSsoAuthenticationRequestFilter
 - X509AuthenticationFilter
 - AbstractPreAuthenticatedProcessingFilter
 - CasAuthenticationFilter
-- OAuth2LoginAuthenticationFilter
+| OAuth2LoginAuthenticationFilter  | OAuth2LoginConfigurer | http.oauth2Login() |
 - Saml2WebSsoAuthenticationFilter
 - UsernamePasswordAuthenticationFilter
 - OpenIDAuthenticationFilter

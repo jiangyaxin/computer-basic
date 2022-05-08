@@ -1,5 +1,37 @@
 # SpringSecurity
 
+## SpringSecurity扩展点
+
+![108](assets/108.png)
+
+1. 自定义Filter: 例如 自定义用户名密码校验规则
+   * 直接实现Filter。
+   * 继承GenericFilterBean，该类继承 Filter, BeanNameAware, EnvironmentAware,EnvironmentCapable, ServletContextAware, InitializingBean, DisposableBean。
+   * 继承OncePerRequestFilter重写doFilterInternal，该类保证在一次请求中只会经过一次。
+   * 继承AbstractAuthenticationProcessingFilter重写attemptAuthentication，添加了认证失败，认证成功等处理，但是它没有处理一次请求可能多次调用的问题。
+   * 继承UsernamePasswordAuthenticationFilter重写attemptAuthentication。
+   * 所有的Filter都可以继承，具体功能具体分析。
+   * 继承 AbstractAuthenticationFilterConfigurer。
+
+   Filter如何添加：
+   * http.addFilter 添加到最后，但并不是最终的最后，因为后面的流程还会添加其他Filter。
+   * http.addFilterAfter 添加在指定Filter之后。
+   * http.addFilterBefore 添加在指定Filter之前。
+   * http.addFilterAt 添加在指定Filter之前，不会覆盖和删除指定的Filter。
+   * http.apply(new xxxConfigurer())，可自行在 init(http)、config(http) 设置顺序。
+2. 实现 LogoutSuccessHandler： 登出成功后处理器，比如返回json数据，使用 http.logout().logoutSuccessHandler(new xxxLogoutSuccessHandler()) 配置。
+3. 实现 AuthenticationFailureHandler ：AbstractAuthenticationProcessingFilter 认证失败后处理器，使用 http.formLogin().failureHandler(new xxxAuthenticationFailureHandler ) 配置。
+4. 实现 AuthenticationSuccessHandler ：AbstractAuthenticationProcessingFilter 认证成功后处理器， 使用 http.formLogin().successHandler(new xxxAuthenticationSuccessHandler ) 配置。
+5. 实现 AuthenticationEntryPoint ：ExceptionTranslationFilter 认证异常后调转处理器，可参考 LoginUrlAuthenticationEntryPoint，使用 http.exceptionHandling(exceptionHandling -> exceptionHandling.authenticationEntryPoint(new xxxAuthenticationEntryPoint())) 配置默认处理器，还有 defaultAuthenticationEntryPointFor 配合 RequestMatcher 使用。
+6. 实现 AccessDeniedHandler ：ExceptionTranslationFilter 鉴权异常后调转处理器，可使用 http..exceptionHandling(exceptionHandling -> exceptionHandling.accessDeniedHandler(new xxxAccessDeniedHandler()))。
+7. 继承AbstractAuthenticationToken、实现Authentication：自定义认证凭证，一般与自定义认证器一起使用。
+8. 实现AuthenticationProvider、继承DaoAuthenticationProvider：自定义认证器，例如 继承DaoAuthenticationProvider 实现验证码登录，使用 http.authenticationProvider(new xxxAuthenticationProvider()) 或configure(AuthenticationManagerBuilder auth) 配置。
+9. 实现AccessDecisionVoter、继承WebExpressionVoter：自定义投票器，可使用 http.authorizeRequests(authorizeRequests -> authorizeRequests.accessDecisionManager()) 设置。
+10. 实现UserDetailsService：被DaoAuthenticationProvider使用，用于载入用户信息，使用 configure(AuthenticationManagerBuilder auth) 配置。
+11. 实现AccessDecisionManager： 用来鉴权计算投票，例如特定`AccessDecisionVoter `具有额外的权重，或者某个`AccessDecisionVoter`具有一票否决权。
+12. 实现PermissionEvaluator：定义@PostFilter注解中 hasPermission 表达式，详情见下文 自定义权限计算器.
+13. 配置 PasswordEncoder ：自定义加密规则，通过注入到 DaoAuthenticationProvider 使用。
+
 ## SpringSecurityFilter
 
 ## 启动
@@ -33,7 +65,7 @@ Import 3个类，继承 EnableGlobalAuthentication：
   * SpringWebMvcImportSelector：添加MVC支持，即添加 AuthenticationPrincipalArgumentResolver、CurrentSecurityContextArgumentResolver、CsrfTokenArgumentResolver，分别负责向Controller中 @AuthenticationPrincipal、 @CurrentSecurityContext、CsrfToken类型 的参数注入值。
   * OAuth2ImportSelector：添加OAuth2支持。
   * WebSecurityConfiguration：负责建立过滤器链。
-  * @EnableGlobalAuthentication：负责注入AuthenticationManager。
+  * @EnableGlobalAuthentication：负责注入AuthenticationManagerBuilder。
 
 #### WebSecurityConfiguration
 
@@ -66,39 +98,42 @@ SecurityFilterAutoConfiguration在SecurityAutoConfiguration后执行，配置 De
 
 ## Filters
 
-| Filter | Configurer | Method |
-- ChannelProcessingFilter
-- WebAsyncManagerIntegrationFilter
-- SecurityContextPersistenceFilter
-- HeaderWriterFilter
-- CorsFilter
-- CsrfFilter
-- LogoutFilter
-| OAuth2AuthorizationRequestRedirectFilter | OAuth2LoginConfigurer | http.oauth2Login() |
-- Saml2WebSsoAuthenticationRequestFilter
-- X509AuthenticationFilter
-- AbstractPreAuthenticatedProcessingFilter
-- CasAuthenticationFilter
-| OAuth2LoginAuthenticationFilter  | OAuth2LoginConfigurer | http.oauth2Login() |
-- Saml2WebSsoAuthenticationFilter
-- UsernamePasswordAuthenticationFilter
-- OpenIDAuthenticationFilter
-- DefaultLoginPageGeneratingFilter
-- DefaultLogoutPageGeneratingFilter
-- ConcurrentSessionFilter
-- DigestAuthenticationFilter
-- BearerTokenAuthenticationFilter
-- BasicAuthenticationFilter
-- RequestCacheAwareFilter
-- SecurityContextHolderAwareRequestFilter
-- JaasApiIntegrationFilter
-- RememberMeAuthenticationFilter
-- AnonymousAuthenticationFilter
-- OAuth2AuthorizationCodeGrantFilter
-- SessionManagementFilter
-- ExceptionTranslationFilter
-- FilterSecurityInterceptor
-- SwitchUserFilter
+FilterComparator 中同一对 Filters 进行排序。
+
+| Filter                                   | Configurer                                    | Method                                                    | 默认配置 | 功能                                                                                                                                                                                           |
+| ---------------------------------------- | --------------------------------------------- | --------------------------------------------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ChannelProcessingFilter                  | ChannelSecurityConfigurer                     | http.requiresChannel()                                    |          | 可以用来限制请求必须是https                                                                                                                                                                    |
+| WebAsyncManagerIntegrationFilter         |                                               |                                                           | 是       | 多线程环境下可在WebAsyncTask中通过SecurityContextHolder 获取信息，普通 Runable 获取不到                                                                                                        |
+| SecurityContextPersistenceFilter         | SecurityContextConfigurer                     | http.securityContext()                                    | 是       | 请求开始时创建SecurityContext和请求结束时清空SecurityContextHolder                                                                                                                             |
+| HeaderWriterFilter                       | HeadersConfigurer                             | http.headers()                                            | 是       | 向 HttpServletRequest  或 HttpServletResponse 写入 Headers                                                                                                                                     |
+| CorsFilter                               | CorsConfigurer                                | http.cors()                                               |          | 保证 CorsFilter 会在身份验证相关的 Filter 之前执行，可与 WebMvcConfigurer.addCorsMappings 结合使用，会执行两次，最好直接注入 CorsConfigurationSource                                           |
+| CsrfFilter                               | CsrfConfigurer                                | http.csrf()                                               | 是       | 默认对于POST、PUT、DELETE请求，需要读取session中的 CsrfToken 与 _csrf参数 或者  X-CSRF-TOKEN头  进行对比,使用 jwt 等 token 技术时,不需要该配置                                                 |
+| LogoutFilter                             | LogoutConfigurer                              | http.logout()                                             | 是       | 用于处理登出成功后的操作                                                                                                                                                                       |
+| OAuth2AuthorizationRequestRedirectFilter | OAuth2LoginConfigurer、OAuth2ClientConfigurer | http.oauth2Login()、http.oauth2Client()                   |          | 负责重定向到认证服务器                                                                                                                                                                         |
+| Saml2WebSsoAuthenticationRequestFilter   |                                               |                                                           |          | SpringSecuritySAML模块，应用于 XML 领域，如 WebService，schema                                                                                                                                 |
+| X509AuthenticationFilter                 | X509Configurer                                | http.x509()                                               |          | X509证书预授权机制，继承AbstractPreAuthenticatedProcessingFilter                                                                                                                               |
+| AbstractPreAuthenticatedProcessingFilter |                                               | http.addFilter()                                       |          | 请求已经被其他方式认证，可以通过该请求获取principal，而不是进行认证，它是一个基类，需要自己实现                                                                                                |
+| CasAuthenticationFilter                  |                                               |                                                           |          | SpringSecurityCAS 模块，用于 CAS 认证                                                                                                                                                          |
+| OAuth2LoginAuthenticationFilter          | OAuth2LoginConfigurer                         | http.oauth2Login()                                        |          | 用于Oauth2中接收认证服务器授权码，并请求token端点，获取 AccessToken                                                                                                                            |
+| Saml2WebSsoAuthenticationFilter          |                                               |                                                           |          | SpringSecuritySAML模块单点登录                                                                                                                                                                 |
+| UsernamePasswordAuthenticationFilter     | FormLoginConfigurer                           | http.formLogin()                                          |          | 用户名密码认证                                                                                                                                                                                 |
+| OpenIDAuthenticationFilter               |                                               |                                                           |          |                                                                                                                                                                                                |
+| DefaultLoginPageGeneratingFilter         | DefaultLoginPageConfigurer、LogoutConfigurer  |                                                           | 是       | 用于生成默认的登录页面，可通过 FormLoginConfigurer 更改                                                                                                                                        |
+| DefaultLogoutPageGeneratingFilter        | DefaultLoginPageConfigurer                    |                                                           | 是       | 用于生成默认的登出页面，可通过 LogoutConfigurer 更改                                                                                                                                           |
+| ConcurrentSessionFilter                  | SessionManagementConfigurer                   | http.sessionManagement(s -> s.sessionConcurrency(xxxxxx)) |          | 用来判断session是否过期以及更新最新的访问时间                                                                                                                                                  |
+| DigestAuthenticationFilter               |                                               | http.addFilter()                                          |          | Digest身份验证                                                                                                                                                                                 |
+| BearerTokenAuthenticationFilter          | OAuth2ResourceServerConfigurer                | http.oauth2ResourceServer()                               |          | 负责JWT token认证                                                                                                                                                                              |
+| BasicAuthenticationFilter                | HttpBasicConfigurer                           | http.httpBasic()                                          |          | basic身份认证                                                                                                                                                                                  |
+| RequestCacheAwareFilter                  | RequestCacheConfigurer                        | http.requestCache                                         | 是       | 用于用户认证成功后，重新恢复因为登录被打断的请求。例如：当匿名访问一个需要授权的资源时。会跳转到认证处理逻辑，此时请求被缓存。在认证逻辑处理完毕后，从缓存中获取最开始的资源请求进行再次请求。 |
+| SecurityContextHolderAwareRequestFilter  | ServletApiConfigurer                          | http.servletApi()                                         | 是       | 用于支持j2eeAPI                                                                                                                                                                                |
+| JaasApiIntegrationFilter                 |                                               |                                                           |          | 适用于Java 认证授权服务                                                                                                                                                                        |
+| RememberMeAuthenticationFilter           | RememberMeConfigurer                          | http.rememberMe()                                         |          | 处理 记住我 认证                                                                                                                                                                               |
+| AnonymousAuthenticationFilter            | AnonymousConfigurer                           | http.anonymous()                                          | 是       | 处理 匿名认证                                                                                                                                                                                  |
+| OAuth2AuthorizationCodeGrantFilter       | OAuth2ClientConfigurer                        | http.oauth2Client()                                       |          | 处理Oauth2自定义 redirectUri，接收认证服务器授权码，并请求token端点，获取AccessToken                                                                                                                         |
+| SessionManagementFilter                  | SessionManagementConfigurer                   | http.sessionManagement()                                  | 是       | 用于管理session，可通过http.sessionManagement(sessionManagement -> sessionManagement.sessionCreationPolicy(SessionCreationPolicy.STATELESS)) 禁用Session                                       |
+| ExceptionTranslationFilter               | ExceptionHandlingConfigurer                   | http.exceptionHandling()                                  | 是       | 核心过滤器，处理授权、认证异常                                                                                                                                                                 |
+| FilterSecurityInterceptor                | ExpressionUrlAuthorizationConfigurer          | http.authorizeRequests()                                  |          | 负责鉴权                                                                                                                                                                                       |
+| SwitchUserFilter                         |                                               | http.addFilter()                                          |          | 用于切换用户，默认切换用户的url为 /login/impersonate， 可自定义用于切换                                                                                                                        |
 
 ### ExceptionTranslationFilter
 
@@ -260,7 +295,7 @@ access 接受的表达式：
 | permitAll                 | 结果始终为true                                                                     |
 | principal                 | 用户的principal对象                                                                |
 
-除了 authorizeRequests() 之外，还可以使用 requeresChannel() 来现在请求必须是https
+除了 authorizeRequests() 之外，还可以使用 requeresChannel() 来限制请求必须是https
 
 ```java
 @Override
@@ -1251,7 +1286,7 @@ public interface AccessDecisionManager {
 
 ![Access-Decision-Voting](assets/Access-Decision-Voting.png)
 
- `AccessDecisionManager` 中包含多个 `AccessDecisionVoter` ，通过轮询来实现。 `AccessDecisionManager`根据`AccessDecisionVoter`的投票来决定是否抛出异常。`AbstractAccessDecisionManager`是 `AccessDecisionManager` 的实现，下面有三个具体的子类`AffirmativeBased`、`UnanimousBased`、`ConsensusBased`。
+ `AccessDecisionManager` 中包含多个 `AccessDecisionVoter` ，通过轮询来实现。 `AccessDecisionManager`根据`AccessDecisionVoter`的投票来决定是否抛出异常。`AbstractAccessDecisionManager`是 `AccessDecisionManager` 的实现，下面有三个具体的子类`AffirmativeBased`、`UnanimousBased`、`ConsensusBased`，可使用 http.authorizeRequests(authorizeRequests -> authorizeRequests.accessDecisionManager()) 配置。
 
 ```java
 public interface AccessDecisionVoter<S> {

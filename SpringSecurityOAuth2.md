@@ -337,26 +337,6 @@ HMACSHA256(base64UrlEncode(header) + "." +base64UrlEncode(payload),secret)
 
 最后签名以后，把`header`、`payload`、`signature` 三个部分拼成一个字符串，每个部分之间用"点"（.）分隔，就构成整个令牌。
 
-# 认证中心
-
-## 使用
-
-```xml
-<!-- 需要同时引入这两个包 -->
-<dependency>
-    <groupId>org.springframework.boot</groupId>
-    <artifactId>spring-boot-starter-security</artifactId>
-</dependency>
-
-<dependency>
-    <groupId>org.springframework.security</groupId>
-    <artifactId>spring-security-oauth2-authorization-server</artifactId>
-    <version>${spring-security-oauth2-authorization-server.version}</version>
-</dependency>
-```
-
-目前还没有 authorization-server 的自动配置，需要手动配置。
-
 # 登录
 
 ## 使用Google举例
@@ -697,6 +677,20 @@ public OAuth2AuthorizedClientManager authorizedClientManager(
 
 DefaultOAuth2AuthorizedClientManager 用于 OAuth2AuthorizedClientArgumentResolver 处理 @RegisteredOAuth2AuthorizedClient 注解获取 OAuth2AuthorizedClient。
 
+### DefaultAuthorizationCodeTokenResponseClient / DefaultRefreshTokenTokenResponseClient
+
+`DefaultAuthorizationCodeTokenResponseClient`、`DefaultRefreshTokenTokenResponseClient`是授权码模式下 `OAuth2AccessTokenResponseClient` 的默认实现，使用 `RestOperations` 请求`Authorization Server Authorization Endpoint`（`authorization-uri`）获取`access token`。
+
+`DefaultAuthorizationCodeTokenResponseClient`、`DefaultRefreshTokenTokenResponseClient`允许操作`the pre-processing of the Token Request `或`post-handling of the Token Response`。
+
+### DefaultClientCredentialsTokenResponseClient
+
+`DefaultClientCredentialsTokenResponseClient`是客户端模式下 `OAuth2AccessTokenResponseClient` 的默认实现。
+
+### DefaultJwtBearerTokenResponseClient
+
+`DefaultJwtBearerTokenResponseClient`是`JWT Bearer`模式下 `OAuth2AccessTokenResponseClient` 的默认实现。
+
 ## 启动
 
 1. 通过使用 http.oauth2Login 创建 OAuth2LoginConfigurer 并配置 http 。
@@ -707,7 +701,7 @@ DefaultOAuth2AuthorizedClientManager 用于 OAuth2AuthorizedClientArgumentResolv
 
 ### OAuth2LoginConfigurer配置内容
 
-继承 `AbstractAuthenticationFilterConfigurer<B, OAuth2LoginConfigurer<B>, OAuth2LoginAuthenticationFilter>`, 表明 它负责创建 OAuth2LoginAuthenticationFilter、OAuth2AuthorizationRequestRedirectFilter ，最后会将它添加到过滤器链，OAuth2LoginAuthenticationFilter 使用 LoginUrlAuthenticationEntryPoint 作为 LoginUrlAuthenticationEntryPoint。
+继承 `AbstractAuthenticationFilterConfigurer<B, OAuth2LoginConfigurer<B>, OAuth2LoginAuthenticationFilter>`, 表明 它负责创建 OAuth2AuthorizationRequestRedirectFilter、OAuth2LoginAuthenticationFilter ，最后会将它添加到过滤器链，OAuth2LoginAuthenticationFilter 使用 LoginUrlAuthenticationEntryPoint 作为 LoginUrlAuthenticationEntryPoint。
 
 可以通过 http.oauth2Login 配置 ClientRegistrationRepository、OAuth2AuthorizedClientRepository、OAuth2AuthorizedClientService(最后也是配置一个AuthenticatedPrincipalOAuth2AuthorizedClientRepository)。
 
@@ -807,9 +801,16 @@ public class OAuth2LoginAuthenticationToken extends AbstractAuthenticationToken 
   4. 构建 OAuth2LoginAuthenticationToken。
 
 4. 使用  OAuth2AuthorizedClientRepository 保存 OAuth2LoginAuthenticationToken 和  OAuth2AuthorizedClient。
-5. 认证成功后 由 SavedRequestAwareAuthenticationSuccessHandler 重定向到最开始页面。
+5. 认证成功后 由 SavedRequestAwareAuthenticationSuccessHandler 重定向到 defaultTargetUrl，可通过 `http.oauth2Login(httpSecurityOAuth2LoginConfigurer -> httpSecurityOAuth2LoginConfigurer.defaultSuccessUrl("/user"))`设置。
+
+流程中token区别：
+* OAuth2LoginAuthenticationToken：用以给Provider认证过渡用，最初仅含code，最终包含access_token、user等。
+* OAuth2AuthorizationCodeAuthenticationToken：用以给Provider认证过渡用，未填充时仅含code，经填充后包含access_token等。
+* OAuth2AuthenticationToken：authenticated=true 认证后安全上下文实际保存的OAuth2用户认证，由convert将填充后的OAuth2LoginAuthenticationToken转换而来。
 
 ## Login授权流程
+
+![106](assets/106.png)
 
 1. 当 FilterSecurityInterceptor 鉴权失败时，由 ExceptionTranslationFilter 使用 LoginUrlAuthenticationEntryPoint  重定向到 loginFormUrl 默认为 /login,可以通过 `http.oauth2Login(httpSecurityOAuth2LoginConfigurer -> httpSecurityOAuth2LoginConfigurer.loginPage("xxxx"))` 或者 `http.formLogin(httpSecurityFormLoginConfigurer -> httpSecurityFormLoginConfigurer.loginPage("/2"))`更改。
 2. 用户点击 google 登陆，发送请求`/oauth2/authorization/{registrationId}`。
@@ -817,6 +818,8 @@ public class OAuth2LoginAuthenticationToken extends AbstractAuthenticationToken 
 4. 填写用户名密码，认证通过`Authorization Server`回调备案地址(如上面例子中`http://localhost:8080/login/oauth2/code/google`)并携带`code`参数，**备案地址需要匹配 AbstractAuthenticationProcessingFilter 中`requiresAuthenticationRequestMatcher`，可以通过`defaultFilterProcessesUrl`修改，默认值为`DEFAULT_FILTER_PROCESSES_URI = "/login/oauth2/code/*"`。**
 5. 由`OAuth2LoginAuthenticationFilter`拦截到`http://localhost:8080/login/oauth2/code/google`开始`POST`调用`tokenUri`并携带上一步得到的`code`参数，获取到`access_token`后重定向回最开始用户想访问的`URL`并设置`cookie`。
 6. 然后带着`cookie`访问。
+
+可使用 `http.sessionManagement(sessionManagement -> sessionManagement.sessionCreationPolicy(SessionCreationPolicy.STATELESS))`不使用session，这时携带cookie无法认证。
 
 ## ClientRegistration 属性配置
 
@@ -988,7 +991,85 @@ public class OAuth2LoginSecurityConfig extends WebSecurityConfigurerAdapter {
 
 # 客户端
 
-使用`HttpSecurity.oauth2Client()`进行配置`Client`。
+## 使用
+
+1. 首先登陆`Google API Console`，获取` OAuth 2.0 credentials`,即`Client ID`和` Client Secret`。
+2. 设置重定向地址 不能为`{baseUrl}/login/oauth2/code/{registrationId}`，否则会优先被 http.oauth2Login() 拦截，被 http.oauth2Client 该重定向地址会在认证成功后直接重定向到该地址
+3. 引入依赖。
+
+```xml
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-security</artifactId>
+</dependency>
+
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-oauth2-client</artifactId>
+</dependency>
+```
+
+4. 配置 Security。
+
+```java
+@Configuration
+public class Oauth2ClientConfig extends WebSecurityConfigurerAdapter {
+
+    @Override
+    protected void configure(HttpSecurity http) throws Exception {
+        http
+                .csrf(csrf -> csrf.disable())
+                .antMatcher("/**").authorizeRequests()
+                .antMatchers("/index.html").permitAll()
+                .anyRequest().authenticated()
+                .and()
+                .oauth2Client();
+    }
+}
+```
+
+5. 设置`application.yml`：
+
+```yaml
+spring:
+ security:
+   oauth2:
+     client:
+       registration:
+         google:
+           client-id: google-client-id
+           client-secret: google-client-secret
+           # 设置重定向地址，需要和备案重定向地址一样
+           redirect-Uri: http://localhost:30010/index.html
+```
+
+## 启动
+
+1. 通过使用 http.oauth2Client 创建 OAuth2ClientConfigurer 并配置 http 。
+2. 自动装配。
+   * SpringSecurity 主流程。
+   * OAuth2ClientConfiguration：添加 OAuth2AuthorizedClientArgumentResolver 处理 @RegisteredOAuth2AuthorizedClient。
+   * OAuth2ClientAutoConfiguration：添加 InMemoryClientRegistrationRepository 、OAuth2AuthorizedClientService、OAuth2AuthorizedClientRepository。
+
+![107](assets/107.png)
+
+### OAuth2ClientConfigurer配置内容
+
+实际委托给 AuthorizationCodeGrantConfigurer 进行 init() 和 configure(), 负责创建 OAuth2AuthorizationRequestRedirectFilter、OAuth2AuthorizationCodeGrantFilter ，最后会将它添加到过滤器链，由 OAuth2AuthorizationCodeAuthenticationProvider 负责认证操作。
+
+可以通过 http.oauth2Login 配置 ClientRegistrationRepository、OAuth2AuthorizedClientRepository、OAuth2AuthorizedClientService(最后也是配置一个AuthenticatedPrincipalOAuth2AuthorizedClientRepository)。
+
+### OAuth2AuthorizationRequestRedirectFilter
+
+详情见登录流程
+
+### OAuth2AuthorizationCodeGrantFilter
+
+1. 通过 state 从 HttpSessionOAuth2AuthorizationRequestRepository 获取 OAuth2AuthorizationRequest。
+2. 负责拦截 OAuth2AuthorizationRequest#getRedirectUri() 的请求，即 spring.security.oauth2.client.registration.google.redirect-Uri: http://localhost:30010/index.html
+3. 通过授权码获取请求认证服务器获取 accessToken，然后重定向到 redirectUri。
+
+## 配置示例
 
 ```java
 @EnableWebSecurity
@@ -1042,47 +1123,28 @@ public OAuth2AuthorizedClientManager authorizedClientManager(
 }
 ```
 
-## Authorization Grant Support
+# 资源服务器
 
-### Authorization Code
+# 认证服务器
 
-`OAuth2AuthorizationRequestRedirectFilter`通过 `OAuth2AuthorizationRequestResolver`解析`HttpServletRequest`来构建 `OAuth2AuthorizationRequest` ，并重定向到`Authorization Server Authorization Endpoint`（`authorization-uri`）对用户进行授权。
+## 使用
 
-`OAuth2AuthorizationRequestResolver`默认实现是 `DefaultOAuth2AuthorizationRequestResolver `，会匹配`/oauth2/authorization/{registrationId} `，提取`registrationId `，并使用它为关联的 `ClientRegistration `构建 `OAuth2AuthorizationRequest`。
+```xml
+<!-- 需要同时引入这两个包 -->
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-security</artifactId>
+</dependency>
 
-```yaml
-spring:
-  security:
-    oauth2:
-      client:
-        registration:
-          okta:
-            client-id: okta-client-id
-            client-secret: okta-client-secret
-            authorization-grant-type: authorization_code
-            redirect-uri: "{baseUrl}/authorized/okta"
-            scope: read, write
-        provider:
-          okta:
-            authorization-uri: https://dev-1234.oktapreview.com/oauth2/v1/authorize
-            token-uri: https://dev-1234.oktapreview.com/oauth2/v1/token
+<dependency>
+    <groupId>org.springframework.security</groupId>
+    <artifactId>spring-security-oauth2-authorization-server</artifactId>
+    <version>${spring-security-oauth2-authorization-server.version}</version>
+</dependency>
 ```
 
-`/oauth2/authorization/okta`的请求将会通过`OAuth2AuthorizationRequestRedirectFilter`重定向到` authorization-uri`,发起授权码流程。
+目前还没有 authorization-server 的自动配置，需要手动配置。
 
-#### Requesting an Access Token/Refreshing an Access Token
-
-`DefaultAuthorizationCodeTokenResponseClient`、`DefaultRefreshTokenTokenResponseClient`是授权码模式下 `OAuth2AccessTokenResponseClient` 的默认实现，使用 `RestOperations` 请求`Authorization Server Authorization Endpoint`（`authorization-uri`）获取`access token`。
-
-`DefaultAuthorizationCodeTokenResponseClient`、`DefaultRefreshTokenTokenResponseClient`允许操作`the pre-processing of the Token Request `或`post-handling of the Token Response`。
-
-### Client Credentials
-
-`DefaultClientCredentialsTokenResponseClient`是客户端模式下 `OAuth2AccessTokenResponseClient` 的默认实现。
-
-### JWT Bearer
-
-`DefaultJwtBearerTokenResponseClient`是`JWT Bearer`模式下 `OAuth2AccessTokenResponseClient` 的默认实现。
 
 # RBAC
 

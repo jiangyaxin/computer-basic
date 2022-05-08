@@ -20,9 +20,11 @@ def backtrack(路径, 选择列表):
         backtrack(路径, 选择列表)
         撤销选择
 ```
+
 ## 广度优先算法
 
 用来计算从 start 到 target 的最短距离。
+
 ```java
 int BFS(Node start, Node target) {
     Queue<Node> q; // 核心数据结构
@@ -53,8 +55,10 @@ int BFS(Node start, Node target) {
     }
 }
 ```
+
 ## 数组
 遍历
+
 ```java
 void traverse(int[] arr) {
     for (int i = 0; i < arr.length; i++) {
@@ -62,7 +66,9 @@ void traverse(int[] arr) {
     }
 }
 ```
+
 ### 前缀和
+
 ```java
 class NumArray {
     // 前缀和数组
@@ -84,8 +90,10 @@ class NumArray {
     }
 }
 ```
+
 #### 二维数组前缀和
 ![](assets/1010.png)
+
 ```java
 class NumMatrix {
     // 定义：preSum[i][j] 记录 matrix 中子矩阵 [0, 0, i-1, j-1] 的元素和
@@ -112,8 +120,50 @@ class NumMatrix {
     }
 }
 ```
+
+### 差分数组
+
+```java
+// 差分数组工具类
+class Difference {
+    // 差分数组
+    private int[] diff;
+
+    /* 输入一个初始数组，区间操作将在这个数组上进行 */
+    public Difference(int[] nums) {
+        assert nums.length > 0;
+        diff = new int[nums.length];
+        // 根据初始数组构造差分数组
+        diff[0] = nums[0];
+        for (int i = 1; i < nums.length; i++) {
+            diff[i] = nums[i] - nums[i - 1];
+        }
+    }
+
+    /* 给闭区间 [i, j] 增加 val（可以是负数）*/
+    public void increment(int i, int j, int val) {
+        diff[i] += val;
+        if (j + 1 < diff.length) {
+            diff[j + 1] -= val;
+        }
+    }
+
+    /* 返回结果数组 */
+    public int[] result() {
+        int[] res = new int[diff.length];
+        // 根据差分数组构造结果数组
+        res[0] = diff[0];
+        for (int i = 1; i < diff.length; i++) {
+            res[i] = res[i - 1] + diff[i];
+        }
+        return res;
+    }
+}
+```
+
 ## 链表
 具有迭代和递归两种结构
+
 ```java
 /* 基本的单链表节点 */
 class ListNode {
@@ -132,10 +182,12 @@ void traverse(ListNode head) {
     traverse(head.next);
 }
 ```
+
 访问链表可以借助指针来访问，通过移动指针的位置来依次访问每个节点，另外可以创建一个虚拟节点 和 它的指针来创建一个新的指针。
 
 ### 合并2个升序链表
 建立一个结果链表，然后使用3个指针分别在3个链表上进行移动
+
 ```java
 ListNode mergeTwoLists(ListNode l1, ListNode l2) {
     // 虚拟头结点
@@ -165,8 +217,10 @@ ListNode mergeTwoLists(ListNode l1, ListNode l2) {
     return dummy.next;
 }
 ```
+
 ### 合并K个升序链表
 使用 优先队列 对各个链表头节点进行排序
+
 ```java
 ListNode mergeKLists(ListNode[] lists) {
     if (lists.length == 0) return null;
@@ -195,8 +249,10 @@ ListNode mergeKLists(ListNode[] lists) {
     return dummy.next;
 }
 ```
+
 ### 检查是否有环
 使用 快慢两个指针 若指针相遇则又环
+
 ```java
 boolean hasCycle(ListNode head) {
     // 快慢指针初始化指向 head
@@ -215,6 +271,7 @@ boolean hasCycle(ListNode head) {
     return false;
 }
 ```
+
 若相遇 快指针走过 2k 个节点，慢指针走过 k 个节点，求 k 值只需要将慢节点重置回头节点， 快慢节点以同样速度再走一次
 
 ### 删除倒数第n个节点
@@ -226,6 +283,7 @@ boolean hasCycle(ListNode head) {
 
 如果这样进行拼接，就可以让 p1 和 p2 同时进入公共部分，因为相交节点到尾节点的距离相同。
 ### 翻转链表
+
 ```java
 ListNode reverse(ListNode head) {
     if (head == null || head.next == null) {
@@ -237,7 +295,9 @@ ListNode reverse(ListNode head) {
     return last;
 }
 ```
+
 ### 反转链表前 N 个节点
+
 ```java
 ListNode successor = null; // 后驱节点
 
@@ -257,7 +317,9 @@ ListNode reverseN(ListNode head, int n) {
     return last;
 }
 ```
+
 #### 翻转链表 n - m 中的节点
+
 ```java
 ListNode reverseBetween(ListNode head, int left, int right) {
     if(left == 1){
@@ -269,7 +331,9 @@ ListNode reverseBetween(ListNode head, int left, int right) {
     return head;
 }
 ```
+
 ### 是否是回文链表
+
 ```java
 ListNode left;
 
@@ -287,8 +351,10 @@ boolean traverse(ListNode right) {
     return res;
 }
 ```
+
 ## 二叉树
 遍历
+
 ```java
 /* 基本的二叉树节点 */
 class TreeNode {
@@ -301,6 +367,7 @@ void traverse(TreeNode root) {
     traverse(root.right);
 }
 ```
+
 ```java
 void traverse(TreeNode root) {
     // 前序位置
@@ -310,7 +377,9 @@ void traverse(TreeNode root) {
     // 后序位置
 }
 ```
+
 前序遍历就是刚进入一个节点时，后序遍历就是即将离开一个节点时。比如倒序打印一个单链表，可以用后序遍历,计算倒数第n个节点。
+
 ```java
 /* 递归遍历单链表，倒序打印链表元素 */
 void traverse(ListNode head) {
@@ -322,7 +391,9 @@ void traverse(ListNode head) {
     print(head.val);
 }
 ```
+
 ### N叉树遍历
+
 ```java
 /* 基本的 N 叉树节点 */
 class TreeNode {
@@ -335,8 +406,10 @@ void traverse(TreeNode root) {
         traverse(child);
 }
 ```
+
 ## 快速排序
 其实就是二叉树的前序遍历：
+
 ```java
 void sort(int[] nums, int lo, int hi) {
     /****** 前序遍历位置 ******/
@@ -348,8 +421,10 @@ void sort(int[] nums, int lo, int hi) {
     sort(nums, p + 1, hi);
 }
 ```
+
 ## 归并排序
 其实就是二叉树的后序遍历：
+
 ```java
 // 定义：排序 nums[lo..hi]
 void sort(int[] nums, int lo, int hi) {

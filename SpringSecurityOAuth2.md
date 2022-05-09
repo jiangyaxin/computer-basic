@@ -1325,7 +1325,7 @@ NimbusJwtDecoder.withPublicKey(publicKey).signatureAlgorithm(SignatureAlgorithm.
 JwtDecoders.fromIssuerLocation("xxxx");
 ```
 
-3. 配置 HttpSecurity：springboot 已在 OAuth2ResourceServerJwtConfiguration 默认配置，自定义WebSecurityConfigurerAdapter时需要配置
+3. 配置 HttpSecurity：springboot 已在 OAuth2ResourceServerJwtConfiguration 默认配置，自定义WebSecurityConfigurerAdapter时需要配置。
 
 ```java
 		http.authorizeRequests((requests) -> requests.anyRequest().authenticated()).oauth2ResourceServer(OAuth2ResourceServerConfigurer::jwt);

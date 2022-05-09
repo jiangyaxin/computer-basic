@@ -1125,6 +1125,128 @@ public OAuth2AuthorizedClientManager authorizedClientManager(
 
 # 资源服务器
 
+## Nimbus JOSE + JWT
+
+nimbus-jos-jwt 用来操作 JWT 的库,官网 https://connect2id.com/products/nimbus-jose-jwt
+
+```xml
+<dependency>
+    <groupId>com.nimbusds</groupId>
+    <artifactId>nimbus-jose-jwt</artifactId>
+    <version>9.11.1</version>
+</dependency>
+```
+
+JWT、JWS、JWE关系：
+* JWT（JSON Web Token）指的是一种规范，这种规范允许我们使用 JWT 在两个组织之间传递安全可靠的信息。
+* JWS（JSON Web Signature）和 JWE（JSON Web Encryption）是 JWT 规范的两种不同实现，我们平时最常使用的实现就是 JWS 。
+
+对称加密和非对称加密：
+* 『对称加密』指的是使用相同的秘钥来进行加密和解密，如果你的秘钥不想暴露给解密方，考虑使用非对称加密。在加密方和解密方是同一个人（或利益关系紧密）的情况下可以使用它。
+* 『非对称加密』指的是使用公钥和私钥来进行加密解密操作。对于加密操作，公钥负责加密，私钥负责解密，对于签名操作，私钥负责签名，公钥负责验证。非对称加密在 JWT 中的使用显然属于签名操作。在加密方和解密方是不同人（或不同利益方）的情况下可以使用它。
+
+nimbus-jose-jwt 支持的算法都在它的 JWSAlgorithm 和 JWEAlgorithm 类中有定义。例如：JWSAlgorithm algorithm = JWSAlgorithm.HS256
+
+### API
+
+JWSHeader：对应JWT中的header部分。
+
+```java
+JWSHeader header = new JWSHeader.Builder(algorithm).type(JOSEObjectType.JWT).build();
+// 获得头部信息的 Base64 形式（ JWT 中的实际头部信息）
+header.getParsedBase64URL();
+```
+
+Payload：对应JWT中的payload部分。
+
+```java
+// 这里还可以传 JSON 串，或 Map
+Payload payload = new Payload("hello world");
+// 获得荷载部信息的 Base64 形式（ JWT 中的实际荷载部信息）
+header.toBase64URL();
+```
+
+JWSSigner：签名器，负责生成 signature 部分。
+
+```java
+// secret 为秘钥
+JWSSigner jwsSigner = new MACSigner(secret);
+// 获得荷载部信息的 Base64 形式（ JWT 中的实际荷载部信息）
+
+JWSObject jwsObject = new JWSObject(jwsHeader, payload);
+jwsObject.sign(jwsSigner);
+
+// jwsObject 序列化为 token
+String token = jwsObject.serialize();
+```
+
+JWSVerifier：验证器，负责对token进行验证。
+
+```java
+// 将 token 反序列化为 jwsObject
+JWSObject jwsObject = JWSObject.parse(token);
+JWSVerifier jwsVerifier = new MACVerifier(secret);
+if (!jwsObject.verify(jwsVerifier)) {
+    throw new RuntimeException("token 签名不合法！");
+}
+```
+
+使用公私钥生成JWT：
+
+1. 使用 keytool 生成秘钥对:
+
+```bash
+# 语法
+keytool -genkey -alias <证书别名> -keyalg <密钥算法> -keystore <证书库的位置和名称> -keysize <密钥长度> -validity <证书有效期（天数）> -storepass <储存库密码>
+# 示例
+keytool -genkey -alias jwt -keyalg RSA -keystore jwt.jks -storepass 123456
+```
+
+2. 读取公私钥：
+
+```xml
+<dependency>
+   <groupId>org.springframework.security</groupId>
+   <artifactId>spring-security-rsa</artifactId>
+   <!-- spring-cloud-dependencies 已含有版本信息 -->
+</dependency>
+```
+
+```java
+public RSAKey generateRsaKey() {
+    // 123456 储存库密码，即 storepass
+    String storePass = 123456;
+    KeyStoreKeyFactory keyStoreKeyFactory = new KeyStoreKeyFactory(new ClassPathResource("jwt.jks"), storePass.toCharArray());
+    KeyPair keyPair = keyStoreKeyFactory.getKeyPair("jwt", storePass.toCharArray());
+
+    RSAPublicKey publicKey = (RSAPublicKey) keyPair.getPublic();
+    RSAPrivateKey privateKey = (RSAPrivateKey) keyPair.getPrivate();
+    RSAKey rsaKey = new RSAKey.Builder(publicKey).privateKey(privateKey).build();
+    return rsaKey;
+}
+```
+
+3. 生成token：
+
+```java
+RSAKey rsaKey = generateRsaKey();
+
+JWSHeader jwsHeader = new JWSHeader
+              .Builder(JWSAlgorithm.RS256)
+              .type(JOSEObjectType.JWT)
+              .build();
+
+Payload payload = new Payload("hello world");
+
+JWSObject jwsObject = new JWSObject(jwsHeader, payload);
+// rsaKey 生成签名器
+JWSSigner jwsSigner = new RSASSASigner(rsaKey, true);
+jwsObject.sign(jwsSigner);
+
+// JWT/JWS 字符串
+String token = jwsObject.serialize();
+```
+
 # 认证服务器
 
 ## 使用

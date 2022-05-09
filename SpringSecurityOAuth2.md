@@ -1200,6 +1200,10 @@ if (!jwsObject.verify(jwsVerifier)) {
 keytool -genkey -alias <证书别名> -keyalg <密钥算法> -keystore <证书库的位置和名称> -keysize <密钥长度> -validity <证书有效期（天数）> -storepass <储存库密码>
 # 示例
 keytool -genkey -alias jwt -keyalg RSA -keystore jwt.jks -storepass 123456
+# 导出公钥证书
+keytool -export -alias jwt -keystore jwt.jks  -file jwt-pub.cer
+# 查看公钥,openssl 可在 http://slproweb.com/products/Win32OpenSSL.html 下载，或者使用下面的办法获得
+keytool -list -rfc --keystore jwt.jks | openssl x509 -inform pem -pubkey
 ```
 
 2. 读取公私钥：
@@ -1215,11 +1219,13 @@ keytool -genkey -alias jwt -keyalg RSA -keystore jwt.jks -storepass 123456
 ```java
 public RSAKey generateRsaKey() {
     // 123456 储存库密码，即 storepass
-    String storePass = 123456;
+    String storePass = "123456";
     KeyStoreKeyFactory keyStoreKeyFactory = new KeyStoreKeyFactory(new ClassPathResource("jwt.jks"), storePass.toCharArray());
     KeyPair keyPair = keyStoreKeyFactory.getKeyPair("jwt", storePass.toCharArray());
 
     RSAPublicKey publicKey = (RSAPublicKey) keyPair.getPublic();
+    // 打印公钥
+    System.out.println(org.apache.tomcat.util.codec.binary.Base64.encodeBase64String(publicKey.getEncoded()));
     RSAPrivateKey privateKey = (RSAPrivateKey) keyPair.getPrivate();
     RSAKey rsaKey = new RSAKey.Builder(publicKey).privateKey(privateKey).build();
     return rsaKey;
@@ -1245,6 +1251,84 @@ jwsObject.sign(jwsSigner);
 
 // JWT/JWS 字符串
 String token = jwsObject.serialize();
+```
+
+4. 解析token：
+
+```java
+JWSObject jwsObject = JWSObject.parse(token);
+
+RSAKey rsaKey = generateRsaKey();
+RSAKey publicRsaKey = rsaKey.toPublicJWK();
+JWSVerifier jwsVerifier = new RSASSAVerifier(publicRsaKey);
+
+if (!jwsObject.verify(jwsVerifier)) {
+    throw new RuntimeException("token签名不合法！");
+}
+
+String payload = jwsObject.getPayload().toString();
+```
+
+## 使用
+
+1. 引入依赖：
+
+```xml
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-security</artifactId>
+</dependency>
+
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-oauth2-resource-server</artifactId>
+</dependency>
+```
+
+2.  配置 JwtDecoder ：有4种方式
+
+```yaml
+# 使用认证服务器公钥端点
+spring:
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: https://www.googleapis.com/oauth2/v3/certs
+#或者使用认证服务器端点，获取公钥端点
+# 会通过 https://xxx.com/aaa/.well-known/openid-configuration、https://xxx.com/.well-known/openid-configuration/aaa、https://xxx.com/.well-known/oauth-authorization-server/aaa 端点获取 jwks_uri，然后流程和上面一样。
+spring:
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: https://xxx.com/aaa
+
+# 或者使用本地公钥配置
+spring:
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          public-key-location: public.key
+```
+
+或者自定义 JwtDecoder：NimbusJwtDecoder是它的实现类
+
+```java
+// 使用jwkSetUri
+NimbusJwtDecoder nimbusJwtDecoder = NimbusJwtDecoder.withJwkSetUri("xxxx").jwsAlgorithm(SignatureAlgorithm.from("xxxx")).build();
+// 直接使用公钥字符串
+RSAPublicKey publicKey = (RSAPublicKey) KeyFactory.getInstance("RSA").generatePublic(new X509EncodedKeySpec(java.util.Base64.getMimeDecoder().decode("publickey")));
+NimbusJwtDecoder.withPublicKey(publicKey).signatureAlgorithm(SignatureAlgorithm.from("xxxx")).build();
+// 使用IssuerUri
+JwtDecoders.fromIssuerLocation("xxxx");
+```
+
+3. 配置 HttpSecurity：springboot 已在 OAuth2ResourceServerJwtConfiguration 默认配置，自定义WebSecurityConfigurerAdapter时需要配置
+
+```java
+		http.authorizeRequests((requests) -> requests.anyRequest().authenticated()).oauth2ResourceServer(OAuth2ResourceServerConfigurer::jwt);
 ```
 
 # 认证服务器

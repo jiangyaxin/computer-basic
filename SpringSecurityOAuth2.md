@@ -709,13 +709,11 @@ DefaultOAuth2AuthorizedClientManager 用于 OAuth2AuthorizedClientArgumentResolv
 
 ```java
 public class OAuth2AuthorizationRequestRedirectFilter extends OncePerRequestFilter {
-	/**
-	 * The default base {@code URI} used for authorization requests.
-	 */
 	public static final String DEFAULT_AUTHORIZATION_REQUEST_BASE_URI = "/oauth2/authorization";
 	private final ThrowableAnalyzer throwableAnalyzer = new DefaultThrowableAnalyzer();
 	private final RedirectStrategy authorizationRedirectStrategy = new DefaultRedirectStrategy();
 	private OAuth2AuthorizationRequestResolver authorizationRequestResolver;
+  // HttpSessionOAuth2AuthorizationRequestRepository 最好自己实现，不用session。
 	private AuthorizationRequestRepository<OAuth2AuthorizationRequest> authorizationRequestRepository = new HttpSessionOAuth2AuthorizationRequestRepository();
 	private RequestCache requestCache = new HttpSessionRequestCache();
 }
@@ -1450,8 +1448,6 @@ public JwtAuthenticationConverter jwtAuthenticationConverter() {
 
 负责对JWT具体字段进行转换，例如 claims
 
-复制转换
-
 #### JwtDecoder
 
 ```java
@@ -1532,7 +1528,7 @@ public static Builder builder() {
 
 ### OAuth2AuthorizationEndpointFilter
 
-负责处理 authorizationEndpoint 端点，即 OAuth2 协议的第一步，获取 AUTHORIZATION_CODE
+负责处理 authorizationEndpoint 端点，即 OAuth2 协议的第一步，获取 AUTHORIZATION_CODE,也是用户授权接口 /oauth2/authorize
 
 ```java
 public final class OAuth2AuthorizationEndpointFilter extends OncePerRequestFilter {
@@ -1548,10 +1544,61 @@ public final class OAuth2AuthorizationEndpointFilter extends OncePerRequestFilte
 
 处理 3 类请求：
 
-* authorizationEndpoint、GET 类型
-* authorizationEndpoint、POST类型、参数包含 response_type、scope、scope中包含openid
-* authorizationEndpoint、POST类型、参数不包含 response_type
+* authorizationEndpoint、GET 类型：GET类型请求授权码
+* authorizationEndpoint、POST类型、参数包含 response_type、scope、scope中包含openid：POST类型请求授权码
+* authorizationEndpoint、POST类型、参数不包含 response_type：授权接口：例如：
 
+```http
+Request URL: http://localhost:30009/oauth2/authorize
+Request Method: POST
+Content-Type: application/x-www-form-urlencoded
+
+form-data：
+client_id: login-client
+state: mWW7YPLra-rBmw-tBJ8AGdjMkrWh-e4pJeNwR-04df4=
+scope: message.read
+scope: message.write
+```
+
+流程：
+1. 使用 OAuth2AuthorizationCodeRequestAuthenticationConverter 解析请求参数，构建 OAuth2AuthorizationCodeRequestAuthenticationToken 。
+2.
+
+#### RegisteredClient
+
+已经注册的客户端对象。
+
+```java
+public class RegisteredClient implements Serializable {
+	private String id;
+  // 客户端ID，提供给客户端使用
+	private String clientId;
+  // 客户端注册时间
+	private Instant clientIdIssuedAt;
+  // 客户端密码，提供给客户端使用
+	private String clientSecret;
+  // 客户端密码过期时间，程序中未使用,可以自己实现
+	private Instant clientSecretExpiresAt;
+  // 客户端名称
+	private String clientName;
+  // 认证客户端身份的方法
+	private Set<ClientAuthenticationMethod> clientAuthenticationMethods;
+  // 授权模式
+	private Set<AuthorizationGrantType> authorizationGrantTypes;
+  // 重定向地址
+	private Set<String> redirectUris;
+  // 授权域
+	private Set<String> scopes;
+  // 配置Client属性，例如 是否需要授权 等
+	private ClientSettings clientSettings;
+  // 配置 Token 属性，例如 token 过期时间（默认5分钟）、refresh token 过期时间（默认 60 分钟）等
+	private TokenSettings tokenSettings;
+}
+```
+
+#### RegisteredClientRepository
+
+对 RegisteredClient 进行持久化操作，必须要配置。
 
 
 # RBAC

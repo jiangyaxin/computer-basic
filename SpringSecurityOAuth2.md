@@ -1486,6 +1486,10 @@ public interface JwtDecoder {
 
 ## 使用
 
+目前还没有 authorization-server 的自动配置，需要手动配置。
+
+1. 引入依赖：
+
 ```xml
 <!-- 需要同时引入这两个包 -->
 <dependency>
@@ -1499,9 +1503,165 @@ public interface JwtDecoder {
     <artifactId>spring-security-oauth2-authorization-server</artifactId>
     <version>${spring-security-oauth2-authorization-server.version}</version>
 </dependency>
+
+<!-- 如果需要读取 KeyStore 可引入  -->
+<dependency>
+    <groupId>org.springframework.security</groupId>
+    <artifactId>spring-security-rsa</artifactId>
+</dependency>
 ```
 
-目前还没有 authorization-server 的自动配置，需要手动配置。
+2. 执行数据库脚本，并配置 数据源：
+
+```sql
+-- 已注册客户端表
+CREATE TABLE oauth2_registered_client (
+    id varchar(100) NOT NULL,
+    client_id varchar(100) NOT NULL,
+    client_id_issued_at timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    client_secret varchar(200) DEFAULT NULL,
+    client_secret_expires_at timestamp DEFAULT NULL,
+    client_name varchar(200) NOT NULL,
+    client_authentication_methods varchar(1000) NOT NULL,
+    authorization_grant_types varchar(1000) NOT NULL,
+    redirect_uris varchar(1000) DEFAULT NULL,
+    scopes varchar(1000) NOT NULL,
+    client_settings varchar(2000) NOT NULL,
+    token_settings varchar(2000) NOT NULL,
+    PRIMARY KEY (id)
+)
+-- 用户-客户端授权表
+CREATE TABLE oauth2_authorization_consent (
+    registered_client_id varchar(100) NOT NULL,
+    principal_name varchar(200) NOT NULL,
+    authorities varchar(1000) NOT NULL,
+    PRIMARY KEY (registered_client_id, principal_name)
+)
+-- 用户令牌表
+CREATE TABLE oauth2_authorization (
+    id varchar(100) NOT NULL,
+    registered_client_id varchar(100) NOT NULL,
+    principal_name varchar(200) NOT NULL,
+    authorization_grant_type varchar(100) NOT NULL,
+    attributes blob DEFAULT NULL,
+    state varchar(500) DEFAULT NULL,
+    authorization_code_value blob DEFAULT NULL,
+    authorization_code_issued_at timestamp DEFAULT NULL,
+    authorization_code_expires_at timestamp DEFAULT NULL,
+    authorization_code_metadata blob DEFAULT NULL,
+    access_token_value blob DEFAULT NULL,
+    access_token_issued_at timestamp DEFAULT NULL,
+    access_token_expires_at timestamp DEFAULT NULL,
+    access_token_metadata blob DEFAULT NULL,
+    access_token_type varchar(100) DEFAULT NULL,
+    access_token_scopes varchar(1000) DEFAULT NULL,
+    oidc_id_token_value blob DEFAULT NULL,
+    oidc_id_token_issued_at timestamp DEFAULT NULL,
+    oidc_id_token_expires_at timestamp DEFAULT NULL,
+    oidc_id_token_metadata blob DEFAULT NULL,
+    refresh_token_value blob DEFAULT NULL,
+    refresh_token_issued_at timestamp DEFAULT NULL,
+    refresh_token_expires_at timestamp DEFAULT NULL,
+    refresh_token_metadata blob DEFAULT NULL,
+    PRIMARY KEY (id)
+)
+```
+
+3. 添加配置：
+
+```java
+@Configuration
+public class AuthorizationServerConfig extends WebSecurityConfigurerAdapter {
+
+    @Override
+    protected void configure(HttpSecurity http) throws Exception {
+        OAuth2AuthorizationServerConfigurer<HttpSecurity> authorizationServerConfigurer = new OAuth2AuthorizationServerConfigurer<>();
+        RequestMatcher endpointsMatcher = authorizationServerConfigurer.getEndpointsMatcher();
+
+        http
+                .authorizeRequests(authorizeRequests ->
+                        authorizeRequests.anyRequest().authenticated()
+                )
+                .csrf(csrf -> csrf.ignoringRequestMatchers(endpointsMatcher))
+                .apply(authorizationServerConfigurer)
+                .and()
+                .formLogin();
+    }
+
+    /**
+     * 必须要配置
+     */
+    @Bean
+    public RegisteredClientRepository registeredClientRepository(JdbcTemplate jdbcTemplate) {
+        RegisteredClient registeredClient = RegisteredClient.withId(UUID.randomUUID().toString())
+                .clientId("login-client")
+                .clientSecret("{noop}123456")
+                .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
+                .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
+                .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
+                .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
+                .redirectUri("http://127.0.0.1:30011/login/oauth2/code/authorization-server")
+                .scope(OidcScopes.OPENID)
+                .scope("message.read")
+                .scope("message.write")
+                .clientSettings(ClientSettings.builder().requireAuthorizationConsent(true).build())
+                .build();
+
+        // Save registered client in db as if in-memory
+        JdbcRegisteredClientRepository registeredClientRepository = new JdbcRegisteredClientRepository(jdbcTemplate);
+        registeredClientRepository.save(registeredClient);
+
+        return registeredClientRepository;
+    }
+
+    /**
+     * 必须要配置
+     */
+    @Bean
+    public OAuth2AuthorizationService authorizationService(JdbcTemplate jdbcTemplate, RegisteredClientRepository registeredClientRepository) {
+        return new JdbcOAuth2AuthorizationService(jdbcTemplate, registeredClientRepository);
+    }
+
+    /**
+     * 必须要配置
+     */
+    @Bean
+    public OAuth2AuthorizationConsentService authorizationConsentService(JdbcTemplate jdbcTemplate, RegisteredClientRepository registeredClientRepository) {
+        return new JdbcOAuth2AuthorizationConsentService(jdbcTemplate, registeredClientRepository);
+    }
+
+    @Autowired
+    private ResourceLoader resourceLoader;
+
+    /**
+     * 必须要配置，有3种方式配置：
+     * OAuth2TokenGenerator
+     * JwtEncoder
+     * JWKSource<SecurityContext>
+     */
+    @Bean
+    public JWKSource<SecurityContext> jwkSource() {
+        String storePass = "123456";
+        KeyStoreKeyFactory keyStoreKeyFactory = new KeyStoreKeyFactory(resourceLoader.getResource("classpath:jwt.jks"), storePass.toCharArray());
+        KeyPair keyPair = keyStoreKeyFactory.getKeyPair("jwt", storePass.toCharArray());
+
+        RSAPublicKey publicKey = (RSAPublicKey) keyPair.getPublic();
+        RSAPrivateKey privateKey = (RSAPrivateKey) keyPair.getPrivate();
+        RSAKey rsaKey = new RSAKey.Builder(publicKey).privateKey(privateKey).build();
+
+        JWKSet jwkSet = new JWKSet(rsaKey);
+        return (jwkSelector, securityContext) -> jwkSelector.select(jwkSet);
+    }
+
+    /**
+     * 必须要配置
+     */
+    @Bean
+    public ProviderSettings providerSettings() {
+        return ProviderSettings.builder().build();
+    }
+}
+```
 
 ## 核心API
 

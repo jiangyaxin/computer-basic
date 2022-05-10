@@ -1269,6 +1269,17 @@ if (!jwsObject.verify(jwsVerifier)) {
 String payload = jwsObject.getPayload().toString();
 ```
 
+JWKSource<SecurityContext> : 用来获取公钥集合。
+
+```
+public JWKSource<SecurityContext> jwkSource() {
+    RSAKey rsaKey = generateRsaKey();
+
+    JWKSet jwkSet = new JWKSet(rsaKey);
+    return (jwkSelector, securityContext) -> jwkSelector.select(jwkSet);
+}
+```
+
 ## 使用
 
 1. 引入依赖：
@@ -1321,8 +1332,30 @@ NimbusJwtDecoder nimbusJwtDecoder = NimbusJwtDecoder.withJwkSetUri("xxxx").jwsAl
 // 直接使用公钥字符串
 RSAPublicKey publicKey = (RSAPublicKey) KeyFactory.getInstance("RSA").generatePublic(new X509EncodedKeySpec(java.util.Base64.getMimeDecoder().decode("publickey")));
 NimbusJwtDecoder.withPublicKey(publicKey).signatureAlgorithm(SignatureAlgorithm.from("xxxx")).build();
+// 获取 RSAPublicKey 可以使用 RsaKeyConversionServicePostProcessor 来获取
+@Bean
+BeanFactoryPostProcessor conversionServiceCustomizer() {
+    return beanFactory -> beanFactory.getBean(RsaKeyConversionServicePostProcessor.class).setResourceLoader(new CustomResourceLoader());
+}
+
+@Value("${key.location}")
+RSAPublicKey key;
+
 // 使用IssuerUri
 JwtDecoders.fromIssuerLocation("xxxx");
+
+// 对称秘钥
+NimbusJwtDecoder.withSecretKey(this.key).build();
+
+// NimbusJwtDecoder 设置缓存
+NimbusJwtDecoder.withJwkSetUri(jwkSetUri).cache(cacheManager.getCache("jwks")).build();
+
+// NimbusJwtDecoder设置请求超时时间
+RestOperations rest = builder
+        .setConnectTimeout(Duration.ofSeconds(60))
+        .setReadTimeout(Duration.ofSeconds(60))
+        .build();
+NimbusJwtDecoder jwtDecoder = NimbusJwtDecoder.withJwkSetUri(jwkSetUri).restOperations(rest).build();
 ```
 
 3. 配置 HttpSecurity：springboot 已在 OAuth2ResourceServerJwtConfiguration 默认配置，自定义WebSecurityConfigurerAdapter时需要配置。
@@ -1330,6 +1363,128 @@ JwtDecoders.fromIssuerLocation("xxxx");
 ```java
 		http.authorizeRequests((requests) -> requests.anyRequest().authenticated()).oauth2ResourceServer(OAuth2ResourceServerConfigurer::jwt);
 ```
+
+## 启动
+
+1. 通过使用 http.oauth2ResourceServer(OAuth2ResourceServerConfigurer::jwt) 创建 OAuth2ResourceServerConfigurer并配置 http ，OAuth2ResourceServerConfigurer::jwt 负责初始化 OAuth2ResourceServerConfigurer 的 JwtConfigurer。
+2. 自动装配。
+   * SpringSecurity 主流程。
+   * Oauth2ResourceServerConfiguration.JwtConfiguration：根据配置初始化 JwtDecoder。
+
+## OAuth2ResourceServerConfigurer 配置内容
+
+* 向 exceptionTranslationFilter 中添加 BearerTokenRequestMatcher 对应的 BearerTokenAccessDeniedHandler、BearerTokenAuthenticationEntryPoint，当请求匹配BearerTokenRequestMatcher时，执行该 accessDeniedHandler、authenticationEntryPoint。
+* 通过 JwtConfigurer 获取 AuthenticationProvider，添加到 HttpSecurity 中。
+* 添加 BearerTokenAuthenticationFilter。
+
+### BearerTokenRequestMatcher
+
+委托给 DefaultBearerTokenResolver 解析，两种方式：
+
+* 优先取http包含 Authorization 头，内容为 Bearer <TOKEN内容>
+* 如果不满足上面条件，对应 POST 和 GET 请求，会取 url 后面的 access_token 参数。
+
+DefaultBearerTokenResolver 可以配置成 Bean 替换掉默认 DefaultBearerTokenResolver。
+
+### BearerTokenAccessDeniedHandler
+
+* 向 Response 中添加 WWW-Authenticate 头，The request requires higher privileges than provided by the access token.
+* 状态码403
+
+### BearerTokenAuthenticationEntryPoint
+
+* 处理 AuthenticationException 异常。
+* 状态码401
+
+### BearerTokenAuthenticationFilter
+
+1. 使用 DefaultBearerTokenResolver 匹配 request，当失败时 使用 BearerTokenAuthenticationEntryPoint 处理。
+2. 使用 AuthenticationManagerResolver 获取 AuthenticationManager 进行认证，这样可以对不同的请求使用不同的 AuthenticationManager，使用 http.oauth2ResourceServer(resourceServer -> resourceServer.jwt().and().authenticationManagerResolver(new xxxAuthenticationManagerResolver)) 配置。
+3. 认证失败时，使用 AuthenticationFailureHandler 处理，默认也是使用 BearerTokenAuthenticationEntryPoint 处理，使用 http.oauth2ResourceServer(resourceServer -> resourceServer.jwt().and().authenticationEntryPoint(new xxxAuthenticationEntryPoint()))。
+
+### JwtConfigurer
+
+* 负责生成 JwtAuthenticationProvider，并设置  JwtDecoder 和 Converter<Jwt, ? extends AbstractAuthenticationToken> ，默认为 JwtDecoder 通过 Bean 获取，Converter<Jwt, ? extends AbstractAuthenticationToken> 默认为 JwtAuthenticationConverter
+
+#### JwtAuthenticationProvider
+
+![111](assets/111.png)
+
+* 支持认证 BearerTokenAuthenticationToken
+* 使用 JwtDecoder 将 token 解析为 JWT 对象。
+* 使用 JwtAuthenticationConverter 将 JWT 对象转换成 AbstractAuthenticationToken
+
+当解析失败时会抛出 InvalidBearerTokenException，可使用 AuthenticationFailureBadCredentialsEvent 监听：
+
+```java
+@Component
+public class FailureEvents {
+	@EventListener
+    public void onFailure(AuthenticationFailureBadCredentialsEvent badCredentials) {
+		if (badCredentials.getAuthentication() instanceof BearerTokenAuthenticationToken) {
+		    // ... handle
+        }
+    }
+}
+```
+
+#### JwtAuthenticationConverter
+
+负责从 JWT 对象解析 Collection<GrantedAuthority> 生成 JwtAuthenticationToken
+
+自定义：
+
+```java
+public JwtAuthenticationConverter jwtAuthenticationConverter() {
+    JwtGrantedAuthoritiesConverter grantedAuthoritiesConverter = new JwtGrantedAuthoritiesConverter();
+    // 将读取 Claim 中 authorities 属性转换为权限，默认读取 "scope", "scp"，生成的权限字符串默认添加 SCOPE_ 前缀。
+    grantedAuthoritiesConverter.setAuthoritiesClaimName("authorities");
+
+    JwtAuthenticationConverter jwtAuthenticationConverter = new JwtAuthenticationConverter();
+    jwtAuthenticationConverter.setJwtGrantedAuthoritiesConverter(grantedAuthoritiesConverter);
+    return jwtAuthenticationConverter;
+}
+```
+
+#### MappedJwtClaimSetConverter
+
+负责对JWT具体字段进行转换，例如 claims
+
+复制转换
+
+#### JwtDecoder
+
+```java
+// 负责解析token为 JWT 对象
+public interface JwtDecoder {
+	Jwt decode(String token) throws JwtException;
+}
+```
+
+#### NimbusJwtDecoder
+
+实现JwtDecoder：
+
+1. 负责解析token为 JWT 对象
+2. 使用 JWTProcessor<SecurityContext> 验证签名。
+3. 使用 OAuth2TokenValidator<Jwt> 进行验证，验证失败返回 JwtValidationException，默认为 JwtValidators.createDefault() 即 new DelegatingOAuth2TokenValidator<>(Arrays.asList(new JwtTimestampValidator()))，JwtTimestampValidator 会验证 token 过期时间，默认使用utc时间，验证完成后返回 OAuth2TokenValidatorResult。
+
+## 请求流程
+
+* 添加 Authorization ：Bearer <TOKEN内容>  头，发起请求：
+
+![110](assets/110.png)
+
+  详情见 BearerTokenAuthenticationFilter
+
+* token 已认证，但是权限不够：
+
+![109](assets/109.png)
+
+  1. FilterSecurityInterceptor 抛出 AccessDeniedException。
+  2. ExceptionTranslationFilter 使用 BearerTokenAuthenticationEntryPoint 添加  WWW-Authenticate 头信息返回
+
+认证成功后 Authentication#getPrincipal 获取的是 Jwt 对象， Authentication#getPrincipal 获取的是 JWT 的 sub 属性。
 
 # 认证服务器
 
@@ -1342,6 +1497,7 @@ JwtDecoders.fromIssuerLocation("xxxx");
     <artifactId>spring-boot-starter-security</artifactId>
 </dependency>
 
+<!-- 0.2.3 对应springBootVersion 2.5.10  -->
 <dependency>
     <groupId>org.springframework.security</groupId>
     <artifactId>spring-security-oauth2-authorization-server</artifactId>
@@ -1350,6 +1506,52 @@ JwtDecoders.fromIssuerLocation("xxxx");
 ```
 
 目前还没有 authorization-server 的自动配置，需要手动配置。
+
+## 核心API
+
+### ProviderContextFilter
+
+负责配置ProviderContextHolder，当 issuer 端点不存在是，默认使用 http://ip:端口/<server.servlet.context-path> 作为 issuer 端点。
+
+#### ProviderSettings
+
+负责配置端点映射，可使用 ProviderSettings.builder().build() 创建，启动时必须配置该Bean,以下为默认配置：
+
+```java
+public static Builder builder() {
+  return new Builder()
+      .authorizationEndpoint("/oauth2/authorize")
+      .tokenEndpoint("/oauth2/token")
+      .jwkSetEndpoint("/oauth2/jwks")
+      .tokenRevocationEndpoint("/oauth2/revoke")
+      .tokenIntrospectionEndpoint("/oauth2/introspect")
+      .oidcClientRegistrationEndpoint("/connect/register")
+      .oidcUserInfoEndpoint("/userinfo");
+}
+```
+
+### OAuth2AuthorizationEndpointFilter
+
+负责处理 authorizationEndpoint 端点，即 OAuth2 协议的第一步，获取 AUTHORIZATION_CODE
+
+```java
+public final class OAuth2AuthorizationEndpointFilter extends OncePerRequestFilter {
+	private final AuthenticationManager authenticationManager;
+	private final RequestMatcher authorizationEndpointMatcher;
+	private final RedirectStrategy redirectStrategy = new DefaultRedirectStrategy();
+	private AuthenticationConverter authenticationConverter;
+	private AuthenticationSuccessHandler authenticationSuccessHandler = this::sendAuthorizationResponse;
+	private AuthenticationFailureHandler authenticationFailureHandler = this::sendErrorResponse;
+	private String consentPage;
+}
+```
+
+处理 3 类请求：
+
+* authorizationEndpoint、GET 类型
+* authorizationEndpoint、POST类型、参数包含 response_type、scope、scope中包含openid
+* authorizationEndpoint、POST类型、参数不包含 response_type
+
 
 
 # RBAC

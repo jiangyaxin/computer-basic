@@ -1704,7 +1704,7 @@ public interface JwtDecoder {
 </dependency>
 ```
 
-2. 执行数据库脚本，并配置 数据源：
+2. 执行数据库脚本，并配置 数据源：连接数据库时需要使用UTC时间，若使用GTM+8，可以在查询时解析为UTC时间。
 
 ```sql
 -- 已注册客户端表

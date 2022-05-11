@@ -461,6 +461,178 @@ ClientRegistration clientRegistration =
     ClientRegistrations.fromIssuerLocation("https://idp.example.com/issuer").build();
 ```
 
+ClientAuthenticationMethod类型：
+
+![112](assets/112.png)
+
+
+* client_secret_post：即上面的方式
+
+```http
+curl --location --request POST 'http://127.0.0.1:9000/uc/oauth2/token?scope=server&grant_type=client_credentials&client_id=8000000012&client_secret=secret' \
+--header 'Cookie: JSESSIONID=2E0679E3D163F37375BD7E6B80E73AFF'
+```
+
+* client_secret_basic：添加头，Authorization: Basic Base64(client_id:client_secret)
+
+```http
+curl --location --request POST 'http://127.0.0.1:9000/uc/oauth2/token?scope=server&grant_type=client_credentials' \
+--header 'Authorization: Basic ODAwMDAwMDAxMzpzZWNyZXQ=' \
+--header 'Cookie: JSESSIONID=2E0679E3D163F37375BD7E6B80E73AFF'
+```
+
+* client_secret_jwt：算法类型为 MacAlgorithm：HS256、HS384、HS512
+
+```java
+// MacAlgorithm 对应 SecretKeySpec 算法
+mappings.put(MacAlgorithm.HS256, "HmacSHA256");
+mappings.put(MacAlgorithm.HS384, "HmacSHA384");
+mappings.put(MacAlgorithm.HS512, "HmacSHA512");
+```
+
+1. 配置认证中心配置 RegisteredClient ，ClientAuthenticationMethod.CLIENT_SECRET_JWT，MacAlgorithm.HS256
+2. 生成客户端 clientSecret 的 JWT
+
+```java
+OAuth2AccessTokenResponseClient<OAuth2AuthorizationCodeGrantRequest> accessTokenResponseClient = accessTokenResponseClient();
+
+http.authorizeRequests((requests) -> requests
+                .antMatchers("/foo/bar")
+                .hasAnyAuthority("ROLE_ANONYMOUS","SCOPE_userinfo")
+                .anyRequest().authenticated())
+        .oauth2Login().authorizationEndpoint()
+        .and()
+        .tokenEndpoint().accessTokenResponseClient(accessTokenResponseClient);
+http.oauth2Client()
+        .authorizationCodeGrant()
+        .accessTokenResponseClient(accessTokenResponseClient);
+return http.build();
+}
+
+/**
+* 调用token-uri去请求授权服务器获取token的OAuth2 Http 客户端
+*
+* @return OAuth2AccessTokenResponseClient
+*/
+private OAuth2AccessTokenResponseClient<OAuth2AuthorizationCodeGrantRequest> accessTokenResponseClient() {
+  OAuth2AuthorizationCodeGrantRequestEntityConverter grantRequestEntityConverter = new OAuth2AuthorizationCodeGrantRequestEntityConverter();
+  JwkResolver jwkResolver = new JwkResolver();
+  NimbusJwtClientAuthenticationParametersConverter<OAuth2AuthorizationCodeGrantRequest> converter = new NimbusJwtClientAuthenticationParametersConverter<>(jwkResolver::apply);
+  grantRequestEntityConverter.addParametersConverter(converter);
+  DefaultAuthorizationCodeTokenResponseClient tokenResponseClient = new DefaultAuthorizationCodeTokenResponseClient();
+  tokenResponseClient.setRequestEntityConverter(grantRequestEntityConverter);
+  return tokenResponseClient;
+}
+
+public class JwkResolver {
+
+    @SneakyThrows
+    public JWK apply(ClientRegistration clientRegistration) {
+        ClientAuthenticationMethod method = clientRegistration.getClientAuthenticationMethod();
+        Assert.isTrue(ClientAuthenticationMethod.CLIENT_SECRET_JWT.equals(method), "CLIENT_SECRET_JWT Only");
+        byte[] pin = clientRegistration.getClientSecret().getBytes(StandardCharsets.UTF_8);
+        String hmacAlg = "HmacSHA256";
+        SecretKeySpec secretKey = new SecretKeySpec(pin, hmacAlg);
+        return new OctetSequenceKey.Builder(secretKey).build();
+    }
+}
+```
+
+3. 发送认证请求：
+
+```http
+http://127.0.0.1:9000/uc/oauth2/token?
+scope = server
+& grant_type = client_credentials
+& client_assertion_type = urn:ietf:params:oauth:client-assertion-type:jwt-bearer
+& client_assertion = eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiI4MDAwMDAwMDE0IiwiYXVkIjoiaHR0cDpcL1wvYXV0aC1zZXJ2ZXI6OTAwMCIsInBhc3N3b3JkIjoiYWJjQDEyMyIsImlzcyI6IjgwMDAwMDAwMTQiLCJleHAiOjE2NDc3MjE1NTYsInVzZXJuYW1lIjoiMTkwMDAwMDAwMDAifQ.w3IA5_qoYtrQmZ4fvdqxOsfIuIJ1rwNIU72b8__o7FE
+& client_id = 8000000014
+```
+
+| 参数                  | 参数值                                                 |
+| --------------------- | ------------------------------------------------------ |
+| scope                 | 域                                                     |
+| grant_type            | client_credentials                                     |
+| client_assertion_type | urn:ietf:params:oauth:client-assertion-type:jwt-bearer |
+| client_assertion      | 上面生成的 Jwt token                                   |
+| client_id             | 8000000014                                             |
+
+
+* private_key_jwt：请求和client_secret_jwt 一样，不同之处在于 JWT 的生成不一样，算法类型为 SignatureAlgorithm
+
+1. 配置认证中心 RegisteredClient 中 clientAuthenticationMethod 为 ClientAuthenticationMethod.PRIVATE_KEY_JWT
+2. 配置 OAuth2AccessTokenResponseClient
+
+```java
+  OAuth2AccessTokenResponseClient<OAuth2AuthorizationCodeGrantRequest> accessTokenResponseClient = accessTokenResponseClient();
+  http.authorizeRequests((requests) -> requests
+                  .antMatchers("/foo/bar","/oauth2/jwks")
+                  .hasAnyAuthority("ROLE_ANONYMOUS","SCOPE_userinfo")
+                  .anyRequest().authenticated())
+          .oauth2Login().authorizationEndpoint()
+          .and()
+          // 获取token端点配置  比如根据code 获取 token
+          .tokenEndpoint().accessTokenResponseClient(accessTokenResponseClient);
+  http.oauth2Client()
+          .authorizationCodeGrant()
+          .accessTokenResponseClient(accessTokenResponseClient);
+  return http.build();
+}
+
+
+private OAuth2AccessTokenResponseClient<OAuth2AuthorizationCodeGrantRequest> accessTokenResponseClient() {
+  OAuth2AuthorizationCodeGrantRequestEntityConverter grantRequestEntityConverter = new OAuth2AuthorizationCodeGrantRequestEntityConverter();
+  JwkResolver jwkResolver = new JwkResolver();
+  NimbusJwtClientAuthenticationParametersConverter<OAuth2AuthorizationCodeGrantRequest> converter = new NimbusJwtClientAuthenticationParametersConverter<>(jwkResolver::apply);
+  grantRequestEntityConverter.addParametersConverter(converter);
+  DefaultAuthorizationCodeTokenResponseClient tokenResponseClient = new DefaultAuthorizationCodeTokenResponseClient();
+  tokenResponseClient.setRequestEntityConverter(grantRequestEntityConverter);
+  return tokenResponseClient;
+}
+
+public class JwkResolver  {
+
+    @SneakyThrows
+    public JWK apply(ClientRegistration clientRegistration) {
+        //todo clientRegistration的信息这里没有使用
+        // 你可以考虑 多租户 持久化
+        String path = "client.jks";
+        String alias = "jose";
+        String pass = "felord.cn";
+
+        ClassPathResource resource = new ClassPathResource(path);
+        KeyStore jks = KeyStore.getInstance("jks");
+        char[] pin = pass.toCharArray();
+        jks.load(resource.getInputStream(), pin);
+        return RSAKey.load(jks, alias, pin);
+    }
+}
+```
+3. 配置客户端jwks端点
+
+```java
+@RestController
+public class JwkController {
+    private final JwkResolver resolver = new JwkResolver();
+
+    @SneakyThrows
+    @GetMapping(value = "/oauth2/jwks")
+    public Map<String, Object> jwks() {
+        //TODO 这里写的比较随意
+        JWK jwk = resolver.apply(null);
+        JWKSet jwkSet = new JWKSet(jwk);
+        // 这里只会输出公钥JWK
+        return JSONObjectUtils.parse(jwkSet.toString());
+    }
+}
+```
+
+4. 配置认证中心 RegisteredClient
+
+```
+ClientSettings.builder().tokenEndpointAuthenticationSigningAlgorithm(SignatureAlgorithm.RS256).jwkSetUrl("http://localhost:8082/oauth2/jwks").build()
+```
+
 #### CommonOAuth2Provider
 
 `CommonOAuth2Provider`预定义 `Google`、`GitHub`、`Facebook`、 `Okta`的默认配置。
@@ -736,7 +908,7 @@ https://accounts.google.com/o/oauth2/v2/auth?response_type=code&client_id=137558
 
 **authorizationRequestBaseUri 通过 `http.oauth2Login(loginConfigurer -> loginConfigurer.authorizationEndpoint(authorizationEndpointConfig -> authorizationEndpointConfig.baseUri("xxxxx")))` 设置授权端点。**
 
-### OAuth2AuthorizationRequestRedirectFilter
+### OAuth2LoginAuthenticationFilter
 
 ```java
 public class OAuth2LoginAuthenticationFilter extends AbstractAuthenticationProcessingFilter {
@@ -1267,7 +1439,7 @@ if (!jwsObject.verify(jwsVerifier)) {
 String payload = jwsObject.getPayload().toString();
 ```
 
-JWKSource<SecurityContext> : 用来获取公钥集合。
+JWKSource<SecurityContext> : 秘钥集合，包含公钥、私钥。
 
 ```
 public JWKSource<SecurityContext> jwkSource() {
@@ -1463,7 +1635,7 @@ public interface JwtDecoder {
 
 1. 负责解析token为 JWT 对象
 2. 使用 JWTProcessor<SecurityContext> 验证签名。
-3. 使用 OAuth2TokenValidator<Jwt> 进行验证，验证失败返回 JwtValidationException，默认为 JwtValidators.createDefault() 即 new DelegatingOAuth2TokenValidator<>(Arrays.asList(new JwtTimestampValidator()))，JwtTimestampValidator 会验证 token 过期时间，默认使用utc时间，验证完成后返回 OAuth2TokenValidatorResult。
+3. 使用 OAuth2TokenValidator<Jwt> 进行验证，验证失败返回 JwtValidationException，默认为 JwtValidators.createDefault() 即 new DelegatingOAuth2TokenValidator<>(Arrays.asList(new JwtTimestampValidator()))，JwtTimestampValidator 会验证 token 过期时间，默认使用Clock.systemUTC()时间，验证完成后返回 OAuth2TokenValidatorResult。
 
 ## 请求流程
 
@@ -1634,7 +1806,8 @@ public class AuthorizationServerConfig extends WebSecurityConfigurerAdapter {
     private ResourceLoader resourceLoader;
 
     /**
-     * 必须要配置，有3种方式配置：
+     * 如果需要 jwks_uri 端点必须要配置，JWKSource<SecurityContext>
+     * 如果不需要，则需要配置一个 OAuth2TokenGenerator，则有3种方式配置：
      * OAuth2TokenGenerator
      * JwtEncoder
      * JWKSource<SecurityContext>
@@ -1663,7 +1836,36 @@ public class AuthorizationServerConfig extends WebSecurityConfigurerAdapter {
 }
 ```
 
-## 核心API
+过滤器链为：
+
+WebAsyncManagerIntegrationFilter
+SecurityContextPersistenceFilter
+ProviderContextFilter
+HeaderWriterFilter
+CsrfFilter
+LogoutFilter
+OAuth2AuthorizationEndpointFilter
+OidcProviderConfigurationEndpointFilter
+NimbusJwkSetEndpointFilter
+OAuth2AuthorizationServerMetadataEndpointFilter
+OAuth2ClientAuthenticationFilter
+RequestCacheAwareFilter
+SecurityContextHolderAwareRequestFilter
+AnonymousAuthenticationFilter
+SessionManagementFilter
+ExceptionTranslationFilter
+FilterSecurityInterceptor
+OAuth2TokenEndpointFilter
+OAuth2TokenIntrospectionEndpointFilter
+OAuth2TokenRevocationEndpointFilter
+OidcUserInfoEndpointFilter
+
+## OAuth2AuthorizationServerConfigurer 配置内容
+
+1. 配置 OAuth2ClientAuthenticationConfigurer、OAuth2AuthorizationEndpointConfigurer、OAuth2TokenEndpointConfigurer、OAuth2TokenIntrospectionEndpointConfigurer、OAuth2TokenRevocationEndpointConfigurer、OidcConfigurer
+2. 给 OAuth2TokenEndpointConfigurer、OAuth2TokenIntrospectionEndpointConfigurer、OAuth2TokenRevocationEndpointConfigurer 配置 new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED) 处理异常。
+3. 配置 ProviderContextFilter、OAuth2AuthorizationServerMetadataEndpointFilter。
+4. 当 JWKSource<com.nimbusds.jose.proc.SecurityContext> 存在时配置 NimbusJwkSetEndpointFilter。
 
 ### ProviderContextFilter
 
@@ -1686,9 +1888,14 @@ public static Builder builder() {
 }
 ```
 
-### OAuth2AuthorizationEndpointFilter
+### OAuth2AuthorizationEndpointConfigurer
 
-负责处理 authorizationEndpoint 端点，即 OAuth2 协议的第一步，获取 AUTHORIZATION_CODE,也是用户授权接口 /oauth2/authorize
+负责配置 OAuth2AuthorizationEndpointFilter，并添加 OAuth2AuthorizationCodeRequestAuthenticationProvider
+
+#### OAuth2AuthorizationEndpointFilter
+
+* 负责处理 authorizationEndpoint 端点：客户端请求授权码、用户点击授权按钮进行授权。
+* OAuth2 协议的第一步，获取 AUTHORIZATION_CODE,也是用户授权接口 /oauth2/authorize
 
 ```java
 public final class OAuth2AuthorizationEndpointFilter extends OncePerRequestFilter {
@@ -1702,7 +1909,7 @@ public final class OAuth2AuthorizationEndpointFilter extends OncePerRequestFilte
 }
 ```
 
-处理 3 类请求：
+拦截 3 类请求：
 
 * authorizationEndpoint、GET 类型：GET类型请求授权码
 * authorizationEndpoint、POST类型、参数包含 response_type、scope、scope中包含openid：POST类型请求授权码
@@ -1722,9 +1929,26 @@ scope: message.write
 
 流程：
 1. 使用 OAuth2AuthorizationCodeRequestAuthenticationConverter 解析请求参数，构建 OAuth2AuthorizationCodeRequestAuthenticationToken 。
-2.
+2. 使用 OAuth2AuthorizationCodeRequestAuthenticationProvider 进行认证
+3. 若无法认证则继续执行Filter，使用 ExceptionTranslationFilter 的 AuthenticationEntryPoint 进行处理。
+4. 认证成功，根据是否需要授权(由OAuth2AuthorizationCodeRequestAuthenticationProvider结果决定)，是否已经授权，选择是否跳转到授权页面，授权页面可通过 authorizationServerConfigurer.authorizationEndpoint(authorizationServer -> authorizationServer.consentPage("xxxxx")) 自定义，自定义授权页面可以获取 scope、client_id、state 几个参数。
+5. 若已经授权，使用 DefaultRedirectStrategy 重定向到客户端备案地址，包含 code  授权码。
+6. 若认证失败，则重定向到客户端备案地址，包含 error 参数。
 
-#### RegisteredClient
+##### OAuth2AuthorizationCodeRequestAuthenticationProvider
+
+对于未授权用户(即客户端)：即客户端请求授权码
+
+1. 如果是匿名用户直接返回。
+2. 其他用户先根据 ClientSettings 的 isRequireAuthorizationConsent属性，以及请求的scope是否已经授权，计算还未授权的scope，并返回。
+3. 对于不需要授权的用户，使用 OAuth2AuthorizationCodeGenerator 生成授权码 OAuth2AuthorizationCode，并保存到 authorizationService，并返回。
+
+对于已授权用户：用户点击授权按钮进行授权
+
+验证 授权参数 ，然后 使用 OAuth2AuthorizationCodeGenerator 生成授权码 OAuth2AuthorizationCode，并保存到 authorizationService，并返回。
+
+
+##### RegisteredClient
 
 已经注册的客户端对象。
 
@@ -1756,10 +1980,137 @@ public class RegisteredClient implements Serializable {
 }
 ```
 
-#### RegisteredClientRepository
+##### RegisteredClientRepository
 
 对 RegisteredClient 进行持久化操作，必须要配置。
 
+##### OAuth2Authorization
+
+用于保存一个oauth2认证结果，包含 授权码、accessToekn、refreshToken。
+
+```java
+public class OAuth2Authorization implements Serializable {
+	private String id;
+	private String registeredClientId;
+	private String principalName;
+	private AuthorizationGrantType authorizationGrantType;
+	private Map<Class<? extends OAuth2Token>, Token<?>> tokens;
+	private Map<String, Object> attributes;
+```
+
+##### OAuth2AuthorizationService
+
+对 OAuth2Authorization 进行持久化操作，必须要配置。
+
+##### OAuth2AuthorizationConsent
+
+记录用户对客户端哪些Scope授权
+
+```java
+public final class OAuth2AuthorizationConsent implements Serializable {
+	private static final String AUTHORITIES_SCOPE_PREFIX = "SCOPE_";
+
+	private final String registeredClientId;
+	private final String principalName;
+	private final Set<GrantedAuthority> authorities;
+}
+```
+
+##### OAuth2AuthorizationConsentService
+
+对 OAuth2AuthorizationConsent 进行持久化操作，必须要配置。
+
+### OidcConfigurer
+
+1. 使用 OidcUserInfoEndpointConfigurer 配置 OidcUserInfoEndpointFilter ,并添加 OidcUserInfoAuthenticationProvider
+2. 如果配置 OidcClientRegistrationEndpointConfigurer 配置 OidcClientRegistrationEndpointFilter，并添加 OidcClientRegistrationAuthenticationProvider
+3. 配置 OidcProviderConfigurationEndpointFilter
+
+#### OidcProviderConfigurationEndpointFilter
+
+1. 拦截 /.well-known/openid-configuration 的GET请求。
+2. 获取 ProviderContextHolder 中 ProviderSettings，返回 issuer 元数据。
+
+#### OidcUserInfoEndpointFilter
+
+1. 拦截 UserInfoEndpoint 端点。
+2. 使用 OidcUserInfoAuthenticationProvider 认证，获取用户信息。
+
+##### OidcUserInfoAuthenticationProvider
+
+1. 支持 OidcUserInfoAuthenticationToken 处理。
+2. 使用 accessToken 查询 OAuth2Authorization，如果通过校验则使用 DefaultOidcUserInfoMapper 获取Authentication中 idToken 获取用户信息，构建 OidcUserInfoAuthenticationToken 返回。
+
+####  OidcClientRegistrationEndpointFilter
+
+1. 拦截 ClientRegistrationEndpoint 端点：
+   * POST 请求：注册新的 ClientRegistration
+   * GET 请求，包含 client_id 参数：查询ClientRegistration。
+2. 使用 OidcClientRegistrationAuthenticationProvider 认证，获取lientRegistration信息。
+
+##### OidcClientRegistrationAuthenticationProvider
+
+1. 支持 OidcClientRegistrationAuthenticationToken
+2. 使用 accessToken 查询 OAuth2Authorization，如果通过校验则进行 ClientRegistration 注册或者查询。
+
+### NimbusJwkSetEndpointFilter
+
+1. 拦截 JwkSetEndpoint Get请求
+2. 以JSON形式返回 JWKSource<SecurityContext> 中JWKSet，不包含private keys。
+
+### OAuth2AuthorizationServerMetadataEndpointFilter
+
+1. 拦截 /.well-known/oauth-authorization-server 的GET请求。
+2. 获取 ProviderContextHolder 中 ProviderSettings，返回 issuer 元数据。
+
+### OAuth2ClientAuthenticationConfigurer
+
+负责配置 OAuth2ClientAuthenticationFilter，并添加 JwtClientAssertionAuthenticationProvider、ClientSecretAuthenticationProvider、PublicClientAuthenticationProvider
+
+#### OAuth2ClientAuthenticationFilter
+
+1. 拦截 TokenEndpoint、TokenIntrospectionEndpoint、TokenRevocationEndpoint 的 POST 请求。
+2. 分别使用 JwtClientAssertionAuthenticationConverter(PRIVATE_KEY_JWT、CLIENT_SECRET_JWT)、ClientSecretBasicAuthenticationConverter(CLIENT_SECRET_BASIC)、ClientSecretPostAuthenticationConverter(CLIENT_SECRET_POST)、PublicClientAuthenticationConverter(NONE) 解析不同类型客户端认证方式。
+3. JwtClientAssertionAuthenticationProvider、ClientSecretAuthenticationProvider、PublicClientAuthenticationProvider 解析 OAuth2ClientAuthenticationToken。
+
+##### JwtClientAssertionAuthenticationProvider
+
+负责处理 ClientAuthenticationMethod.PRIVATE_KEY_JWT 、 ClientAuthenticationMethod.CLIENT_SECRET_JWT
+
+1. 创建 JwtDecoder：
+
+  * PRIVATE_KEY_JWT ： NimbusJwtDecoder.withJwkSetUri(jwkSetUrl).jwsAlgorithm((SignatureAlgorithm) jwsAlgorithm).build()
+  * CLIENT_SECRET_JWT ：NimbusJwtDecoder.withSecretKey(secretKeySpec).macAlgorithm((MacAlgorithm) jwsAlgorithm).build()
+
+2. 使用  JwtDecoder 解析 client_assertion。
+3. 认证成功后构建 OAuth2ClientAuthenticationToken 返回。
+
+##### ClientSecretAuthenticationProvider
+
+负责处理 ClientAuthenticationMethod.CLIENT_SECRET_BASIC 、 ClientAuthenticationMethod.CLIENT_SECRET_POST 类型认证并在认证成功后构建 OAuth2ClientAuthenticationToken 返回。
+
+##### PublicClientAuthenticationProvider
+
+负责处理 ClientAuthenticationMethod.NONE 类型认证并在认证成功后构建 OAuth2ClientAuthenticationToken 返回。
+
+### OAuth2TokenEndpointConfigurer
+
+负责配置 OAuth2TokenEndpointFilter，并添加 OAuth2AuthorizationCodeAuthenticationProvider，OAuth2RefreshTokenAuthenticationProvider，OAuth2ClientCredentialsAuthenticationProvider
+
+#### OAuth2TokenEndpointFilter
+
+1. 拦截 TokenEndpoint 端点，POST请求
+2. 分别使用 OAuth2AuthorizationCodeAuthenticationConverter、OAuth2RefreshTokenAuthenticationConverter、OAuth2ClientCredentialsAuthenticationConverter 解析不同类型token获取方式。
+3. OAuth2AuthorizationCodeAuthenticationProvider，OAuth2RefreshTokenAuthenticationProvider，OAuth2ClientCredentialsAuthenticationProvider 解析 OAuth2AccessTokenAuthenticationToken。
+4. 认证成功后回调客户端备案地址，并携带token。
+
+### OAuth2TokenIntrospectionEndpointConfigurer
+
+负责配置 OAuth2TokenIntrospectionEndpointFilter，并添加 OAuth2TokenIntrospectionAuthenticationProvider
+
+### OAuth2TokenRevocationEndpointConfigurer
+
+负责配置 OAuth2TokenRevocationEndpointFilter，并添加 OAuth2TokenRevocationAuthenticationProvider
 
 # RBAC
 

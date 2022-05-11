@@ -540,6 +540,27 @@ public class JwkResolver {
 
 3. 发送认证请求：
 
+```java
+String clientId = "8000000014";
+String clientSecret = "a5a0ddb27da70b41d31954d0c51419d8";
+SecretKeySpec secretKeySpec = new SecretKeySpec(clientSecret.getBytes(StandardCharsets.UTF_8), "HmacSHA256");
+
+JWSSigner signer = new MACSigner(secretKeySpec);
+JWTClaimsSet claimsSet = new JWTClaimsSet.Builder()
+	.subject(clientId)
+	.issuer(clientId)
+	.claim("username", "19000000000")
+	.claim("password", "abc@123")
+	.audience("http://auth-server:9000")
+	.expirationTime(new Date(new Date().getTime() + 60 * 60 * 60 * 1000))
+	.build();
+
+SignedJWT signedJWT = new SignedJWT(new JWSHeader(JWSAlgorithm.HS256), claimsSet);
+signedJWT.sign(signer);
+
+String token = signedJWT.serialize();
+```
+
 ```http
 http://127.0.0.1:9000/uc/oauth2/token?
 scope = server

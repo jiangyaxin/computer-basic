@@ -1859,27 +1859,27 @@ public class AuthorizationServerConfig extends WebSecurityConfigurerAdapter {
 
 过滤器链为：
 
-WebAsyncManagerIntegrationFilter
-SecurityContextPersistenceFilter
-ProviderContextFilter
-HeaderWriterFilter
-CsrfFilter
-LogoutFilter
-OAuth2AuthorizationEndpointFilter
-OidcProviderConfigurationEndpointFilter
-NimbusJwkSetEndpointFilter
-OAuth2AuthorizationServerMetadataEndpointFilter
-OAuth2ClientAuthenticationFilter
-RequestCacheAwareFilter
-SecurityContextHolderAwareRequestFilter
-AnonymousAuthenticationFilter
-SessionManagementFilter
-ExceptionTranslationFilter
-FilterSecurityInterceptor
-OAuth2TokenEndpointFilter
-OAuth2TokenIntrospectionEndpointFilter
-OAuth2TokenRevocationEndpointFilter
-OidcUserInfoEndpointFilter
+- WebAsyncManagerIntegrationFilter
+- SecurityContextPersistenceFilter
+- ProviderContextFilter
+- HeaderWriterFilter
+- CsrfFilter
+- LogoutFilter
+- OAuth2AuthorizationEndpointFilter
+- OidcProviderConfigurationEndpointFilter
+- NimbusJwkSetEndpointFilter
+- OAuth2AuthorizationServerMetadataEndpointFilter
+- OAuth2ClientAuthenticationFilter
+- RequestCacheAwareFilter
+- SecurityContextHolderAwareRequestFilter
+- AnonymousAuthenticationFilter
+- SessionManagementFilter
+- ExceptionTranslationFilter
+- FilterSecurityInterceptor
+- OAuth2TokenEndpointFilter
+- OAuth2TokenIntrospectionEndpointFilter
+- OAuth2TokenRevocationEndpointFilter
+- OidcUserInfoEndpointFilter
 
 ## OAuth2AuthorizationServerConfigurer 配置内容
 

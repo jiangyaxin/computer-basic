@@ -329,6 +329,7 @@ shell程序，/bin/bash 为Linux 默认 shell，替换以前的 /bin/sh。
 | ${变量/旧字串/新字串}  </br>  ${变量//旧字串/新字串} | 若变量内容符合“旧字串”则“第一个旧字串会被新字串取代”  </br>  若变量内容符合“旧字串”则“全部的旧字串会被新字串取代”                |
 
 设置默认值：var=${str:-expr}
+
 ![155](assets/155.png)
 
 ### 环境变量
@@ -339,9 +340,268 @@ env 查看环境变量。export 设置环境变量。
 * $：当前shell 的 PID。
 * ?：上个命令的返回值。成功为 0。
 
+### 特殊符号与统配符
+
+![157](assets/157.png)
+
+![158](assets/158.png)
+
+### 数据重定向
+
+![159](assets/159.png)
+
+1. 标准输入　　（stdin） ：代码为 0 ，使用 < 或 << 。
+2. 标准输出　　（stdout）：代码为 1 ，使用 > 或 >> 。
+3. 标准错误输出（stderr）：代码为 2 ，使用 2> 或 2>> 。
+4. tee [文件名] ：可以输出到屏幕也输出到文件，例如 ls -l /home | tee homefile
+
+单个符号表示 覆盖 如 >、2> ，两个符号表示追加 如 >>、2>> ,所有符号中都没有空格。
+
+< 表示输入，<< 表示结束输入符，例如：
+
+>[dmtsai@study ~]$  cat > catfile << "eof"  </br>
+>\> This is a test. </br>
+>\> OK now stop </br>
+>\> eof  #输入这关键字，立刻就结束而不需要输入 [ctrl]+d
+
+示例：
+
+1. `find /home -name .bashrc > list_right 2> list_error`,这样可以使正确数据输出到list_right，错误数据如权限不够等异常输出到 list_error。
+2. `find /home -name .bashrc 2> /dev/null`,/dev/null 是一个特殊的设备，会吃掉任何导向这个设备的信息，这样错误的数据将丢弃，屏幕上显示正确的数据。
+3. `find /home -name .bashrc > list 2>&1 `，正确和错误数据都写入list,其中 2>&1 表示 将 2> 转到 1> 去。
+
+| 指令下达情况   | 说明                                                                                                                   |
+| -------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| cmd1 && cmd2   | 1. 若 cmd1 执行完毕且正确执行（$?=0），则开始执行 cmd2。 </br> 2. 若 cmd1 执行完毕且为错误 （$?≠0），则 cmd2 不执行。  |
+| cmd1 \|\| cmd2 | 1. 若 cmd1 执行完毕且正确执行（$?=0），则 cmd2 不执行。 </br>  2. 若 cmd1 执行完毕且为错误 （$?≠0），则开始执行 cmd2。 |
+
+### 管道 pipe
+
+![160](assets/160.png)
+
+* 管线命令仅会处理 standard output，对于 standard error output 会予以忽略。
+* 管线命令必须要能够接受来自前一个指令的数据成为 standard input 继续处理才行。
+
+#### cut & grep
+
+1. `cut -d '分隔字符' -f [取分隔后的第几个]`：用于拆分一行数据。
+2. grep：筛选多行数据。
+
+  > -a ：将 binary 文件以 text 文件的方式搜寻数据 </br>
+  > -c ：计算找到 '搜寻字串' 的次数 </br>
+  > -i ：忽略大小写的不同，所以大小写视为相同 </br>
+  > -n ：顺便输出行号 </br>
+  > -v ：反向选择，亦即显示出没有 '搜寻字串' 内容的那一行！ </br>
+
+#### 排序 sort & uniq & wc
+
+1. sort：排序
+
+  > -f  ：忽略大小写的差异，例如 A 与 a 视为编码相同 </br>
+  > -b  ：忽略最前面的空白字符部分 </br>
+  > -M  ：以月份的名字来排序，例如 JAN, DEC 等等的排序方法</br>
+  > -n  ：使用“纯数字”进行排序（默认是以文字体态来排序的）</br>
+  > -r  ：反向排序</br>
+  > -u  ：就是 uniq ，相同的数据中，仅出现一行代表 </br>
+  > -t  ：分隔符号，默认是用 [tab] 键来分隔</br>
+  > -k  ：以那个区间 （field） 来进行排序的意思 </br>
+
+  示例：`cat /etc/passwd | sort -t ':' -k 3` 使用 : 分隔用第3列排序
+
+2. wc：统计行数、字数、字符数。
+3. uniq：去重。
+
+## sed
+
+语法：sed [选项] [操作]
+
+选项：
+* -n  ：使用安静（silent）模式。在一般 sed 的用法中，所有来自 STDIN 的数据一般都会被列出到屏幕上。但如果加上 -n 参数后，则只有经过 sed 特殊处理的那一行（或者动作）才会被列出来。
+* -e  ：直接在命令行界面上进行 sed 的动作编辑；
+* -f  ：直接将 sed 的动作写在一个文件内， -f filename 则可以执行 filename 内的 sed 动作；
+* -r  ：sed 的动作支持的是延伸型正则表达式的语法。（默认是基础正则表达式语法）
+* -i  ：直接修改读取的文件内容，而不是由屏幕输出。
+
+操作：[n1[,n2]]function
+
+n1,n2：表示从n1 -  n2 行,也可以不设置
+
+function：
+* a   ：新增， a 的后面可以接字串，新增到下一行。
+* c   ：整行替换， c 的后面可以接字串，取代 n1,n2 之间的行。
+* d   ：删除。
+* i   ：插入， i 的后面可以接字串，插入到上一行。
+* p   ：打印。通常 p 会与参数 sed -n 一起使用。
+* s   ：替换可以使用正则表达式，`sed 's/要被取代的字串/新的字串/g'`如 1,20s/old/new/g 就是啦！
+
+## printf
+
+语法：printf '格式' 内容
+
+`printf '%x' 15` ： 10进制转16进制。
+`printf '%d' 0xf` ： 16进制转10进制。
+`printf '\x45'` ：16进制ASCII码 转 字符。
+`printf '%d' "'E"` ：字符 转 10进制ASCII码。
+
+![161](assets/161.png)
+
+## awk
+
+语法：awk '条件类型1{动作1} 条件类型2{动作2} ...' filename
+
+其中 {} 包裹表示动作。默认分隔符是空格，将每个字段提取放在 $1、$2 等变量，整行放在 $0 。
+
+内置变量：使用时不用$符号
+
+* NF：每一行 （$0） 拥有的字段总数
+* NR：目前 awk 所处理的是“第几行”数据
+* FS：目前的分隔字符，默认是空白键
+
+示例：
+
+`last -n 5 | awk '{print $1 "\t" $3}'`
+`last -n 5 | awk '{print $1 "\t lines: " NR "\t columns: " NF}'`
+`cat /etc/passwd | awk 'BEGIN {FS=":"} $3 < 10 {print $1 "\t " $3}'`：将默认分隔符替换成:，BEGIN 表示从第一行开始。
+
+## shell脚本
+
+第一行使用 #!/bin/bash 标识使用bash语法。
+
+脚本执行：
+sh script 或者 ./script ：会创建新的bash环境执行，等于是一个子进程，变量不会传回父进程。
+source script ：在父进程中执行。
+
+调试：
+* -n  ：不执行 script，仅查询语法的问题。
+* -v  ：在执行 sccript 前，先将 scripts 的内容输出到屏幕上。
+* -x  ：将使用到的 script 内容显示到屏幕上，即运行过程。
+
+### test命令
+返回 boolean 值,等价于使用判断符号 [],示例：`[ -f "$FILE" ]`
+
+语法： test -e [参数]
+常用：
+* -f：该“文件名”是否存在且为文件。
+* -d：该“文件名”是否存在且为目录。
+* -z：空字串。
+* -n：非空字符串。
+
+### 默认变量
+
+* $0 : 执行文件名。
+* $1-$9：参数。
+* $#：参数个数。
+
+### if
+
+语法：判断符号[] 可替换为 test 命令
+```bash
+if [ 条件判断 ]; then
+  ...
+elif  [ 条件判断 ]; then
+  ...
+else
+  ...
+fi
+```
+
+### case
+
+语法：
+
+```bash
+case  $变量名称 in
+  "第一个变量内容")
+    程序段
+    ;;
+  "第二个变量内容")
+    程序段
+    ;;
+  *)
+    程序段
+    ;;
+esac
+```
+
+### function
+
+语法：
+
+```bash
+function name(){
+
+}
+```
+
+内置变量：
+* $0 : 函数名。
+* $1-$9：参数。
+
+示例：
+
+```bash
+function printit(){
+    # 这个 $1 必须要参考下面指令的下达
+    echo "Your choice is ${1}"
+}
+
+# 请注意， printit 指令后面还有接参数！
+printit 1
+```
+
+### 循环
+
+```bash
+while [ condition ]
+do
+    程序段落
+done
+```
+
+```bash
+# $(seq 1 100) 产生 1-100 的数字
+for var in con1 con2 con3 ...
+do
+    程序段 # 使用 $var 取变量
+done
+```
+
 ## LoginShell & non-LoginShell
 
+LoginShell：取得Bash时需要完整的登陆流程。
+non-LoginShell：取得Bash时不需要登陆流程，比如：
+* 已经在 X window 登陆，这时候打开终端就不需要再登陆。
+* 在原本的bash环境下再次执行bash开启子进程，这时候也不需要再登陆。
 
+可通过 echo $0 判断，返回结果以 - 开头为LoginShell，如果不以 - 开头为non-LoginShell。
+
+LoginShell 读取的配置文件：
+
+![156](assets/156.png)
+
+1. /etc/profile：non-LoginShell不会读取，系统全局配置，针对所有用户，会依次加载以下数据：
+
+  * `/etc/profile.d/*.sh`
+  * `/etc/locale.conf`：由 /etc/profile.d/lang.sh  加载。
+  * `/usr/share/bash-completion/completions/*`：由 /etc/profile.d/bash_completion.sh 加载，负责处理命令补齐，文件名补齐等功能。
+
+2. `~/.bash_profile `> `~/.bash_login` >` ~/.profile`：按优先级只会读取其中一个文件，本质也是由 /etc/profile 加载的。
+
+  * `~/.bash_profile` 还会读取` ~/.bashrc`,由 `~/.bashrc` 读取 `/etc/bashrc`
+
+LoginShell 读取的配置文件：
+
+1. `~/.bashrc`：non-LoginShell 只会读取该文件,由 `~/.bashrc` 读取 `/etc/bashrc`
+
+`/etc/bashrc`是CentOS特有的，会设置默认 PS1、umask等。
+
+手动加载配置文件：`source [配置文件]`
+
+其他配置文件：
+
+1. `/etc/man_db.conf`：规定去哪里找man说明文档。
+2. `~/.bash_history`：history命令查询的文件，可通过 HISTFILESIZE 环境变量配置行数。
+3. `~/.bash_logout`：登出时执行。
 
 # 常用操作
 

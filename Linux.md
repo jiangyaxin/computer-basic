@@ -6,38 +6,38 @@
 
 ```bash
 [root@study ~]# ls -l /boot/grub2
--rw-r--r--.  device.map            &lt;==grub2 的设备对应档（下面会谈到）
-drwxr-xr-x.  fonts                 &lt;==开机过程中的画面会使用到的字体数据
--rw-r--r--.  grub.cfg              &lt;==grub2 的主配置文件！相当重要！
--rw-r--r--.  grubenv               &lt;==一些环境区块的符号
-drwxr-xr-x.  i386-pc               &lt;==针对一般 x86 PC 所需要的 grub2 的相关模块
-drwxr-xr-x.  locale                &lt;==就是语系相关的数据啰
-drwxr-xr-x.  themes                &lt;==一些开机主题画面数据
+-rw-r--r--.  device.map            <== grub2 的设备对应档（下面会谈到）
+drwxr-xr-x.  fonts                 <== 开机过程中的画面会使用到的字体数据
+-rw-r--r--.  grub.cfg              <== grub2 的主配置文件！相当重要！
+-rw-r--r--.  grubenv               <== 一些环境区块的符号
+drwxr-xr-x.  i386-pc               <== 针对一般 x86 PC 所需要的 grub2 的相关模块
+drwxr-xr-x.  locale                <== 就是语系相关的数据啰
+drwxr-xr-x.  themes                <== 一些开机主题画面数据
 
 [root@study ~]# ls -l /boot/grub2/i386-pc
--rw-r--r--.  acpi.mod              &lt;==电源管理有关的模块
--rw-r--r--.  ata.mod               &lt;==磁盘有关的模块
--rw-r--r--.  chain.mod             &lt;==进行 loader 控制权移交的相关模块
--rw-r--r--.  command.lst           &lt;==一些指令相关性的列表
--rw-r--r--.  efiemu32.o            &lt;==下面几个则是与 uefi BIOS 相关的模块
+-rw-r--r--.  acpi.mod              <== 电源管理有关的模块
+-rw-r--r--.  ata.mod               <== 磁盘有关的模块
+-rw-r--r--.  chain.mod             <== 进行 loader 控制权移交的相关模块
+-rw-r--r--.  command.lst           <== 一些指令相关性的列表
+-rw-r--r--.  efiemu32.o            <== 下面几个则是与 uefi BIOS 相关的模块
 -rw-r--r--.  efiemu64.o
 -rw-r--r--.  efiemu.mod
--rw-r--r--.  ext2.mod              &lt;==EXT 文件系统家族相关模块
--rw-r--r--.  fat.mod               &lt;==FAT 文件系统模块
--rw-r--r--.  gcry_sha256.mod       &lt;==常见的加密模块
+-rw-r--r--.  ext2.mod              <== EXT 文件系统家族相关模块
+-rw-r--r--.  fat.mod               <== FAT 文件系统模块
+-rw-r--r--.  gcry_sha256.mod       <== 常见的加密模块
 -rw-r--r--.  gcry_sha512.mod
--rw-r--r--.  iso9660.mod           &lt;==光盘文件系统模块
--rw-r--r--.  lvm.mod               &lt;==LVM 文件系统模块
--rw-r--r--.  mdraid09.mod          &lt;==软件磁盘阵列模块
--rw-r--r--.  minix.mod             &lt;==MINIX 相关文件系统模块
--rw-r--r--.  msdospart.mod         &lt;==一般 MBR 分区表
--rw-r--r--.  part_gpt.mod          &lt;==GPT 分区表
--rw-r--r--.  part_msdos.mod        &lt;==MBR 分区表
--rw-r--r--.  scsi.mod              &lt;==SCSI 相关模块
--rw-r--r--.  usb_keyboard.mod      &lt;==下面两个为 USB 相关模块
+-rw-r--r--.  iso9660.mod           <== 光盘文件系统模块
+-rw-r--r--.  lvm.mod               <== LVM 文件系统模块
+-rw-r--r--.  mdraid09.mod          <== 软件磁盘阵列模块
+-rw-r--r--.  minix.mod             <== MINIX 相关文件系统模块
+-rw-r--r--.  msdospart.mod         <== 一般 MBR 分区表
+-rw-r--r--.  part_gpt.mod          <== GPT 分区表
+-rw-r--r--.  part_msdos.mod        <== MBR 分区表
+-rw-r--r--.  scsi.mod              <== SCSI 相关模块
+-rw-r--r--.  usb_keyboard.mod      <== 下面两个为 USB 相关模块
 -rw-r--r--.  usb.mod
--rw-r--r--.  vga.mod               &lt;==VGA 显卡相关模块
--rw-r--r--.  xfs.mod               &lt;==XFS 文件系统模块 
+-rw-r--r--.  vga.mod               <== VGA 显卡相关模块
+-rw-r--r--.  xfs.mod               <== XFS 文件系统模块
 ```
 
 # 磁盘规划

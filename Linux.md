@@ -165,8 +165,60 @@ ulimit -a：列出所有的限制，同时会提示设置某一项使用什么�
 格式化: `mkfs.xfs -f -d su=256k,sw=3 -r extsize=768k /dev/md0`
 
 srtipe （chunk） 容量为 256K，所以 su=256k
-共有 4 颗组成 RAID5 ，因此容量少一颗，所以 sw=3 喔！
-由上面两项计算出数据宽度为： 256K*3=768k
+共有 4 颗组成 RAID5 ，因此容量少一颗，所以 sw=3
+数据宽度为： 256K*3=768k
+
+### LVM
+
+LVM 可以弹性调整文件系统的容量，将几个实体的分区(或者磁盘) 通过软件组合成为一块逻辑的大磁盘 ，然后将这块大磁盘再经过分区成为可使用逻辑分区 ，格式化后就能够挂载使用。
+
+#### 名称解释
+
+* 物理卷（PV，Physical Volume）：通过将分区的系统标识符调整成 8E ， 然后使用 pvcreate 将其转为 LVM 的底层物理卷，调整 system ID 可通过 gdisk 设置 `hex code or GUID` 这一项，默认为 8300 ,表示为 Linux filesystem 。
+* 卷组（VG，Volume Group）：组合起来的逻辑大磁盘，由多个PV构成。
+* 物理扩展块（PE，Physical Extent）：LVM 的最小储存单位，类似 block，默认大小为 4M，LVM 的扩充是通过加入PE实现的。
+* 逻辑卷（LV，Logical Volume）：最后使用的逻辑分区，由VG切割而成，设备名通常为  `/dev/[vgname]/[lvname] `。
+
+写入机制：
+
+* 线性模式 （linear）：默认模式，多个分区加入VG时，一个分区一个分区写入数据。例如：/dev/vda1, /dev/vdb1 加入 VG 当中，并且整个 VG 只有一个 LV ，当 /dev/vda1 的容量用完，/dev/vdb1 的硬盘才会被使用。
+* 交错模式 （triped）：类似于RAID0，将数据拆成两部分，分别写入 /dev/vda1 与 /dev/vdb1 ，理论上，读写的性能会比较好，但任何一个分区数据损坏时，所有数据就损坏，不建议使用，LVM主要用于弹性扩展，性能提升还是使用RAID。
+
+#### 创建LVM
+
+![163](assets/163.png)
+
+1. 使用 gdisk 修改系统标识符。
+2. PV阶段：
+  * pvcreate ：将实体 partition 创建成为 PV ，例如：`pvcreate /dev/vda{5,6,7,8}`。
+  * pvscan ：搜寻目前系统里面任何具有 PV 的磁盘。
+  * pvdisplay ：显示出目前系统上面的 PV 状态。
+  * pvremove ：将 PV 属性移除，让该 partition 不具有 PV 属性。
+3. VG阶段：
+  * vgcreate ：创建VG，例如：`vgcreate [VG名称] [PV名称]`。
+  * vgscan ：搜索系统上的VG。
+  * vgdisplay ：显示目前系统上面的 VG 状态。
+  * vgextend ：在 VG 内增加额外的 PV 。
+  * vgreduce ：在 VG 内移除 PV。
+  * vgchange ：设置 VG 是否启动。
+  * vgremove ：删除一个 VG 啊。
+4. LV阶段：
+  * lvscan ：查询系统上面的 LV 。
+  * lvcreate ：创建 LV ，例如：`lvcreate -L [容量] -n [LV名称] [VG名称]`。
+  * lvdisplay ：显示系统上面的 LV 状态。
+  * lvextend ：增加容量。
+  * lvreduce ：减少容量。
+  * lvremove ：删除。
+  * lvresize ：调整大小，例如：`lvresize -L +[容量] /dev/[vgname]/[lvname]`,再格式化新加入部分 `xfs_growfs [挂载目录]`
+5. 文件系统阶段：
+  * 格式化：`mkfs.xfs /dev/[vgname]/[lvname]`。
+  * 挂载。
+
+#### 快照
+
+LVM可以建立快照，分为快照区和系统区，修改过的数据会被复制到快照区，没有修改过的数据和系统区共享。
+
+1. 创建快照：`lvcreate -s -l [PE块数量] -n [快照名字] /dev/[vgname]/[需要创建快照的LVname]`。
 
 ### 操作
 
@@ -343,6 +395,229 @@ srtipe （chunk） 容量为 256K，所以 su=256k
 | 切换用户             | su       | 获取的是非登录shell                                                                                                                               |
 | 使用其他用户身份执行 | sudo     | -u：想要获得的用户 </br> -b：后台执行任务 </br> 是否能够sudo需要根据 /etc/sudoers                                                                 |
 | 修改/etc/sudoers     | visudo   | 使用者帐号  登陆者的来源主机名称=（可切换的身份）  可下达的指令 </br> root                         ALL=(ALL)           ALL                        |
+
+# 进程管理
+
+后台执行：在命令最后使用 & ，或者使用 ctrl + z 将前台任务丢到后台去暂停，jobs -r 查看后台任务，可使用 -l 查看pid，让后台暂停的任务继续执行 bg %[jobs -r 查看的任务编号]
+
+前台执行：fg %[jobs -r 查看的任务编号]
+
+kill: -9 强制结束一个任务  -15 以正常方式结束一个任务。
+
+脱机管理：& 只是让任务后台执行，用户注销后任务就会停止，要想能脱机运行，可以使用 nohup 添加到任务前面。
+
+## 查看进程
+
+1. 查看自己bash进程：ps -l
+
+  ```bash
+  F S   UID    PID   PPID  C PRI  NI ADDR SZ WCHAN  TTY          TIME CMD
+  ```
+
+  * F : 表示程序权限，4为root权限， 1 为该子程序仅进行复制（fork）而没有实际执行（exec）。
+  * S : 表示进程状态：
+    1. R （Running）：该程序正在运行中。
+    2. S （Sleep）：该程序目前正在睡眠状态（idle），但可以被唤醒（signal）。
+    3. D ：不可被唤醒的睡眠状态，通常程序可能在等待 I/O （例如：打印）
+    4. T ：停止状态（stop），可能是在任务暂停或跟踪 （traced） 状态；
+    5. Z （Zombie）：僵尸状态，程序已经终止但却无法被移除至内存外。
+  * UID/PID/PPID：用户ID/PID/父进程PID 。
+  * C：代表 CPU 使用率，单位为百分比。
+  * PRI/NI：优先级，越小越快被执行。
+  * ADDR/SZ/WCHAN：ADDR表示该程序在内存的哪个部分，如果是 running 的程序，一般就会显示`-`,  SZ 代表此程序用掉多少内存, WCHAN 表示目前程序是否运行中，若为 `-` 表示正在运行中。
+  * TTY：登陆者的终端位置，若为远端登陆则使用动态终端接口 （pts/n）。
+  * TIME：程序实际花费 CPU 运行的时间，而不是系统时间。
+  * CMD：程序的触发指令。
+
+2. 查看所有系统运行的进程：ps aux
+
+  ```bash
+  USER        PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND
+  ```
+
+  * RSS：常驻内存，用于表示进程使用了多少内存（RAM中的物理内存），RSS不包含已经被换出的内存。RSS包含了它所链接的动态库并且被加载到物理内存中的内存。RSS还包含栈内存和堆内存。
+  * VSZ：虚拟内存大小，它包含了进程所能访问的所有内存，包含了被换出的内存，被分配但是还没有被使用的内存，以及动态库中的内存。
+
+3. 动态查看进程状态：top
+
+  按键命令：
+    *  P ：以 CPU 的使用资源排序显示。
+    *  M ：以 Memory 的使用资源排序显示。
+    *  N ：以 PID 来排序喔。
+    *  T ：由该 Process 使用的 CPU 时间累积 （TIME+） 排序。
+
+  ```bash
+  top - 00:53:59 up  6:07,  3 users,  load average: 0.00, 0.01, 0.05
+  Tasks: 179 total,   2 running, 177 sleeping,   0 stopped,   0 zombie
+  %Cpu（s）:  0.0 us,  0.0 sy,  0.0 ni,100.0 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st
+  KiB Mem :  2916388 total,  1839140 free,   353712 used,   723536 buff/cache
+  KiB Swap:  1048572 total,  1048572 free,        0 used.  2318680 avail Mem
+
+   PID USER      PR  NI    VIRT    RES    SHR S  %CPU %MEM     TIME+ COMMAND
+  ```
+
+  * 第一行依次是：开机时间、目前运行多长时间、现在在线用户、1, 5, 15 分钟的平均工作负载。
+  * 第二行时进程总览。
+  * 第三行依次是：wa 参数较为重要。
+    1. us 用户空间占用CPU百分比
+    2. sy 内核空间占用CPU百分比
+    3. ni 用户进程空间内改变过优先级的进程占用CPU百分比
+    4. id 空闲CPU百分比
+    5. wa 等待输入输出的CPU时间百分比
+    6. hi：硬件CPU中断占用百分比
+    7. si：软中断占用百分比
+    8. st：虚拟机占用百分比
+  * 第四行依次是：物理总内存，空闲内存，使用的物理总内存，作为内核缓冲区内存。
+  * 第五行依次是：swap区总量，空闲swap总量，已使用swap总量，缓冲的交换区总量（内存换到swap，再从swap换到内存，该内容未被替换，下次换出时不必再写入交换区）。
+
+4. 查看进程树：pstree -Aup ，需要安装 yum install psmisc
+
+5. 查看线程。
+  * ps -T -p [pid]
+  * top -H -p [pid]
+6. 查看内存使用情况：free
+7. 查看内核信息：uname -a
+8. 查看系统启动时间以及负载：uptime,也可通过top查看。
+9. 查看tcp、udp、unix连接：netstat ，常用：netstat -tnlp
+  * -a 显示所有连接
+  * -n 显示端口号
+  * -p 显示进程id
+  * -l 列出正在监听的服务
+  * -t tcp
+  * -u udp
+10. 检测系统资源变化：vmstat [多久检测一次] [检测几次]
+  * swpd：虚拟内存被使用的容量。
+  * free：未被使用的内存容量。
+  * buff：用于缓冲内存。
+  * cache：用于高速缓存内存。
+
+  * si：由磁盘中将程序取出的量。
+  * so：由于内存不足而将没用到的程序写入到磁盘的 swap 的容量。
+
+  * bi：由磁盘读入的区块数量。
+  * bo：写入到磁盘去的区块数量。
+
+  * in：每秒被中断的程序次数。
+  * cs：每秒钟进行的事件切换次数。
+
+  * us：非核心层的 CPU 使用状态。
+  * sy：核心层所使用的 CPU 状态。
+  * id：闲置的状态。
+  * wa：等待 I/O 所耗费的 CPU 状态。
+  * st：被虚拟机 （virtual machine） 所盗用的 CPU 使用状态。
+11. 查找使用文件、目录、端口的进程：`fuser -uv [文件/目录]`,`fuser -v -n tcp [端口]`
+12. 列出进程使用的文件名称：lsof。
+
+## /proc/* 的意义
+
+进程的状态信息会写入到 /proc/[PID]/ 目录，另外和系统相关的信息记录在 /proc 下。
+
+cmdline：启动命令。
+environ：环境变量。
+
+
+# 定时任务
+
+## 执行一次的任务
+
+at ：负责处理仅执行一次就结束调度，执行 at 时， 需要 atd 服务。
+
+## 使用
+
+1. 启动atd服务。
+
+  ```bash
+  # 重新启动 atd 这个服务
+  systemctl restart atd
+  # 让这个服务开机就自动启动
+  systemctl enable atd
+  # 查阅一下 atd 目前的状态
+  systemctl status atd
+  ```
+
+2. 使用at命令添加任务。
+
+  语法：at [TIME]
+
+  参数：
+
+  > -l  ：at -l 相当于 atq，列出所有该使用者未执行的 at 调度。</br>
+  > -d  ：at -d 相当于 atrm ，可以取消一个在 at 调度中的工作。</br>
+  > -c  ：显示任务内容，后面接任务编号，例如 at -c 2。</br>
+
+  时间格式：
+
+  > `HH:MM`           例如：     `ex> 04:00`</br>
+  > `HH:MM YYYY-MM-DD`  例如：        `ex> 04:00 2015-07-30`</br>
+  > `HH:MM[am|pm] [Month] [Date]`  例如：    `ex> 04pm July 30`</br>
+  > `HH:MM[am|pm] + number [minutes|hours|days|weeks]` 例如：  `ex> now + 5 minutes` ,   `ex> 04pm + 3 days`
+
+## 执行
+
+1. at 命令会将要运行的以文本文件的方式写入 /var/spool/at/ 目录内，等待 atd 调度。
+2. 查询  /etc/at.allow 文件，只有写在这个文件中的用户才能使用 at，没有写在该文件不能执行（即使没有写在 /etc/at.deny）。
+3. 如果  /etc/at.allow 不存在，则寻找 /etc/at.deny，写在  /etc/at.deny 中的不能使用 at，没有写在其中的key执行。
+4. 如果都不存在，只有root可以执行at。
+
+## 定期循环的任务
+
+crontab ：定期循环的任务，执行 crontab 时， 需要 crond 服务。
+
+## 使用
+
+1. 方法1：
+
+  语法：crontab [选项]
+
+  参数：
+
+  > -e  ：编辑 任务。</br>
+  > -l  ：查看所有任务。
+
+  示例：`crontab -e` 会进入 vim，新增一行 `*/5 * * * * /home/dmtsai/test.sh`
+
+2. 方法2：使用 root 用户编辑 /etc/crontab ,内容格式为 `分 时 日 月 周 身份 指令`,每分钟会读取一次该文件的任务到内存，也可以重启 crond 服务来刷新。
+
+
+## 执行
+
+crond 会读取 `/etc/crontab`，`/var/spool/cron/*`，`/etc/cron.d/*` 三个位置，/etc/cron.d 目录中内容和 /etc/crontab 一样，/var/spool/cron/ 不建议手动编辑，使用 crontab 命令添加。
+
+除此之外， /etc/cron.d/0hourly 会触发 /etc/cron.hourly 目录中文件的执行，执行间隔为 每小时0-5分钟随机一个时间。/etc/cron.hourly/0anacron 会触发 /etc/cron.daily/, /etc/cron.weekly/, /etc/cron.monthly/ 三个目录中文件的执行。
+
+1. crontab 命令会将要运行的以文本文件的方式写入 /var/spool/cron/ 目录内（例如：`/var/spool/cron/[用户名]`），等待 crond 调度。
+2. 使用 /etc/cron.allow 和 /etc/cron.deny 来控制权限。
+3. 运行日志打印在 /var/log/cron。
+
+### anacron
+
+anacron 由 /etc/cron.hourly/0anacron 触发，每小时执行一次。
+
+语法： anacron [-sfn] [job]
+
+参数：
+
+> -s  ：开始一连续的执行各项工作 （job），会依据时间记录文件的数据判断是否进行。</br>
+> -f  ：强制进行，而不去判断时间记录文件的时间戳记。</br>
+> -n  ：立刻进行未进行的任务，而不延迟 （delay） 等待时间。</br>
+> -u  ：仅更新时间记录文件的时间戳记，不进行任何工作。</br>
+> job ：由 /etc/anacrontab 定义的各项工作名称。</br>
+
+ /etc/anacrontab 内容如下：
+
+```bash
+SHELL=/bin/sh
+PATH=/sbin:/bin:/usr/sbin:/usr/bin
+MAILTO=root
+RANDOM_DELAY=45           # 随机给予最大延迟时间，单位是分钟
+START_HOURS_RANGE=3-22    # 延迟多少个小时内应该要执行的任务时间
+
+1         5        cron.daily         nice run-parts /etc/cron.daily
+7        25        cron.weekly        nice run-parts /etc/cron.weekly
+@monthly 45        cron.monthly       nice run-parts /etc/cron.monthly
+#天数     延迟时间(分钟) 工作名称定义       实际要进行的指令串
+```
+
 
 # vi&vim
 

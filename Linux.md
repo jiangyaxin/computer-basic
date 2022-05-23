@@ -1,3 +1,44 @@
+# Boot Loader(Grub2)
+
+由于MBR只有446字节，所以 boot loader 被分为执行和加载配置文件两个阶段：
+* Stage 1：执行 boot loader 主程序，主程序必须要被安装MBR，仅有最小主程序，没有安装配置文件。
+* Stage 2：主程序载入配置文件，配置文件位于 /boot/grub2。
+
+```bash
+[root@study ~]# ls -l /boot/grub2
+-rw-r--r--.  device.map            &lt;==grub2 的设备对应档（下面会谈到）
+drwxr-xr-x.  fonts                 &lt;==开机过程中的画面会使用到的字体数据
+-rw-r--r--.  grub.cfg              &lt;==grub2 的主配置文件！相当重要！
+-rw-r--r--.  grubenv               &lt;==一些环境区块的符号
+drwxr-xr-x.  i386-pc               &lt;==针对一般 x86 PC 所需要的 grub2 的相关模块
+drwxr-xr-x.  locale                &lt;==就是语系相关的数据啰
+drwxr-xr-x.  themes                &lt;==一些开机主题画面数据
+
+[root@study ~]# ls -l /boot/grub2/i386-pc
+-rw-r--r--.  acpi.mod              &lt;==电源管理有关的模块
+-rw-r--r--.  ata.mod               &lt;==磁盘有关的模块
+-rw-r--r--.  chain.mod             &lt;==进行 loader 控制权移交的相关模块
+-rw-r--r--.  command.lst           &lt;==一些指令相关性的列表
+-rw-r--r--.  efiemu32.o            &lt;==下面几个则是与 uefi BIOS 相关的模块
+-rw-r--r--.  efiemu64.o
+-rw-r--r--.  efiemu.mod
+-rw-r--r--.  ext2.mod              &lt;==EXT 文件系统家族相关模块
+-rw-r--r--.  fat.mod               &lt;==FAT 文件系统模块
+-rw-r--r--.  gcry_sha256.mod       &lt;==常见的加密模块
+-rw-r--r--.  gcry_sha512.mod
+-rw-r--r--.  iso9660.mod           &lt;==光盘文件系统模块
+-rw-r--r--.  lvm.mod               &lt;==LVM 文件系统模块
+-rw-r--r--.  mdraid09.mod          &lt;==软件磁盘阵列模块
+-rw-r--r--.  minix.mod             &lt;==MINIX 相关文件系统模块
+-rw-r--r--.  msdospart.mod         &lt;==一般 MBR 分区表
+-rw-r--r--.  part_gpt.mod          &lt;==GPT 分区表
+-rw-r--r--.  part_msdos.mod        &lt;==MBR 分区表
+-rw-r--r--.  scsi.mod              &lt;==SCSI 相关模块
+-rw-r--r--.  usb_keyboard.mod      &lt;==下面两个为 USB 相关模块
+-rw-r--r--.  usb.mod
+-rw-r--r--.  vga.mod               &lt;==VGA 显卡相关模块
+-rw-r--r--.  xfs.mod               &lt;==XFS 文件系统模块 
+```
 
 # 磁盘规划
 
@@ -508,6 +549,92 @@ kill: -9 强制结束一个任务  -15 以正常方式结束一个任务。
 11. 查找使用文件、目录、端口的进程：`fuser -uv [文件/目录]`,`fuser -v -n tcp [端口]`
 12. 列出进程使用的文件名称：lsof。
 
+## SELinux
+
+传统权限控制（DAC）：依据程序的拥有者与文件资源的 rwx 权限来决定有无存取的能力，如果拥有该进程即可访问文件资源。
+
+强制访问控制（MAC）：控制的主体为进程，而不是程序拥有者，针对特定的进程与特定的文件资源来进行权限控制。
+
+![164](assets/164.png)
+
+SELinux 的 角色：
+
+* 主体 （Subject）：进程。
+* 目标 （Object）：文件系统。
+* 政策 （Policy）：规则：
+  1. targeted：针对网络服务限制较多，针对本机限制较少，是默认的策略。
+  2. minimum：由 target 自定义，仅针对选择的程序来保护。
+  3. mls：完整的 SELinux 限制，限制方面较为严格。建议使用默认的 targeted 政策即可。
+* 安全文本 （security context）：放置在inode中，相当于 rwx ，存在于主体进程和目标文件中，主体能不能存取目标，除了策略放行外，还需要主体与目标的安全性本文必须一致才能够顺利存取。
+
+模式：
+
+* enforcing：强制模式，代表 SELinux 运行中，且已经正确的开始限制 domain/type。
+* permissive：宽容模式：代表 SELinux 运行中，不过仅会有警告讯息并不会实际限制 domain/type 的存取，用来Debug。
+* disabled：关闭，SELinux 并没有实际运行。
+
+`getenforce` 查询模式，`setenforce [0|1]`, 0 为宽容模式，1 为 强制模式。
+
+SELinux 配置文件为 /etc/selinux/config ，模式修改为 Disabled ，需要重启。
+
+```bash
+# /etc/selinux/config 内容
+SELINUX=enforcing
+SELINUXTYPE=targeted
+```
+
+### 安全文本
+
+```bash
+Identify:role:type
+身份识别:角色:类型
+```
+
+1. Identify：账号身份，表示受不受SELinux管制。
+
+  * unconfined_u：不受限的用户，文件来自于不受限的程序产生,例如 使用bash登陆，不受SELinux管制。
+  * system_u：系统用户，大多系统或软件本身所提供的文件，例如 网络服务产生的文件、系统服务运行过程产生文件。
+
+2. Role：角色，表示是程序还是文件。
+
+  * object_r：文件或目录等文件资源。
+  * system_r：程序。
+
+3. Type：类型，默认targeted策略，主要使用该字段对比，是能不能访问资源的关键，根据策略中记录的type 和 domain 能匹配上则能访问。
+
+  * type：对于文件资源 （Object）称为类型 （Type）。
+  * domain：对于主体进程 （Subject）称为域 （domain）。
+
+### 查看安全文本
+
+1. 查看进程：ps -Z
+2. 查看文件：ls -Z
+
+### 搜索规则
+
+需要安装 `yum install setools-console.x86_64`.
+
+语法： `sesearch [选项] [规则类型] [表达式]`
+
+规则类型：
+* --allow：显示允许的规则。
+* --neverallow：显示从不允许的规则。
+* --all：显示所有的规则。
+
+表达式：
+* -s :主体类型。
+* -t :目标类型。
+* -b :规则名。
+
+例如：`sesearch --all -s httpd_t -t httpd_sys_content_t`
+
+### 修改规则
+
+* SELinux日志：`/var/log/messages`，查找日志例如：`grep sealert /var/log/messages`,`sealert -l 08d3c0a2-5160-49ab-b199-47a51a5fc8dd`,08d3c0a2-5160-49ab-b199-47a51a5fc8dd 来自上grep 的结果。开启日志需要 setroubleshoot  服务，需要安装  setroublshoot 与 setroubleshoot-server 软件，并重启 auditd 服务，因为 setroublshoot 服务整合在 auditd 中。
+* 开启规则：`setsebool -P [规则名称] 1`。
+* 修改安全文本：`semanage fcontext -[a|d|m] -t [文件或目录，可以使用通配符]`，例如：`semanage fcontext -a -t public_content_t "/srv/gogogo(/.*)?"`
+* 恢复安全文本：`restorecon -Rv [文件或目录]`。
+
 ## /proc/* 的意义
 
 进程的状态信息会写入到 /proc/[PID]/ 目录，另外和系统相关的信息记录在 /proc 下。
@@ -515,6 +642,214 @@ kill: -9 强制结束一个任务  -15 以正常方式结束一个任务。
 cmdline：启动命令。
 environ：环境变量。
 
+# 服务(daemon)
+
+## init
+
+* init 在启动后由内核调用，init根据运行级别来唤醒不同的服务，以进入不同的操作界面，Linux 提供 7 个运行界面， 比较重要的是 1）单人维护模式、3）纯命令行模式、5）图形界面。
+* 各个执行级别的启动脚本是通过 /etc/rc.d/rc[0-6]/SXXdaemon 链接到 /etc/init.d/daemon ， 链接文件名 （SXXdaemon） 的功能为： S为启动该服务，XX是数字，为启动的顺序。由于有 SXX 的设置，因此在开机时可以“依序执行”所有需要的服务， 同时也能解决相依服务的问题。
+
+当你要从纯命令行 （runlevel 3） 切换到图形界面 （runlevel 5）， 不需要手动启动、关闭该执行等级的相关服务，只要执行 `init 5`，init 会自动完成 /etc/rc.d/rc[35].d/ 中服务的切换。
+
+ CentOS 7 已经不使用 init 来管理服务了，不过因为考虑到某些脚本没有办法直接塞入 systemd 的处理，因此这些脚本还是被保留下来。
+
+ ## systemd
+
+systemd 使用 unit(服务单位) 分类，每个服务单位又根据不同的功能分为不同的type(类型)：
+
+* .service：一般服务类型。
+* .socket：内部程序数据交换的socket服务，较少使用。
+* .target：执行环境类型，一堆unit的集合，例如 multi-user.target 就是执行一堆 .service 和 .socket 服务。
+* .mount、.automount：文件系统挂载相关的服务，例如网络的自动挂载。
+* .path：检测特定文件或目录类型，例如 打印服务。
+* .timer：循环执行的服务。
+
+systemd 配置文件:
+
+* /usr/lib/systemd/system/：每个服务最主要的启动脚本设置。
+* /run/systemd/system/：系统执行过程中所产生的服务脚本，这些脚本的优先级要比 /usr/lib/systemd/system/ 高。
+* /etc/systemd/system/：优先级高于  /run/systemd/system/ ，该目录中的文件通过链接，链接到 /usr/lib/systemd/system/ 下的真正脚本。
+
+所以开机会不会执行脚本取决于 /etc/systemd/system/。
+
+其他相关目录：
+
+* /etc/sysconfig/*：服务初始化的一些选项设置，例如：网络的设置则写在 /etc/sysconfig/network-scripts/ 。
+* /var/lib：服务产生的数据，如 /var/lib/mysql 。
+
+### systemctl 管理服务
+
+语法：`systemctl [命令] [unit]`
+
+命令：
+* start     ：启动
+* stop      ：停止
+* restart   ：重启
+* reload    ：不关闭unit，直接加载配置文件
+* enable    ：开机启动
+* disable   ：取消开机启动
+* status    ：状态
+* is-active ：是否运行
+* is-enable ：开机是否启动
+
+```bash
+# systemctl status atd.service
+atd.service - Job spooling tools
+   # 服务加载状态
+   Loaded: loaded （/usr/lib/systemd/system/atd.service; enabled）
+   # 服务运行状态
+   Active: active （running） since Mon 2015-08-10 19:17:09 CST; 5h 42min ago
+ Main PID: 1350 （atd）
+   CGroup: /system.slice/atd.service
+           └─1350 /usr/sbin/atd -f
+```
+
+服务运行状态：
+* active （running） 正有一个或多个进程正在系统中执行
+* active （exited） 执行一次就正常结束，目前并没有任何程序在系统中执行。
+* active （waiting） 正在执行当中，不过还再等待其他的事件才能继续处理，例如 打印服务。
+* inactive  没有运行
+服务加载状态：
+* enabled 开机自启
+* disabled 不开机自启
+* static 不可以自己启动，可能会被其他的 enabled 的服务来唤醒。
+* mask 无法被启动，被强制注销，可通过 `systemctl unmask ` 变更为原来状态。
+
+### 查看系统上所有服务
+
+语法：`systemctl [命令] [--type=TYPE] [--all]`
+命令：
+* list-units      ：等同于 `systemctl`，列出目前有启动的 unit。若加上 --all 才会列出没启动的。
+* list-unit-files ：列出已经安装的unit。
+
+示例：`systemctl list-units --type=service --all`
+
+查看各服务间依赖：`systemctl list-dependencies [unit] [--reverse]`, --reverse ：反向追踪谁使用这个 unit
+
+### target unit
+
+可通过 `systemctl get-default` 获取当前 target 类型。
+
+* graphical.target：图形界面，包含 multi-user.target 项目。
+* multi-user.target：命令行模式。
+* rescue.target：在无法使用 root 登陆的情况下，systemd 在开机时会多加一个额外的暂时系统，与你原本的系统无关。可以使用 root 的权限来维护系统。
+* emergency.target：紧急处理系统的错误，需要使用 root 登陆，在无法使用 rescue.target 时，可以尝试使用这种模式。
+* shutdown.target：关机的流程。
+* getty.target：设置需要几个 tty 之类的。
+
+### 自定义服务
+
+1. 在 /etc/systemd/system 目录下创建服务 xxx.service,例如：
+
+```properties
+# unit 自身描述，已经服务间的依赖
+[Unit]
+Description=OpenSSH server daemon
+After=network.target sshd-keygen.service
+Wants=sshd-keygen.service
+
+ # 服务的指令以及参数
+[Service]
+EnvironmentFile=/etc/sysconfig/sshd
+ExecStart=/usr/sbin/sshd -D $OPTIONS
+ExecReload=/bin/kill -HUP $MAINPID
+KillMode=process
+Restart=on-failure
+RestartSec=42s
+
+# unit 要挂载哪个 target 下面
+[Install]
+WantedBy=multi-user.target
+```
+
+Unit 部分：
+* After：如果 network.target 或 sshd-keygen.service 需要启动，那么 sshd.service 应该在它们之后启动。
+* Before：定义 sshd 应该在哪些服务之前启动。
+
+注意：After 和 Before 字段只涉及启动顺序，不涉及依赖关系，及时 After 的服务不启动，该服务也可以启动。
+
+* Wants：表示"弱依赖"关系，目的是希望创建让使用者比较好操作的环境，即如果"sshd-keygen.service"启动失败或停止运行，不影响 sshd.service 继续执行
+* Requires：表示"强依赖"关系，即 unit 需要在哪个 daemon 启动后才能够启动，如果前置服务没有启动，那么此 unit 就不会被启动。
+* Conflicts：冲突的服务，如果后面的服务启动，该unit不启动，如果该unit启动，后面的服务就不启动。
+
+Service 部分：
+* Type：
+  * simple ： 默认值，由 ExecStart 接的指令串来启动，启动后常驻于内存中。
+  * forking：由 ExecStart 启动的程序通过 spawns 延伸出其他子程序来作为此 daemon 的主要服务。原生的父程序在启动结束后就会终止运行。
+  * oneshot：与 simple 类似，不过这个程序在工作完毕后就结束了，不会常驻在内存中。
+* EnvironmentFile：指定启动脚本的环境配置文件。
+* ExecStartPre
+* ExecStart：实际执行此 daemon 的指令或脚本程序。
+* ExecStartPost
+* ExecStop： systemctl stop 的执行有关。
+* ExecReload：systemctl reload 有关。
+* Restart：设置 Restart=1 时，则当此 daemon 服务终止后，会再次的启动此服务。
+* RestartSec：与 Restart 相关，多久时间重启，默认 100ms。
+* TimeoutSec：等多久强制结束。
+
+Install 部分：
+* WantedBy： unit 要挂载哪个 target 下面
+
+#### 对自定义服务设置定时
+
+条件：
+* 系统的 timer.target 一定要启动
+* 要有个 sname.service 的服务存在 （sname 是你自己指定的名称）
+* 要有个 sname.timer 的时间启动服务存在
+
+配置：
+1. 在 /etc/systemd/system 目录下创建服务 xxx.timer，xxx 和服务名相同。
+
+```properties
+[Unit]
+Description=backup my server timer
+
+[Timer]
+OnBootSec=2hrs
+OnUnitActiveSec=2days
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Timer 部分：
+
+| 设置参数          | 参数意义说明                                                                      |
+| ----------------- | --------------------------------------------------------------------------------- |
+| OnActiveSec       | 当 timers.target 启动多久之后执行                                                 |
+| OnBootSec         | 当开机完成后多久之后执行                                                          |
+| OnStartupSec      | 当 systemd 第一次启动之后过多久执行                                               |
+| OnUnitActiveSec   | 该 timer 配置文件所管理的那个 unit 服务在最后一次启动后，隔多久后再执行一次的意思 |
+| OnUnitInactiveSec | 该 timer 配置文件所管理的那个 unit 服务在最后一次停止后，隔多久再执行一次的意思   |
+| OnCalendar        | 使用实际时间 （非循环时间） 的方式来启动服务。</br>语法：英文周名  YYYY-MM-DD  HH:MM:SS                                 |
+
+时间单位：
+* us 或 usec：微秒 （10-6 秒）
+* ms 或 msec：毫秒 （10-3 秒）
+* s, sec, second, seconds
+* m, min, minute, minutes
+* h, hr, hour, hours
+* d, day, days
+* w, week, weeks
+* month, months
+* y, year, years
+
+| 英文口语   | 实际的时间格式代表      |
+| ---------- | ----------------------- |
+| now        | Thu 2015-08-13 13:50:00 |
+| today      | Thu 2015-08-13 00:00:00 |
+| tomorrow   | Thu 2015-08-14 00:00:00 |
+| hourly     | -- :00:00               |
+| daily      | --* 00:00:00            |
+| weekly     | Mon --* 00:00:00        |
+| monthly    | --01 00:00:00           |
+| +3h10m     | Thu 2015-08-13 17:00:00 |
+| 2015-08-16 | Sun 2015-08-16 00:00:00 |
+
+示例：
+> 隔 3 小时：             3h  或 3hr 或 3hours </br>
+> 隔 300 分钟过 10 秒：   10s 300m</br>
+> 隔 5 天又 100 分钟：    100m 5day</br>
 
 # 定时任务
 
@@ -618,6 +953,62 @@ START_HOURS_RANGE=3-22    # 延迟多少个小时内应该要执行的任务时�
 #天数     延迟时间(分钟) 工作名称定义       实际要进行的指令串
 ```
 
+# 日志
+
+* /var/log/boot.log ：开机时检测启动硬件流程的日志。
+* /var/log/cron：crontab 日志。
+* /var/log/messages：系统发送错误的日志。
+
+## rsyslog.service 日志服务
+
+配置配置为 /etc/rsyslog.conf ，格式为 `服务类别.日志级别  日志文件`,例如 `mail.info  /var/log/maillog_info`
+
+### 服务类别
+
+![165](assets/165.png)
+
+* daemon：主要是系统的服务所产生的信息，例如 systemd 。
+* auth：认证/授权有关的机制，例如 login, ssh, su 等需要帐号/密码。
+* cron： cron/at 等产生讯息记录的地方。
+
+## logrotate 服务
+
+负责日志文件的轮询，可以完成日志文件定期删除等功能。
+
+配置文件为 `/etc/logrotate.conf`、`/etc/logrotate.d/*`,/etc/logrotate.conf 为默认配置。
+
+/etc/logrotate.conf :
+```java
+// 按周轮询
+weekly
+// 保留 4个文件
+rotate 4
+// 日志文件被更名，创建一个新的来继续储存
+create
+// 日志文件加上日期
+dateext
+// 日志是否压缩
+#compress
+
+include /etc/logrotate.d
+```
+/etc/logrotate.d/xxxx :
+```java
+// 针对 /var/log/wtmp
+/var/log/wtmp {
+    // 按月轮询
+    monthly
+    // 创建文件 权限/用户/群组
+    create 0664 root utmp
+    // 操作1M新创建日志文件
+    minsize 1M
+    rotate 1
+}
+```
+
+## systemd-journald.service 服务
+
+查询日志：journalctl -n [行数] --since [开始时间] --until [结束时间] _SYSTEMD_UNIT=[unit]
 
 # vi&vim
 

@@ -43,6 +43,14 @@
  * 然后，init进程加载系统的各个模块，比如窗口程序和网络程序，直至执行/bin/login程序，跳出登录界面，等待用户输入用户名和密码。
  * init进程加载完成，系统就完成启动，开始等待事件的发生。
 
+ 现在linux不是使用init进程，而是使用systemd进程，进程id为1：
+ * 在硬件驱动成功后，Kernel 会主动调用 systemd 程序，并以 default.target 流程开机。
+ * systemd 执行 sysinit.target 初始化系统及 basic.target 准备操作系统。
+ * systemd 启动 multi-user.target 下的本机与服务器服务。
+ * systemd 执行 multi-user.target 下的 /etc/rc.d/rc.local 文件。
+ * systemd 执行 multi-user.target 下的 getty.target 及登陆服务。
+ * systemd 执行 graphical 需要的服务。
+
 # 事件
 
 事件发生通常通过硬件或软件的中断来产生，硬件可以随时通过系统总线发送信号到CPU，以触发中断，软件也可通过执行特别操作即系统调用，以触发中断，陷阱就是一种由软件生成的中断。

@@ -1361,16 +1361,19 @@ LoginShell 读取的配置文件：
 
 # 常用操作
 
-| 功能                        | 操作                                                                               |
-| --------------------------- | ---------------------------------------------------------------------------------- |
-| 命令行模式 tty2 - tty6 终端 | ctrl + alt + F2 ~ F6                                                               |
-| 图形化界面                  | ctrl + alt + F1                                                                    |
-| 显示当前语言                | locale                                                                             |
-| 修改语言                    | LANG=en_US.utf8     </br> export LC_ALL=en_US.utf8 </br> 或者修改 /etc/locale.conf |
-| 查看日期                    | date </br> date +%Y/%m/%d   </br> date +%H:%M                                      |
-| 查看日历                    | cal </br> cal 2015   </br> cal [month] [year]                                      |
-| 计算器                      | bc                                                                                 |
-| 自动补全                    | tab                                                                                |
-| 中断目前程序                | Ctrl + c                                                                           |
-| 操作说明                    | man [command]  </br> info [command] </br> /usr/share/doc                           |
-| 数据写入磁盘                | sync                                                                               |
+| 功能                        | 操作                                                                                          |
+| --------------------------- | --------------------------------------------------------------------------------------------- |
+| 命令行模式 tty2 - tty6 终端 | ctrl + alt + F2 ~ F6                                                                          |
+| 图形化界面                  | ctrl + alt + F1                                                                               |
+| 显示当前bash语言            | locale                                                                                        |
+| 显示系统语系 | localectl 图形使用的语系 localectl set-locale LANG=en_US.utf-8    |
+| 修改语言                    | LANG=en_US.utf8     </br> export LC_ALL=en_US.utf8 </br> 或者修改 /etc/locale.conf            |
+| 查看日期                    | date </br> date +%Y/%m/%d   </br> date +%H:%M                                                 |
+| 查看日历                    | cal </br> cal 2015   </br> cal [month] [year]                                                 |
+| 计算器                      | bc                                                                                            |
+| 自动补全                    | tab                                                                                           |
+| 中断目前程序                | Ctrl + c                                                                                      |
+| 操作说明                    | man [command]  </br> info [command] </br> /usr/share/doc                                      |
+| 数据写入磁盘                | sync                                                                                          |
+| 修改时间                    | timedatectl set-time "2015-09-01 02:02",不像使用date修改时间后，还需要使用hwclock修正BIOS时间 |
+| ntp手动校时                 | ntpdate s2m.time.edu.cn  </br> hwclock w 将正确时间写入BIOS                                   |

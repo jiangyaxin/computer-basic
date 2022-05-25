@@ -1366,7 +1366,7 @@ LoginShell 读取的配置文件：
 | 命令行模式 tty2 - tty6 终端 | ctrl + alt + F2 ~ F6                                                                          |
 | 图形化界面                  | ctrl + alt + F1                                                                               |
 | 显示当前bash语言            | locale                                                                                        |
-| 显示系统语系 | localectl 图形使用的语系 localectl set-locale LANG=en_US.utf-8    |
+| 显示系统语系                | localectl 图形使用的语系 localectl set-locale LANG=en_US.utf-8                                |
 | 修改语言                    | LANG=en_US.utf8     </br> export LC_ALL=en_US.utf8 </br> 或者修改 /etc/locale.conf            |
 | 查看日期                    | date </br> date +%Y/%m/%d   </br> date +%H:%M                                                 |
 | 查看日历                    | cal </br> cal 2015   </br> cal [month] [year]                                                 |

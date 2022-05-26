@@ -49,11 +49,18 @@ HTTP方法：
 ## HTTP首部
 
 1. 通用首部字段：请求、响应都会使用的首部。
+
   ![197](assets/197.png)
-  * Connection
+  * Connection：
+
 2. 请求首部字段。
+
 ![198](assets/198.png)
+
 3. 响应首部字段。
+
 ![199](assets/199.png)
+
 4. 实体首部字段。
+
 ![200](assets/200.png)

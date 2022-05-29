@@ -453,11 +453,6 @@ try-with-resources 可使用在 任何实现 java.lang.AutoCloseable或者 java.
 * Hashtable： 数组+链表。
 * TreeMap： 红黑树。
 
-Arraylist、Vector、LinkedList、CopyOnWriteArrayList的区别：
-
-* Vector 是 List 的古老实现类，底层使用Object[ ] 存储，线程安全的，不常用。
-*
-
 ### List
 
 Arraylist 和 Vector 的区别：
@@ -469,14 +464,406 @@ Arraylist 和 LinkedList 区别：
 
 * 线程安全： ArrayList 和 LinkedList 都不保证线程安全。
 * 数据结构： Arraylist 使用 Object[]，LinkedList使用 双向链表。
-* 插入和删除：ArrayList#add(E e) 时间复杂度 O(1) 时间复杂度为 O(n-i),第 i 和第 i 个元素之后的(n-i)个元素都要移动，LinkedList 时间复杂度为 O(1)
-    * ArrayList 采用数组存储，所以插入和删除元素的时间复杂度受元素位置的影响。 比如：执行add(E e)方法的时候， ArrayList 会默认在将指定的元素追加到此列表的末尾，这种情况时间复杂度就是 O(1)。但是如果要在指定位置 i 插入和删除元素的话（add(int index, E element)）时间复杂度就为 O(n-i)。因为在进行上述操作的时候集合中第 i 和第 i 个元素之后的(n-i)个元素都要执行向后位/向前移一位的操作。
-LinkedList 采用链表存储，所以，如果是在头尾插入或者删除元素不受元素位置的影响（add(E e)、addFirst(E e)、addLast(E e)、removeFirst() 、 removeLast()），时间复杂度为 O(1)，如果是要在指定位置 i 插入和删除元素的话（add(int index, E element)，remove(Object o)）， 时间复杂度为 O(n) ，因为需要先移动到指定位置再插入。
-是否支持快速随机访问： LinkedList 不支持高效的随机元素访问，而 ArrayList 支持。快速随机访问就是通过元素的序号快速获取元素对象(对应于get(int index)方法)。
-内存空间占用： ArrayList 的空 间浪费主要体现在在 list 列表的结尾会预留一定的容量空间，而 LinkedList 的空间花费则体现在它的每一个元素都需要消耗比 ArrayList 更多的空间（因为要存放直接后继和直接前驱以及数据）。
+* 插入和删除：ArrayList#add(E e) 时间复杂度 O(1)，ArrayList#add(int index, E element) 时间复杂度为 O(n-i),第 i 和第 i 个元素之后的(n-i)个元素都要移动，LinkedList#add(E e) 时间复杂度为 O(1)，LinkedList#add(int index, E element) 时间复杂度为 O(n),需要先移动到指定位置再插入。
+* 快速随机访问： LinkedList 不支持高效的随机元素访问，而 ArrayList 支持。快速随机访问就是通过元素的序号快速获取元素对，对应get(int index)。
+* 内存空间： ArrayList 的空间浪费主要在 list 列表的结尾会预留一定的容量空间，而 LinkedList 的空间花费主要在每一个元素都需要额外存放直接后继和直接前驱。
 
+#### ArrayList
+
+关键属性：
+
+```java
+/**
+ * 保存ArrayList数组，用transient修饰，序列化时不会序列化该字段，序列化使用的是自定义writeObject方法序  列化，这样可以节约序列化后的空间，因为只会序列化 size 部分。
+ */
+transient Object[] elementData;
+
+/**
+ * 已经储存多少个元素
+ */
+private int size;
+```
+
+关键静态变量：
+
+```java
+/**
+ * 当数组为 DEFAULTCAPACITY_EMPTY_ELEMENTDATA ，添加第一个元素时会扩容为该值。
+ */
+private static final int DEFAULT_CAPACITY = 10;
+
+/**
+ * 空数组，用于 size = 0 的实例
+ */
+private static final Object[] EMPTY_ELEMENTDATA = {};
+
+/**
+ * 空数组，用于 new ArrayList() 初始化
+ */
+private static final Object[] DEFAULTCAPACITY_EMPTY_ELEMENTDATA = {};
+```
+
+构造器：
+
+```java
+/**
+ * 带初始容量的构造函数
+ */
+public ArrayList(int initialCapacity) {
+    if (initialCapacity > 0) {
+        this.elementData = new Object[initialCapacity];
+    } else if (initialCapacity == 0) {
+        this.elementData = EMPTY_ELEMENTDATA;
+    } else {
+        throw new IllegalArgumentException("Illegal Capacity: "+
+                                           initialCapacity);
+    }
+}
+
+/**
+ * 默认初始化为 DEFAULTCAPACITY_EMPTY_ELEMENTDATA 空数组，当添加第一个元素时才会扩容到 DEFAULT_CAPACITY=10
+ */
+public ArrayList() {
+    this.elementData = DEFAULTCAPACITY_EMPTY_ELEMENTDATA;
+}
+
+public ArrayList(Collection<? extends E> c) {
+    Object[] a = c.toArray();
+    if ((size = a.length) != 0) {
+        if (c.getClass() == ArrayList.class) {
+            elementData = a;
+        } else {
+            elementData = Arrays.copyOf(a, size, Object[].class);
+        }
+    } else {
+        // replace with empty array.
+        elementData = EMPTY_ELEMENTDATA;
+    }
+}
+```
+
+操作数据：
+
+```java
+public boolean add(E e) {
+    modCount++;
+    add(e, elementData, size);
+    return true;
+}
+/**
+ * 当容量满的时候 s == elementData.length ,进行扩容 grow()。
+ */
+private void add(E e, Object[] elementData, int s) {
+    if (s == elementData.length)
+        elementData = grow();
+    elementData[s] = e;
+    size = s + 1;
+}
+
+private Object[] grow() {
+    return grow(size + 1);
+}
+
+private Object[] grow(int minCapacity) {
+    return elementData = Arrays.copyOf(elementData,
+                                       newCapacity(minCapacity));
+}
+
+/**
+ * 当 elementData == DEFAULTCAPACITY_EMPTY_ELEMENTDATA 时，返回 DEFAULT_CAPACITY=10
+ * 否则返回 oldCapacity + (oldCapacity >> 1),即原容量的1.5倍。
+ */
+private int newCapacity(int minCapacity) {
+    // overflow-conscious code
+    int oldCapacity = elementData.length;
+    int newCapacity = oldCapacity + (oldCapacity >> 1);
+    if (newCapacity - minCapacity <= 0) {
+        if (elementData == DEFAULTCAPACITY_EMPTY_ELEMENTDATA)
+            return Math.max(DEFAULT_CAPACITY, minCapacity);
+        if (minCapacity < 0) // overflow
+            throw new OutOfMemoryError();
+        return minCapacity;
+    }
+    return (newCapacity - MAX_ARRAY_SIZE <= 0)
+        ? newCapacity
+        : hugeCapacity(minCapacity);
+}
+
+private static int hugeCapacity(int minCapacity) {
+    if (minCapacity < 0) // overflow
+        throw new OutOfMemoryError();
+    return (minCapacity > MAX_ARRAY_SIZE)
+        ? Integer.MAX_VALUE
+        : MAX_ARRAY_SIZE;
+}
+
+public void remove() {
+    if (lastRet < 0)
+        throw new IllegalStateException();
+    checkForComodification();
+
+    try {
+        ArrayList.this.remove(lastRet);
+        cursor = lastRet;
+        lastRet = -1;
+        expectedModCount = modCount;
+    } catch (IndexOutOfBoundsException ex) {
+        throw new ConcurrentModificationException();
+    }
+}
+
+public E remove(int index) {
+    Objects.checkIndex(index, size);
+    final Object[] es = elementData;
+
+    @SuppressWarnings("unchecked") E oldValue = (E) es[index];
+    fastRemove(es, index);
+
+    return oldValue;
+}
+/**
+ * 将第 i+1 到 size - 1 位置前移。
+ */
+private void fastRemove(Object[] es, int i) {
+    modCount++;
+    final int newSize;
+    if ((newSize = size - 1) > i)
+        System.arraycopy(es, i + 1, es, i, newSize - i);
+    es[size = newSize] = null;
+}
+```
+
+ArrayList 扩容逻辑：new ArrayList() 时容量为 0 ，当add第一个值时容量为 10，以后当容量满了之后扩容，扩容大小为 原始容量的 1.5 倍，如果有小数会舍掉小数。
+
+System.arraycopy() 和 Arrays.copyOf()：
+
+```java
+/**
+ * 复制数组
+ * @param src 源数组
+ * @param srcPos 源数组中的起始位置
+ * @param dest 目标数组
+ * @param destPos 目标数组中的起始位置
+ * @param length 要复制的数组元素的数量
+ */
+public static native void arraycopy(Object src,  int  srcPos,
+                                    Object dest, int destPos,
+                                    int length);
+
+public static int[] copyOf(int[] original, int newLength) {
+    	// 申请一个新的数组
+        int[] copy = new int[newLength];
+	// 调用System.arraycopy,将源数组中的数据进行拷贝,并返回新的数组
+        System.arraycopy(original, 0, copy, 0,
+                         Math.min(original.length, newLength));
+        return copy;
+    }
+```
+
+ensureCapacity：可在大量插入时，调用该方法一次性扩容，避免大量插入时多次扩容影响性能。
+
+```java
+public void ensureCapacity(int minCapacity) {
+    int minExpand = (elementData != DEFAULTCAPACITY_EMPTY_ELEMENTDATA)
+        // any size if not default element table
+        ? 0
+        // larger than default for default empty table. It's already
+        // supposed to be at default size.
+        : DEFAULT_CAPACITY;
+
+    if (minCapacity > minExpand) {
+        ensureExplicitCapacity(minCapacity);
+    }
+}
+```
+
+#### LinkedList
+
+LinkedList 双向链表实现，不存在扩容问题。
+
+![img](./assets/02.jpg)
+
+操作数据：
+
+```java
+// 添加到最后
+public boolean add(E e) {
+    linkLast(e);
+    return true;
+}
+
+void linkLast(E e) {
+    // 记录原 last 节点
+    final Node<E> l = last;
+    final Node<E> newNode = new Node<>(l, e, null);
+    // last 指向新节点
+    last = newNode;
+    if (l == null)
+        // 如果原 last 为 null ，说明 first 也为空，则 first 也指向新节点
+        first = newNode;
+    else
+        // 如果原 last 非 null ，说明 first 也非空，则原 last 的 next 指向新节点。
+        l.next = newNode;
+    size++;
+    modCount++;
+}
+// 移除首节点
+public E remove() {
+    return removeFirst();
+}
+public E removeFirst() {
+    final Node<E> f = first;
+    if (f == null)
+        throw new NoSuchElementException();
+    return unlinkFirst(f);
+}
+private E unlinkFirst(Node<E> f) {
+    final E element = f.item;
+    final Node<E> next = f.next;
+    f.item = null;
+    f.next = null;
+    first = next;
+    if (next == null)
+        last = null;
+    else
+        next.prev = null;
+    size--;
+    modCount++;
+    return element;
+}
+```
+
+#### CopyOnWriteArrayList
+
+通过写时复制来延时更新实现数据的最终一致性，并且能够保证读线程间不阻塞。
+
+当我们往一个容器添加元素的时候，不直接往当前容器添加，而是先将当前容器进行Copy，复制出一个新的容器，然后新的容器里添加元素，添加完元素之后，再将原容器的引用指向新的容器。
+
+并发读时没有加锁，并发写时加锁，并且在写入时仍然可以读。
+
+关键属性：
+
+```java
+/**
+ * 修改数组时对该对象加锁
+ */
+final transient Object lock = new Object();
+/**
+ * 线程1 在读取array时，首先读取array引用，而这个引用由 volatile 修饰，所有数组内的数据都会从主存读取
+ */
+private transient volatile Object[] array;
+```
+
+操作数据：
+
+```java
+public boolean add(E e) {
+    synchronized (lock) {
+        Object[] es = getArray();
+        int len = es.length;
+        // 创建一个长度为 len + 1 的新数组，并把原数组拷贝过去
+        es = Arrays.copyOf(es, len + 1);
+        // 添加元素
+        es[len] = e;
+        // 使用新数组替换原数组
+        setArray(es);
+        return true;
+    }
+}
+
+final Object[] getArray() {
+    return array;
+}
+
+final void setArray(Object[] a) {
+    array = a;
+}
+
+public E get(int index) {
+    return elementAt(getArray(), index);
+}
+
+@SuppressWarnings("unchecked")
+static <E> E elementAt(Object[] a, int index) {
+    return (E) a[index];
+}
+```
+
+优点：保证多线程的并发读写的线程安全。
+
+缺点：如果数据较多或数据较大，占用内存会比较大，复制时使用双倍内存。
+
+解决方案:
+
+* 压缩元素，例如：将10进制数字压缩成36进制或64进制。
+* 使用ConcurrentHashMap替代。
+
+应用于读多写少的并发场景。
+
+### Map
+
+ HashMap 和 Hashtable 区别：
+
+* 线程安全：HashMap非线程安全，Hashtable线程安全,Hashtable 基本被淘汰，线程安全使用 ConcurrentHashMap。
+
+* 效率：HashMap 未加锁，效率较高。
+
+* Null 的支持： HashMap 可以存储 null 的 key 和 value，但 null 作为键只能有一个，null 作为值可以有多个，Hashtable 不允许有 null 键和 null 值，否则会抛出 NullPointerException。
+
+* 初始容量大小：Hashtable 默认的初始大小为 11，HashMap 默认的初始化大小为 16。
+
+* 每次扩充容量大小：Hashtable 每次扩充，容量变为原来的 2n+1，HashMap 每次扩充，容量变为原来的 2 倍。
+
+ HashMap 和 TreeMap 区别：
+
+* TreeMap 和 HashMap 都继承自 AbstractMap ，TreeMap 还实现 NavigableMap 接口和 SortedMap 接口。
+* NavigableMap 接口让 TreeMap 有了对集合内元素的搜索的能力。
+* SortedMap 接口让 TreeMap 有了对集合中的元素根据键排序的能力。
+
+### Set
+
+HashSet、LinkedHashSet 和 TreeSet的区别：
+
+* 线程安全： HashSet、LinkedHashSet 、TreeSet 都不保证线程安全。
+* 数据结构：HashSet基于哈希表（HashMap），LinkedHashSet 基于链表和哈希表，TreeSet 基于红黑树。
+* 应用场景：HashSet 不能保证元素插入和取出顺序，LinkedHashSet 满足元素的插入和取出顺序满足 FIFO，TreeSet 元素有序，支持自定义排序。
+
+### Queue
+
+Queue 是单端队列，只能从一端插入元素，另一端删除元素，遵循  先进先出（FIFO） 规则。
+
+Deque 是双端队列，在队列的两端均可以插入或删除元素。
+
+| Queue 接口   | 抛出异常  | 返回特殊值 |
+| ------------ | --------- | ---------- |
+| 插入队尾     | add(E e)  | offer(E e) |
+| 删除队首     | remove()  | poll()     |
+| 查询队首元素 | element() | peek()     |
+
+| Deque 接口   | 抛出异常      | 返回特殊值      |
+| ------------ | ------------- | --------------- |
+| 插入队首     | addFirst(E e) | offerFirst(E e) |
+| 插入队尾     | addLast(E e)  | offerLast(E e)  |
+| 删除队首     | removeFirst() | pollFirst()     |
+| 删除队尾     | removeLast()  | pollLast()      |
+| 查询队首元素 | getFirst()    | peekFirst()     |
+| 查询队尾元素 | getLast()     | peekLast()      |
+
+ ArrayDeque 和 LinkedList 区别：
+
+- ArrayDeque  基于可变长的数组和双指针，而  LinkedList  基于 链表。
+- ArrayDeque  不支持存储  NULL  数据，但  LinkedList  支持。
+- ArrayDeque 插入时可能存在扩容过程, LinkedList 不需要扩容，但是每次插入数据时均需要申请新的堆空间，均摊性能相比更慢。
+
+PriorityQueue：
+
+* 优先级最高的元素先出队。
+* 使用可变长的数组实现了二叉堆， 默认是小顶堆，但可以接收一个 `Comparator` 作为构造参数。
+* 利用堆得上浮和下沉实现插入元素和删除堆顶元素时间复杂度为 O(logn)。
+* 非线程安全的，且不支持存储  NULL 和  non-comparable  的对象。
 
 # 漏洞说明
+
 1. 不可控的内存分配：内存分配又用户输入，但是没有对用户输入数据进行校验。
 
   ![204](assets/204.png)

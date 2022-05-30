@@ -1220,6 +1220,13 @@ TreeMap 节点是标准的红黑树节点。
 
 #### ConcurrentHashMap
 
+特点：
+
+1. 初始容量16，每次扩容为 原容量2倍。
+2. 自旋 + CAS + synchronized 保证线程安全。
+3. 多线程扩容。
+
+
 属性：
 
 ```java

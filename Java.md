@@ -877,7 +877,7 @@ final float loadFactor;
 /**
  * 默认的初始容量,16
  */
-static final int DEFAULT_INITIAL_CAPACITY = 1 << 4; 
+static final int DEFAULT_INITIAL_CAPACITY = 1 << 4;
 
 /**
  * 最大容量
@@ -925,6 +925,9 @@ public HashMap(int initialCapacity) {
     this(initialCapacity, DEFAULT_LOAD_FACTOR);
 }
 
+/**
+ * 当 table 没有初始化时，capacity 保存在 threshold
+ */
 public HashMap(int initialCapacity, float loadFactor) {
     if (initialCapacity < 0)
         throw new IllegalArgumentException("Illegal initial capacity: " +
@@ -982,6 +985,7 @@ public static int numberOfLeadingZeros(int i) {
 final void putMapEntries(Map<? extends K, ? extends V> m, boolean evict) {
     int s = m.size();
     if (s > 0) {
+        // 如果 table 未初始化，重新计算 threshold = 传入集合的长度 / 0.75 + 1
         if (table == null) { // pre-size
             float ft = ((float)s / loadFactor) + 1.0F;
             int t = ((ft < (float)MAXIMUM_CAPACITY) ?
@@ -989,8 +993,11 @@ final void putMapEntries(Map<? extends K, ? extends V> m, boolean evict) {
             if (t > threshold)
                 threshold = tableSizeFor(t);
         }
+        // 如果传入集合长度 > threshold , 进行扩容
         else if (s > threshold)
             resize();
+
+        // 循环插入数据
         for (Map.Entry<? extends K, ? extends V> e : m.entrySet()) {
             K key = e.getKey();
             V value = e.getValue();
@@ -999,6 +1006,464 @@ final void putMapEntries(Map<? extends K, ? extends V> m, boolean evict) {
     }
 }
 ```
+
+扩容：
+
+```java
+final Node<K,V>[] resize() {
+    Node<K,V>[] oldTab = table;
+    int oldCap = (oldTab == null) ? 0 : oldTab.length;
+    int oldThr = threshold;
+    int newCap, newThr = 0;
+
+    // table 已经初始化过了
+    if (oldCap > 0) {
+        // capacity 达到最大值，不能进行扩容，只能继续哈希碰撞。
+        if (oldCap >= MAXIMUM_CAPACITY) {
+            threshold = Integer.MAX_VALUE;
+            return oldTab;
+        }
+        // 新容量 = 旧容量 * 2
+        else if ((newCap = oldCap << 1) < MAXIMUM_CAPACITY &&
+                 oldCap >= DEFAULT_INITIAL_CAPACITY)
+            newThr = oldThr << 1; // double threshold
+    }
+    // oldCap = 0 , oldThr > 0,当 table 没有初始化时，capacity 保存在 threshold
+    else if (oldThr > 0)
+        newCap = oldThr;
+    else {
+        // oldCap = 0 , oldThr = 0,设置默认 capacity 为 DEFAULT_INITIAL_CAPACITY = 16
+        newCap = DEFAULT_INITIAL_CAPACITY;
+        newThr = (int)(DEFAULT_LOAD_FACTOR * DEFAULT_INITIAL_CAPACITY);
+    }
+    // 配合上面 oldThr > 0 的条件计算 threshold
+    if (newThr == 0) {
+        float ft = (float)newCap * loadFactor;
+        newThr = (newCap < MAXIMUM_CAPACITY && ft < (float)MAXIMUM_CAPACITY ?
+                  (int)ft : Integer.MAX_VALUE);
+    }
+    threshold = newThr;
+    @SuppressWarnings({"rawtypes","unchecked"})
+    // 初始化table
+    Node<K,V>[] newTab = (Node<K,V>[])new Node[newCap];
+    table = newTab;
+
+    // 如果 table 之间有值需要将其迁移到新table
+    if (oldTab != null) {
+        for (int j = 0; j < oldCap; ++j) {
+            Node<K,V> e;
+            if ((e = oldTab[j]) != null) {
+                oldTab[j] = null;
+                // 如果是单节点，直接通过hash值重新计算位置。
+                if (e.next == null)
+                    newTab[e.hash & (newCap - 1)] = e;
+                // 如果是红黑树，会将每个节点 hash & oldCap 。
+                // 如果 等于 0 说明还在 [原节点]。
+                // 如果等于1说明在 [原节点 + oldCap] 位置。
+                // 这样将红黑树拆分成两个链表,分别处理两个链表
+                // 如果链表长度大于等于8，将链表转换为红黑树
+                // 如果链表长度小于等于6，将红黑树转换为链表
+                else if (e instanceof TreeNode)
+                    ((TreeNode<K,V>)e).split(this, newTab, j, oldCap);
+                else {
+                    // 处理链表节点
+                    // 如果 等于 0 说明还在原节点。
+                    // 如果等于1说明在 原节点 + oldCap 位置。
+                    // 这样将链表分成两个链表,分布在 [原节点] 和 [原节点 + oldCap] 位置。
+                    Node<K,V> loHead = null, loTail = null;
+                    Node<K,V> hiHead = null, hiTail = null;
+                    Node<K,V> next;
+                    do {
+                        next = e.next;
+                        if ((e.hash & oldCap) == 0) {
+                            if (loTail == null)
+                                loHead = e;
+                            else
+                                loTail.next = e;
+                            loTail = e;
+                        }
+                        else {
+                            if (hiTail == null)
+                                hiHead = e;
+                            else
+                                hiTail.next = e;
+                            hiTail = e;
+                        }
+                    } while ((e = next) != null);
+                    if (loTail != null) {
+                        loTail.next = null;
+                        newTab[j] = loHead;
+                    }
+                    if (hiTail != null) {
+                        hiTail.next = null;
+                        newTab[j + oldCap] = hiHead;
+                    }
+                }
+            }
+        }
+    }
+    return newTab;
+}
+```
+
+插入数据：
+
+![216](assets/216.png)
+
+1. 判断键值对数组table[i]是否为空或为null，否则执行resize()进行扩容。
+2. 根据键值key计算hash值得到插入的数组索引i，如果table[i]==null，直接新建节点添加，转向 6，如果table[i]不为空，转向3。
+3. 判断table[i]的首个元素是否和key一样，如果相同直接覆盖value，否则转向4，这里的相同指的是hashCode以及equals。
+4. 判断table[i] 是否为treeNode，即table[i] 是否是红黑树，如果是红黑树，则直接在树中插入键值对，否则转向5。
+5. 遍历table[i]，判断链表长度是否大于8，大于8并且capacity 大于 64 则把链表转换为红黑树，在红黑树中执行插入操作，否则进行链表的插入操作，遍历过程中若发现key已经存在直接覆盖value即可。
+6. 插入成功后，判断实际存在的键值对数量size是否超多了最大容量threshold，如果超过，进行扩容。
+
+```java
+final V putVal(int hash, K key, V value, boolean onlyIfAbsent,
+               boolean evict) {
+    Node<K,V>[] tab; Node<K,V> p; int n, i;
+    // table 未初始化，直接进行扩容
+    if ((tab = table) == null || (n = tab.length) == 0)
+        n = (tab = resize()).length;
+    // 如果数组索引 (n - 1) & hash 为 null ，直接将值插入。
+    if ((p = tab[i = (n - 1) & hash]) == null)
+        tab[i] = newNode(hash, key, value, null);
+    else {
+        Node<K,V> e; K k;
+        // 如果数组索引  (n - 1) & hash 有值，并且 hash 值相同，equals 为true，直接替换
+        if (p.hash == hash &&
+            ((k = p.key) == key || (key != null && key.equals(k))))
+            e = p;
+        // 如果数组索引  (n - 1) & hash 是红黑树，按照树形结构插入
+        else if (p instanceof TreeNode)
+            e = ((TreeNode<K,V>)p).putTreeVal(this, tab, hash, key, value);
+        else {
+            // 如果数组索引  (n - 1) & hash 有值，并且 hash 值相同，但是 equals 为false，就沿着链表向向下找
+            for (int binCount = 0; ; ++binCount) {
+               // 如果找到叶子节点也没有找到相同的key就将值插在链表尾部，并且如果链表长度 =8 ，调用treeifyBin 方法转换红黑树，不过方法内部会判断capacity是否达到 MIN_TREEIFY_CAPACITY = 64，如果没有达到会先进行扩容
+                if ((e = p.next) == null) {
+                    p.next = newNode(hash, key, value, null);
+                    if (binCount >= TREEIFY_THRESHOLD - 1) // -1 for 1st
+                        treeifyBin(tab, hash);
+                    break;
+                }
+                // 如果在链表中找到相同key ，就将其替换
+                if (e.hash == hash &&
+                    ((k = e.key) == key || (key != null && key.equals(k))))
+                    break;
+                p = e;
+            }
+        }
+        if (e != null) { // existing mapping for key
+            V oldValue = e.value;
+            if (!onlyIfAbsent || oldValue == null)
+                e.value = value;
+            afterNodeAccess(e);
+            return oldValue;
+        }
+    }
+    ++modCount;
+    // size >= threshold 进行扩容
+    if (++size > threshold)
+        resize();
+    afterNodeInsertion(evict);
+    return null;
+}
+```
+
+HashMap 的长度为什么是 2 的幂次方?
+* 数据在数组中的位置是使用 hash值 对 数组长度 做取模运算得出，即 hash % length,当 length = 2的幂 时，hash % length = hash & (length - 1),位运算 比 & 效率高。
+* 扩容时不用重新计算位置，只需通过hash新增的首位是1还0来判断位置，如果是1，则 新位置 = 原位置 + oldCapacity，如果是 0 ，则还是原位置。
+
+#### LinkedHashMap
+
+```java
+public class LinkedHashMap<K,V>
+    extends HashMap<K,V>
+    implements Map<K,V>
+{
+  static class Entry<K,V> extends HashMap.Node<K,V> {
+    Entry<K,V> before, after;
+    Entry(int hash, K key, V value, Node<K,V> next) {
+        super(hash, key, value, next);
+    }
+  }
+}
+```
+
+LinkedHashMap 继承自 HashMap，从数据结构上看，相比 HashMap 会多维护一个链表，用来记录插入的先后顺序，使用迭代器迭代时会按照元素进入集合的顺序迭代，put 逻辑大致一样，新增加在插入之后执行 LinkedHashMap#afterNodeInsertion 用来维护链表。
+
+#### TreeMap
+
+```java
+static final class Entry<K,V> implements Map.Entry<K,V> {
+    K key;
+    V value;
+    Entry<K,V> left;
+    Entry<K,V> right;
+    Entry<K,V> parent;
+    boolean color = BLACK;
+}
+```
+
+TreeMap 节点是标准的红黑树节点。
+
+* 红黑树由平衡二叉查找树演变而来。
+* 由于完全平衡的二叉查找树在插入后再次平衡的代价太大，所以引入允许三叉的平衡查找树来简化算法，叫做2-3查找树。
+* 大部分插入只需要将2叉变为3叉就可解决不需要重新平衡，只有3叉变为4叉的时候通过对节点的上浮和下沉来达到平衡。
+* 由于 2-3 树的数据结构较为复制，所有还是选用二叉树来表示，但是通过对节点着色来区分3节点(红链接) 还是 2节点（黑链接）。
+* 所以红黑树是完美黑色平衡树，任意叶子节点到根节点的路径上的黑链接数量相同。
+* 删除任意节点就是删除某一子树的最小键。
+
+* 前序：根左右，很方便地形成一条搜索路径。
+* 中序：左根右，可以得到一个有序序列。
+* 后序：左右根，中缀表达式转为后缀表达式，后缀表达式方便计算机计算。
+
+#### ConcurrentHashMap
+
+属性：
+
+```java
+/**
+ * hash 表
+ */
+transient volatile Node<K,V>[] table;
+
+/**
+ * 扩容时 新的 hash 表，仅在扩容时不为空，扩容过程中，会将扩容中的新table赋值给nextTable，扩容结束之后，这里就会被设置为NULL
+ */
+private transient volatile Node<K,V>[] nextTable;
+
+/**
+ * 当未发生线程竞争或当前LongAdder处于加锁状态时，增量会被累加到baseCount，map实际总数 sum(counterCells) + baseCount
+ */
+private transient volatile long baseCount;
+
+/**
+ * 为0，代表数组未初始化， 且数组的初始容量为16
+ * 为正数，如果数组未初始化，那么其记录的是数组的初始容量，如果数组已经初始化，那么其记录的是数组的扩容阈值
+ * 为-1，表示数组正在进行初始化
+ * 小于0，并且不是-1，表示数组正在扩容， -(1+n)，表示此时有n个线程正在共同完成数组的扩容操
+ */
+private transient volatile int sizeCtl;
+
+/**
+ * 扩容过程中，记录当前进度。所有的线程都需要从transferIndex中分配区间任务，并去执行自己的任务
+ */
+private transient volatile int transferIndex;
+
+/**
+ * LongAdder中，cellsBusy表示对象的加锁状态：
+ * 0: 表示当前LongAdder对象处于无锁状态
+ * 1: 表示当前LongAdder对象处于加锁状态
+ */
+private transient volatile int cellsBusy;
+
+/**
+ * LongAdder中的cells数组，当baseCount发生线程竞争后，会创建cells数组，
+ * 线程会通过计算hash值，去取到自己的cell，将增量累加到指定的cell中
+ * 总数 = sum(cells) + baseCount
+ */
+private transient volatile CounterCell[] counterCells;
+```
+常量：
+
+```java
+// 控制线程迁移数据的最小步长(桶位的跨度~)
+private static final int MIN_TRANSFER_STRIDE = 16;
+
+// 固定值16，与扩容相关，计算扩容时会根据该属性值生成一个扩容标识戳
+private static int RESIZE_STAMP_BITS = 16;
+
+// (1 << (32 - RESIZE_STAMP_BITS)) - 1 = 65535：1 << 16 -1
+// 表示并发扩容最多容纳的线程数
+private static final int MAX_RESIZERS = (1 << (32 - RESIZE_STAMP_BITS)) - 1;
+
+// 扩容相关属性
+private static final int RESIZE_STAMP_SHIFT = 32 - RESIZE_STAMP_BITS;
+
+// 当node节点的hash值为-1：表示当前节点是FWD(forwarding)节点(已经被迁移的节点)
+static final int MOVED = -1;
+// 当node节点的hash值为-2：表示当前节点已经树化，且当前节点为TreeBin对象~，TreeBin对象代理操作红黑树
+static final int TREEBIN   = -2;
+// 当node节点的hash值为-3：
+static final int RESERVED  = -3;
+// 0x7fffffff 十六进制转二进制值为：1111111111111111111111111111111（31个1）
+// 作用是将一个二进制负数与1111111111111111111111111111111 进行按位与(&)运算时，会得到一个正数，但不是取绝对值
+static final int HASH_BITS = 0x7fffffff;
+
+private static final Unsafe U = Unsafe.getUnsafe();
+// 表示sizeCtl属性在ConcurrentHashMap中内存的偏移地址
+private static final long SIZECTL;
+// 表示transferIndex属性在ConcurrentHashMap中内存的偏移地址
+private static final long TRANSFERINDEX;
+// 表示baseCount属性在ConcurrentHashMap中内存的偏移地址
+private static final long BASECOUNT;
+// 表示cellsBusy属性在ConcurrentHashMap中内存的偏移地址
+private static final long CELLSBUSY;
+// 表示cellsValue属性在ConcurrentHashMap中内存的偏移地址
+private static final long CELLVALUE;
+// 表示数组第一个元素的偏移地址
+private static final long ABASE;
+// 该属性用于数组寻址，请继续往下阅读
+private static final int ASHIFT;
+
+// 散列表数组最大容量值
+private static final int MAXIMUM_CAPACITY = 1 << 30;
+
+// 散列表默认容量值16
+private static final int DEFAULT_CAPACITY = 16;
+
+// 负载因子
+private static final float LOAD_FACTOR = 0.75f;
+
+// 树化阈值
+static final int TREEIFY_THRESHOLD = 8;
+
+// 反树化阈值
+static final int UNTREEIFY_THRESHOLD = 6;
+
+// 散列表长度达到64，且某个桶位中的链表长度达到8，才会发生树化
+static final int MIN_TREEIFY_CAPACITY = 64;
+
+// 最大的数组大小（非2的幂） toArray和相关方法需要(并不是核心属性)
+static final int MAX_ARRAY_SIZE = Integer.MAX_VALUE - 8;
+
+// jdk1.7遗留下来的，用来表示并发级别的属性
+// jdk1.8只有在初始化的时候用到，不再表示并发级别了~ 1.8以后并发级别由散列表长度决定
+private static final int DEFAULT_CONCURRENCY_LEVEL = 16;
+```
+
+添加数据：
+
+```java
+public V put(K key, V value) {
+    return putVal(key, value, false);
+}
+
+final V putVal(K key, V value, boolean onlyIfAbsent) {
+    if (key == null || value == null) throw new NullPointerException();
+    int hash = spread(key.hashCode());
+    int binCount = 0;
+    // 自旋
+    for (Node<K,V>[] tab = table;;) {
+        Node<K,V> f; int n, i, fh; K fk; V fv;
+        // 当 tab == null ，初始化 hash 表，初始容量为 sizeCtl，如果 sizeCtl 为 0，则容量为DEFAULT_CAPACITY 。
+        // 初始化时只有一个线程将  sizeCtl 设置通过 CAS 设置为 -1，当其他线程调用 Thread.yield(); 重新等待调度，或者自旋等待。
+        if (tab == null || (n = tab.length) == 0)
+            tab = initTable();
+        else if ((f = tabAt(tab, i = (n - 1) & hash)) == null) {
+            // 如果 (n - 1) & hash 为空，CAS 替换。
+            if (casTabAt(tab, i, null, new Node<K,V>(hash, key, value)))
+                break;
+        }
+        ///如果hash计算得到的桶位置元素的hash值为MOVED，证明正在扩容，那么协助扩容
+        else if ((fh = f.hash) == MOVED)
+            tab = helpTransfer(tab, f);
+
+        // putIfAbsent 操作
+        else if (onlyIfAbsent
+                 && fh == hash
+                 && ((fk = f.key) == key || (fk != null && key.equals(fk)))
+                 && (fv = f.val) != null)
+            return fv;
+        else {
+           //hash计算的桶位置元素不为空，且当前没有处于扩容操作，进行元素添加
+            V oldVal = null;
+            //对当前桶也就是头节点进行加锁，保证线程安全，执行元素添加操作，和HashMap类似
+            synchronized (f) {
+                if (tabAt(tab, i) == f) {
+                    if (fh >= 0) {
+                        binCount = 1;
+                        for (Node<K,V> e = f;; ++binCount) {
+                            K ek;
+                            if (e.hash == hash &&
+                                ((ek = e.key) == key ||
+                                 (ek != null && key.equals(ek)))) {
+                                oldVal = e.val;
+                                if (!onlyIfAbsent)
+                                    e.val = value;
+                                break;
+                            }
+                            Node<K,V> pred = e;
+                            if ((e = e.next) == null) {
+                                pred.next = new Node<K,V>(hash, key, value);
+                                break;
+                            }
+                        }
+                    }
+                    else if (f instanceof TreeBin) {
+                        Node<K,V> p;
+                        binCount = 2;
+                        if ((p = ((TreeBin<K,V>)f).putTreeVal(hash, key,
+                                                       value)) != null) {
+                            oldVal = p.val;
+                            if (!onlyIfAbsent)
+                                p.val = value;
+                        }
+                    }
+                    else if (f instanceof ReservationNode)
+                        throw new IllegalStateException("Recursive update");
+                }
+            }
+            if (binCount != 0) {
+                if (binCount >= TREEIFY_THRESHOLD)
+                    treeifyBin(tab, i);
+                if (oldVal != null)
+                    return oldVal;
+                break;
+            }
+        }
+    }
+    // 添加的是新元素，维护集合长度，并判断是否要进行扩容操作
+    addCount(1L, binCount);
+    return null;
+}
+```
+
+扩容操作：
+
+扩容时 sizeCtl 变化：
+
+```java
+//第一条扩容线程设置的某个特定基数
+U.compareAndSwapInt(this, SIZECTL, sc, (rs << RESIZE_STAMP_SHIFT) + 2)
+//后续线程加入扩容大军时每次加 1
+U.compareAndSwapInt(this, SIZECTL, sc, sc + 1)
+//线程扩容完毕退出扩容操作时每次减 1
+U.compareAndSwapInt(this, SIZECTL, sc = sizeCtl, sc - 1)
+```
+
+什么时候会触发扩容？
+
+* 在调用 addCount 方法增加集合元素计数后发现当前集合元素个数到达扩容阈值时就会触发扩容。
+* 扩容状态下其他线程对集合进行插入、修改、删除、合并、compute 等操作时遇到 ForwardingNode 节点会触发扩容。
+* putAll 批量插入或者插入节点后发现存在链表长度达到 8 个或以上，但数组长度为 64 以下时会触发扩容。
+
+多线程协助扩容的操作会在两个地方被触发：
+
+* 当添加元素时，发现添加的元素对用的桶位为 fwd 节点，就会先去协助扩容，然后再添加元素
+* 当添加完元素后，判断当前元素个数达到了扩容阈值，此时发现sizeCtl的值小于0，并且新数组不为空，这个时候，会去协助扩容
+
+ConcurrentHashMap 采用的是分段扩容法，即每个线程负责一段，默认最小是 16，如果大于 16 则根据当前 CPU 数来进行分配，最大参与扩容线程数不会超过 CPU 数。
+
+扩容流程：
+1. 将散列表定长等分，逆序依次领取扩容任务，设置 sizeCtl < -1 标记正在扩容, (-1 - sizeCtl) 个线程在进行扩容。使用 transferIndex 标识当前的任务分配到哪个节点，任务逆序分配，例如：
+
+  ![218](assets/218.png)
+
+2. 将任务重分配的节点依次移动到过渡表  nextTable 。
+3. 移动完成一个哈希桶或者遇到空桶时，将其标记为  ForwardingNode  节点，ForwardingNode 由两个作用：1.标记该节点以完成迁移。2.ForwardingNode 包含 nextTable 的引用，可以将该节点的操作转发给 nextTable。
+4. 其他线程在操作哈希表时，遇到  ForwardingNode  节点，则先领取分段任务帮助扩容。
+5. 所有节点移动完毕时替换散列表  table 。
+
+扩容过程中的get、put操作：
+
+  ![219](assets/219.png)
+
+1. 未迁移的桶正常get、put操作。
+2. 正在迁移的桶，get操作不影响，迁移过程中原链表变没有变化，新链表是复制过去的，put操作会阻塞。
+3. 迁移完成的桶正常get、put操作，会由 ForwardingNode 转发给 nextTable。
+
 
 ### Set
 
@@ -1041,6 +1506,112 @@ PriorityQueue：
 * 使用可变长的数组实现了二叉堆， 默认是小顶堆，但可以接收一个 `Comparator` 作为构造参数。
 * 利用堆得上浮和下沉实现插入元素和删除堆顶元素时间复杂度为 O(logn)。
 * 非线程安全的，且不支持存储  NULL 和  non-comparable  的对象。
+
+# Unsafe
+
+Unsafe 位于jdk.internal.misc包下，主要提供一些用于执行低级别、不安全操作的方法，如直接访问系统内存资源、自主管理内存资源等。由于Unsafe类拥有直接操作系统内存空间的能力，使得程序出错的概率变大，使程序变得不安全。
+
+Unsafe 获取通过 `Unsafe.getUnsafe()` 来获取。
+
+功能：
+
+![217](assets/217.png)
+
+* 内存操作：比较少用，一般使用 DirectByteBuffer 操作堆外内存，DirectByteBuffer 也是通过 allocateMemory 和 setMemory 。
+
+  ```java
+  //分配内存, 相当于C++的malloc函数，返回值为 基地址
+  public native long allocateMemory(long bytes);
+  //扩充内存
+  public native long reallocateMemory(long address, long bytes);
+  //释放内存
+  public native void freeMemory(long address);
+  //在给定的内存块中设置值，o 为基地址或者需要设置的对象，offeset 为相对基地址的偏移量，内存块的地址由对象引用o和偏移地址共同决定，如果对象引用o为null，offset就是绝对地址，bytes为内存块的大小，value 一般为 0，表示把这部分内存都设置为 0 。
+  public native void setMemory(Object o, long offset, long bytes, byte value);
+  //内存拷贝
+  public native void copyMemory(Object srcBase, long srcOffset, Object destBase, long destOffset, long bytes);
+  //获取给定地址值，忽略修饰限定符的访问限制。与此类似操作还有: getInt，getDouble，getLong，getChar等
+  public native Object getObject(Object o, long offset);
+  //为给定地址设置值，忽略修饰限定符的访问限制，与此类似操作还有: putInt,putDouble，putLong，putChar等
+  public native void putObject(Object o, long offset, Object x);
+  //获取给定地址的byte类型的值（当且仅当该内存地址为allocateMemory分配时，此方法结果为确定的）
+  public native byte getByte(long address);
+  //为给定地址设置byte类型的值（当且仅当该内存地址为allocateMemory分配时，此方法结果才是确定的）
+  public native void putByte(long address, byte x);
+  ```
+  * Class相关：
+
+  ```java
+  //获取给定静态字段的内存地址偏移量，这个值对于给定的字段是唯一且固定不变的
+  public native long staticFieldOffset(Field f);
+  //获取一个静态类中给定字段的对象指针
+  public native Object staticFieldBase(Field f);
+  //判断是否需要初始化一个类，通常在获取一个类的静态属性的时候（因为一个类如果没初始化，它的静态属性也不会初始化）使用。 当且仅当ensureClassInitialized方法不生效时返回false。
+  public native boolean shouldBeInitialized(Class<?> c);
+  //检测给定的类是否已经初始化。通常在获取一个类的静态属性的时候（因为一个类如果没初始化，它的静态属性也不会初始化）使用。
+  public native void ensureClassInitialized(Class<?> c);
+  //定义一个类，此方法会跳过JVM的所有安全检查，默认情况下，ClassLoader（类加载器）和ProtectionDomain（保护域）实例来源于调用者
+  public native Class<?> defineClass(String name, byte[] b, int off, int len, ClassLoader loader, ProtectionDomain protectionDomain);
+  //定义一个匿名类
+  public native Class<?> defineAnonymousClass(Class<?> hostClass, byte[] data, Object[] cpPatches);
+  ```
+
+  * 对象操作：
+
+  ```java
+  //返回对象成员属性在内存地址相对于此对象的内存地址的偏移量
+  public native long objectFieldOffset(Field f);
+  //获得给定对象的指定地址偏移量的值，与此类似操作还有：getInt，getDouble，getLong，getChar等
+  public native Object getObject(Object o, long offset);
+  //给定对象的指定地址偏移量设值，与此类似操作还有：putInt，putDouble，putLong，putChar等
+  public native void putObject(Object o, long offset, Object x);
+  //从对象的指定偏移量处获取变量的引用，使用volatile的加载语义
+  public native Object getObjectVolatile(Object o, long offset);
+  //存储变量的引用到对象的指定的偏移量处，使用volatile的存储语义
+  public native void putObjectVolatile(Object o, long offset, Object x);
+  //有序、延迟版本的putObjectVolatile方法，不保证值的改变被其他线程立即看到。只有在field被volatile修饰符修饰时有效
+  public native void putOrderedObject(Object o, long offset, Object x);
+  //绕过构造方法、初始化代码来创建对象
+  public native Object allocateInstance(Class<?> cls) throws InstantiationException;
+  ```
+
+  * 数组相关：
+
+  ```java
+  //返回数组中第一个元素的偏移地址
+  public native int arrayBaseOffset(Class<?> arrayClass);
+  //返回数组中一个元素占用的大小
+  public native int arrayIndexScale(Class<?> arrayClass);
+  ```
+
+  * CAS相关：
+
+  ```java
+  /**
+  * @param o         包含要修改field的对象
+  * @param offset    对象中某field的偏移量
+  * @param expected  期望值
+  * @param update    更新值
+  * @return          true | false
+  */
+  public final native boolean compareAndSwapObject(Object o, long offset,  Object expected, Object update);
+
+  public final native boolean compareAndSwapInt(Object o, long offset, int expected,int update);
+
+  public final native boolean compareAndSwapLong(Object o, long offset, long expected, long update);
+  ```
+
+  * 内存屏障：
+
+  ```java
+  //内存屏障，禁止load操作重排序。屏障前的load操作不能被重排序到屏障后，屏障后的load操作不能被重排序到屏障前
+  public native void loadFence();
+  //内存屏障，禁止store操作重排序。屏障前的store操作不能被重排序到屏障后，屏障后的store操作不能被重排序到屏障前
+  public native void storeFence();
+  //内存屏障，禁止load、store操作重排序
+  public native void fullFence();
+  ```
+
 
 # 漏洞说明
 

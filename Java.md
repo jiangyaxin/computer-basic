@@ -820,6 +820,186 @@ static <E> E elementAt(Object[] a, int index) {
 * NavigableMap 接口让 TreeMap 有了对集合内元素的搜索的能力。
 * SortedMap 接口让 TreeMap 有了对集合中的元素根据键排序的能力。
 
+#### HashMap
+
+节点：
+
+```java
+static class Node<K,V> implements Map.Entry<K,V> {
+    // 哈希值，存放元素到hashmap中时用来与其他元素hash值比较
+    final int hash;
+    //键
+    final K key;
+    //值
+    V value;
+    // 指向下一个节点
+    Node<K,V> next;
+}
+```
+
+属性：
+
+```java
+/**
+ * 储存数据,称为buckets/bins，HashMap的容量 CAPACITY = table.length,默认值为 DEFAULT_INITIAL_CAPACITY = 16
+ */
+transient Node<K,V>[] table;
+
+/**
+ * 保存 Node 的缓存，方便获取 entrySet，不用再去遍历 table 获取所有值。
+ */
+transient Set<Map.Entry<K,V>> entrySet;
+
+/**
+ * 已经储存数据的数量
+ */
+transient int size;
+
+/**
+ * 修改的次数
+ */
+transient int modCount;
+
+/**
+ * 扩容的的阈值，当添加 size >= threshold进行扩容，如果不指定容量，默认值为 (DEFAULT_INITIAL_CAPACITY =16) * 0.75 = 12
+ */
+int threshold;
+
+/**
+ * 默认值0.75，该值越大，相同的bins储存的数据越多，利用率越高，存放数据很集中，但是hash碰撞也就越多，查找效率越低，太小导致数组的利用率低，存放的数据会很分散。
+ */
+final float loadFactor;
+```
+
+常量：
+
+```java
+/**
+ * 默认的初始容量,16
+ */
+static final int DEFAULT_INITIAL_CAPACITY = 1 << 4; 
+
+/**
+ * 最大容量
+ */
+static final int MAXIMUM_CAPACITY = 1 << 30;
+
+/**
+ * 默认的填充因子
+ */
+static final float DEFAULT_LOAD_FACTOR = 0.75f;
+
+/**
+ * 当 table.length >= 64 并且 单链表长度 >= 8 时，将链表转换成红黑树。
+ */
+static final int TREEIFY_THRESHOLD = 8;
+
+/**
+ * resize时，如果 红黑树 节点数小于 6，会将红黑树转换成链表。
+ */
+static final int UNTREEIFY_THRESHOLD = 6;
+
+/**
+ * 转换成红黑树的最小容量，当容量小于64时，及时链表长度达到8也不会转换成红黑树，而是优先选择扩容。
+ */
+static final int MIN_TREEIFY_CAPACITY = 64;
+```
+
+数据结构： 数组 + 链表 + 红黑树 。
+
+![215](./assets/215.png)
+
+构造函数：
+
+```java
+/**
+ * 默认容量为16
+ */
+public HashMap() {
+    this.loadFactor = DEFAULT_LOAD_FACTOR;
+}
+/**
+ * 实际容量为 大于initialCapacity 的 2 的幂，插入大量元素时应该设置初始化容量 = 想要储存的元素个数/0.75 + 1
+ */
+public HashMap(int initialCapacity) {
+    this(initialCapacity, DEFAULT_LOAD_FACTOR);
+}
+
+public HashMap(int initialCapacity, float loadFactor) {
+    if (initialCapacity < 0)
+        throw new IllegalArgumentException("Illegal initial capacity: " +
+                                           initialCapacity);
+    if (initialCapacity > MAXIMUM_CAPACITY)
+        initialCapacity = MAXIMUM_CAPACITY;
+    if (loadFactor <= 0 || Float.isNaN(loadFactor))
+        throw new IllegalArgumentException("Illegal load factor: " +
+                                           loadFactor);
+    this.loadFactor = loadFactor;
+    this.threshold = tableSizeFor(initialCapacity);
+}
+
+public HashMap(Map<? extends K, ? extends V> m) {
+    this.loadFactor = DEFAULT_LOAD_FACTOR;
+    putMapEntries(m, false);
+}
+
+static final int tableSizeFor(int cap) {
+    // -1 = 1111 1111 1111 1111 1111 1111 1111 1111 -  最高非0位前面的0的个数
+    int n = -1 >>> Integer.numberOfLeadingZeros(cap - 1);
+    // n + 1 为 2 的幂
+    return (n < 0) ? 1 : (n >= MAXIMUM_CAPACITY) ? MAXIMUM_CAPACITY : n + 1;
+}
+
+// Integer.class
+/**
+ * 返回无符号整数i的最高非0位前面的0的个数，包括符号位在内；如果i为负数，这个方法将会返回0，符号位为1。
+ * 例如：10的二进制表示为 0000 0000 0000 0000 0000 0000 0000 1010
+ * java的整型长度为32位。那么这个方法返回的就是28
+ */
+public static int numberOfLeadingZeros(int i) {
+    // HD, Count leading 0's
+    if (i <= 0)
+        return i == 0 ? 32 : 0;
+    int n = 31;
+    // 使用 0100 0000 0000 0000 0000 0000 0000 0000 举例
+    // 说明 非0首位 不在低16位，n < 16,并将高16位移到低16位
+    // 这时 n = 15 , i = 0000 0000 0000 0000 0100 0000 0000 0000
+    if (i >= 1 << 16) { n -= 16; i >>>= 16; }
+    // 说明 非0首位 不在低8位，n < 8,并将高8位移到低8位
+    // 这时 n = 7 , i = 0000 0000 0000 0000 0000 0000 0100 0000
+    if (i >= 1 <<  8) { n -=  8; i >>>=  8; }
+    // 说明 非0首位 不在低4位，n < 4,并将高4位移到低4位
+    // 这时 n = 3 , i = 0000 0000 0000 0000 0000 0000 0000 0100
+    if (i >= 1 <<  4) { n -=  4; i >>>=  4; }
+    // 说明 非0首位 不在低2位，n < 2,并将高2位移到低2位
+    // 这时 n = 1 , i = 0000 0000 0000 0000 0000 0000 0000 0001
+    if (i >= 1 <<  2) { n -=  2; i >>>=  2; }
+    // n-0
+    return n - (i >>> 1);
+}
+
+
+final void putMapEntries(Map<? extends K, ? extends V> m, boolean evict) {
+    int s = m.size();
+    if (s > 0) {
+        if (table == null) { // pre-size
+            float ft = ((float)s / loadFactor) + 1.0F;
+            int t = ((ft < (float)MAXIMUM_CAPACITY) ?
+                     (int)ft : MAXIMUM_CAPACITY);
+            if (t > threshold)
+                threshold = tableSizeFor(t);
+        }
+        else if (s > threshold)
+            resize();
+        for (Map.Entry<? extends K, ? extends V> e : m.entrySet()) {
+            K key = e.getKey();
+            V value = e.getValue();
+            putVal(hash(key), key, value, false, evict);
+        }
+    }
+}
+```
+
 ### Set
 
 HashSet、LinkedHashSet 和 TreeSet的区别：

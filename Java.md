@@ -222,7 +222,7 @@ public class BigDecimalUtil {
 * 子类非静态变量（子类实例成员变量）
 * 子类构造函数
 
-## 泛型
+# 泛型
 
 泛型是指参数化类型，编译器可以对泛型参数进行检测，并且通过泛型参数可以指定传入的对象类型。
 
@@ -340,7 +340,7 @@ ResolvableType.forType(Type)
 ResolvableType.forInstance(Object)
 ```
 
-## 反射
+# 反射
 
 作用：可以在运行时分析类以及执行类中方法
 * 实例化对象。
@@ -411,7 +411,7 @@ Class.forName 和 ClassLoader 区别：
 * Class#forName(...) 方法，除了将类的 .class 文件加载到JVM 中之外，还会对类进行解释，执行类中的 static 块。
 * ClassLoader 只干一件事情，就是将 .class 文件加载到 JVM 中，不会执行 static 中的内容，只有在 newInstance 才会去执行 static 块。
 
-## 异常
+# 异常
 
 ![213](assets/213.png)
 
@@ -429,7 +429,7 @@ Throwable 类常用方法：
 
 try-with-resources 可使用在 任何实现 java.lang.AutoCloseable或者 java.io.Closeable 的对象，任何 catch 或 finally 块在声明的资源关闭后运行，多个资源可使用 `;` 分割。
 
-## 集合
+# 集合
 
 ![214](assets/214.png)
 
@@ -453,7 +453,21 @@ try-with-resources 可使用在 任何实现 java.lang.AutoCloseable或者 java.
 * Hashtable： 数组+链表。
 * TreeMap： 红黑树。
 
-### List
+
+
+集合判空：使用 `isEmpty()` 方法，而不是 `size()==0` 的方式， `isEmpty()`时间复杂度O(1),`size()==0`则不一定,例如`ConcurrentLinkedQueue` 、`ConcurrentHashMap`
+
+集合转Map：在使用 `java.util.stream.Collectors` 类的 `toMap()` 方法转为 `Map` 集合时，一定要注意当 value 为 null 时会抛 NPE 异常，并且需要添加 MergeFunction 方法。
+
+集合遍历：不要在 foreach 循环里进行元素的 `remove/add` 操作。remove 元素请使用 `Iterator` 方式，或者使用 removeIf 方法，如果并发操作，需要对 `Iterator` 对象加锁。
+
+集合去重：可以利用 `Set` 元素唯一的特性，可以快速对一个集合进行去重操作，避免使用 `List` 的 `contains()` 进行遍历去重或者判断包含操作。
+
+集合转数组：使用集合转数组的方法，必须使用集合的 `toArray(T[] array)`，传入的是类型完全一致、长度为 0 的空数组。
+
+数组转集合：使用工具类 `Arrays.asList()` 把数组转换成集合时，不能使用其修改集合相关的方法， 它的 `add/remove/clear` 方法会抛出 `UnsupportedOperationException` 异常。可使用 `new ArrayList<>(Arrays.asList("a", "b", "c"))` 、`Arrays.stream(myArray).collect(Collectors.toList());`
+
+## List
 
 Arraylist 和 Vector 的区别：
 
@@ -468,7 +482,7 @@ Arraylist 和 LinkedList 区别：
 * 快速随机访问： LinkedList 不支持高效的随机元素访问，而 ArrayList 支持。快速随机访问就是通过元素的序号快速获取元素对，对应get(int index)。
 * 内存空间： ArrayList 的空间浪费主要在 list 列表的结尾会预留一定的容量空间，而 LinkedList 的空间花费主要在每一个元素都需要额外存放直接后继和直接前驱。
 
-#### ArrayList
+### ArrayList
 
 关键属性：
 
@@ -677,7 +691,7 @@ public void ensureCapacity(int minCapacity) {
 }
 ```
 
-#### LinkedList
+### LinkedList
 
 LinkedList 双向链表实现，不存在扩容问题。
 
@@ -733,7 +747,7 @@ private E unlinkFirst(Node<E> f) {
 }
 ```
 
-#### CopyOnWriteArrayList
+### CopyOnWriteArrayList
 
 通过写时复制来延时更新实现数据的最终一致性，并且能够保证读线程间不阻塞。
 
@@ -800,7 +814,7 @@ static <E> E elementAt(Object[] a, int index) {
 
 应用于读多写少的并发场景。
 
-### Map
+## Map
 
  HashMap 和 Hashtable 区别：
 
@@ -820,7 +834,7 @@ static <E> E elementAt(Object[] a, int index) {
 * NavigableMap 接口让 TreeMap 有了对集合内元素的搜索的能力。
 * SortedMap 接口让 TreeMap 有了对集合中的元素根据键排序的能力。
 
-#### HashMap
+### HashMap
 
 节点：
 
@@ -1174,7 +1188,7 @@ HashMap 的长度为什么是 2 的幂次方?
 * 数据在数组中的位置是使用 hash值 对 数组长度 做取模运算得出，即 hash % length,当 length = 2的幂 时，hash % length = hash & (length - 1),位运算 比 & 效率高。
 * 扩容时不用重新计算位置，只需通过hash新增的首位是1还0来判断位置，如果是1，则 新位置 = 原位置 + oldCapacity，如果是 0 ，则还是原位置。
 
-#### LinkedHashMap
+### LinkedHashMap
 
 ```java
 public class LinkedHashMap<K,V>
@@ -1192,7 +1206,7 @@ public class LinkedHashMap<K,V>
 
 LinkedHashMap 继承自 HashMap，从数据结构上看，相比 HashMap 会多维护一个链表，用来记录插入的先后顺序，使用迭代器迭代时会按照元素进入集合的顺序迭代，put 逻辑大致一样，新增加在插入之后执行 LinkedHashMap#afterNodeInsertion 用来维护链表。
 
-#### TreeMap
+### TreeMap
 
 ```java
 static final class Entry<K,V> implements Map.Entry<K,V> {
@@ -1218,7 +1232,7 @@ TreeMap 节点是标准的红黑树节点。
 * 中序：左根右，可以得到一个有序序列。
 * 后序：左右根，中缀表达式转为后缀表达式，后缀表达式方便计算机计算。
 
-#### ConcurrentHashMap
+### ConcurrentHashMap
 
 特点：
 
@@ -1472,7 +1486,7 @@ ConcurrentHashMap 采用的是分段扩容法，即每个线程负责一段，�
 3. 迁移完成的桶正常get、put操作，会由 ForwardingNode 转发给 nextTable。
 
 
-### Set
+## Set
 
 HashSet、LinkedHashSet 和 TreeSet的区别：
 
@@ -1480,7 +1494,38 @@ HashSet、LinkedHashSet 和 TreeSet的区别：
 * 数据结构：HashSet基于哈希表（HashMap），LinkedHashSet 基于链表和哈希表，TreeSet 基于红黑树。
 * 应用场景：HashSet 不能保证元素插入和取出顺序，LinkedHashSet 满足元素的插入和取出顺序满足 FIFO，TreeSet 元素有序，支持自定义排序。
 
-### Queue
+### HashSet
+
+使用 HashMap 储存数据。
+
+属性：
+
+```java
+/**
+ * 用来储存数据，key 用来储存数据，value 都为 PRESENT 。
+ */
+private transient HashMap<E,Object> map;
+
+private static final Object PRESENT = new Object();
+```
+
+### LinkedHashSet
+
+继承于 HashSet 不过内部使用 LinkedHashMap 来储存。
+
+### TreeSet
+
+使用 TreeMap 储存数据。
+
+属性：
+
+```java
+private transient NavigableMap<E,Object> m;
+
+private static final Object PRESENT = new Object();
+```
+
+## Queue
 
 Queue 是单端队列，只能从一端插入元素，另一端删除元素，遵循  先进先出（FIFO） 规则。
 
@@ -1513,6 +1558,236 @@ PriorityQueue：
 * 使用可变长的数组实现了二叉堆， 默认是小顶堆，但可以接收一个 `Comparator` 作为构造参数。
 * 利用堆得上浮和下沉实现插入元素和删除堆顶元素时间复杂度为 O(logn)。
 * 非线程安全的，且不支持存储  NULL 和  non-comparable  的对象。
+
+### ArrayDeque
+
+双端队列，既可以当做栈使用，也可以当做队列使用，性能胜于 Stack 和 LinkedList，底层使用循环数组储存数据，线程不安全。
+
+属性：
+
+```java
+/**
+ * 默认长度为16
+ */
+transient Object[] elements;
+
+/**
+ * 头节点索引，第一个节点位于 elements.length - 1,然后逆时针方向增长，当 head == tail 时，数据存满，会进行扩容，每次扩容为原容量2倍。
+ */
+transient int head;
+
+/**
+ * 尾结点索引，从顺时针方向增长。
+ */
+transient int tail;
+```
+
+构造函数：
+
+```java
+/**
+ * 默认长度为 16
+ */
+public ArrayDeque() {
+    elements = new Object[16];
+}
+
+/**
+ * 初始化大小为 numElements + 1 ，避免初次扩容
+ */
+public ArrayDeque(int numElements) {
+    elements =
+        new Object[(numElements < 1) ? 1 :
+                   (numElements == Integer.MAX_VALUE) ? Integer.MAX_VALUE :
+                   numElements + 1];
+}
+
+/**
+ * 循环添加到尾部，addLast
+ */
+public ArrayDeque(Collection<? extends E> c) {
+    this(c.size());
+    copyElements(c);
+}
+```
+
+新增数据：
+
+```java
+/**
+ * head节点逆时针增长，当 head < 0 时，head = length - 1
+ */
+public void addFirst(E e) {
+    if (e == null)
+        throw new NullPointerException();
+    final Object[] es = elements;
+    es[head = dec(head, es.length)] = e;
+    if (head == tail)
+        grow(1);
+}
+
+static final int dec(int i, int modulus) {
+    if (--i < 0) i = modulus - 1;
+    return i;
+}
+/**
+ * tail节点顺时针增长，当 tail == length 时，tail = 0
+ */
+public void addLast(E e) {
+    if (e == null)
+        throw new NullPointerException();
+    final Object[] es = elements;
+    es[tail] = e;
+    if (head == (tail = inc(tail, es.length)))
+        grow(1);
+}
+
+static final int inc(int i, int modulus) {
+    if (++i >= modulus) i = 0;
+    return i;
+}
+```
+
+扩容：`jump = (oldCapacity < 64) ? (oldCapacity + 2) : (oldCapacity >> 1);`如果needed 更大取 needed，否则取 jump，大多数情况是 1.5 倍 。
+
+```java
+private void grow(int needed) {
+    final int oldCapacity = elements.length;
+    int newCapacity;
+    int jump = (oldCapacity < 64) ? (oldCapacity + 2) : (oldCapacity >> 1);
+    if (jump < needed
+        || (newCapacity = (oldCapacity + jump)) - MAX_ARRAY_SIZE > 0)
+        newCapacity = newCapacity(needed, jump);
+    final Object[] es = elements = Arrays.copyOf(elements, newCapacity);
+    if (tail < head || (tail == head && es[head] != null)) {
+        int newSpace = newCapacity - oldCapacity;
+        System.arraycopy(es, head,
+                         es, head + newSpace,
+                         oldCapacity - head);
+        for (int i = head, to = (head += newSpace); i < to; i++)
+            es[i] = null;
+    }
+}
+
+private int newCapacity(int needed, int jump) {
+    final int oldCapacity = elements.length, minCapacity;
+    if ((minCapacity = oldCapacity + needed) - MAX_ARRAY_SIZE > 0) {
+        if (minCapacity < 0)
+            throw new IllegalStateException("Sorry, deque too big");
+        return Integer.MAX_VALUE;
+    }
+    if (needed > jump)
+        return minCapacity;
+    return (oldCapacity + jump - MAX_ARRAY_SIZE < 0)
+        ? oldCapacity + jump
+        : MAX_ARRAY_SIZE;
+}
+```
+
+### PriorityQueue
+
+二叉堆实现，按优先级排列
+
+属性：
+
+```java
+private static final int DEFAULT_INITIAL_CAPACITY = 11;
+
+/**
+ * 二叉堆，节点n的两个子节点是 2n+1 和 2(n+1)
+ */
+transient Object[] queue;
+
+int size;
+
+private final Comparator<? super E> comparator;
+
+transient int modCount;  
+```
+
+# 多线程
+
+一个进程中可以有多个线程，多个线程共享进程的堆和方法区，但是每个线程有自己的程序计数器、虚拟机栈和 本地方法栈。
+
+
+
+程序计数器的作用：
+
+1. 字节码解释器通过改变程序计数器来依次读取指令，从而实现代码的流程控制，如：顺序执行、选择、循环、异常处理。
+2. 在多线程的情况下，程序计数器用于记录当前线程执行的位置，从而当线程被切换回来的时候能够知道该线程上次运行到哪儿了。
+
+如果执行的是 native 方法，那么程序计数器记录的是 undefined 地址，只有执行的是 Java 代码时程序计数器记录的才是下一条指令的地址。
+
+
+
+虚拟机栈的作用：Java方法执行时用于储存局部变量表、操作数栈、常量池引用等信息,从方法调用直至执行完成的过程，就对应着一个栈帧在 Java 虚拟机栈中入栈和出栈的过程。
+
+本地方法栈的作用：本地方法执行时使用，和虚拟机栈作用一样负责保存局部变量。
+
+虚拟机栈和本地方法栈为什么是私有的? 保证线程中的局部变量不被别的线程访问到。
+
+
+
+堆和方法区的作用：所有线程共享的资源，其中堆是进程中最大的一块内存，主要用于存放新创建的对象 (几乎所有对象都在这里分配内存)，方法区主要用于存放已被加载的类信息、常量、静态变量、即时编译器编译后的代码等数据。
+
+
+
+并发和并行的区别：
+
+- 并发：两个及两个以上的作业在同一 时间段 内先后执行。
+- 并行：两个及两个以上的作业在同一 时刻执行。
+
+## 生命周期
+
+线程在操作系统层面的生命周期：
+
+![220](./assets/220.png)
+
+线程在JVM层面的生命周期：
+
+* 线程创建之后它将处于 **NEW（新建）** 状态。
+* 调用 `start()` 方法后开始运行，线程处于 **READY（可运行）** 状态。
+* READY 状态的线程获得了 CPU 时间片后就处于 **RUNNING（运行）** 状态。
+* 当线程执行 `wait()`方法之后，线程进入 **WAITING（等待）** 状态。进入等待状态的线程需要依靠其他线程的通知才能够返回到运行状态，而 **TIMED_WAITING(超时等待)** 状态相当于在等待状态的基础上增加了超时限制，比如通过 `sleep（long millis）`方法或 `wait（long millis）`方法可以将 Java 线程置于 TIMED_WAITING 状态。
+* 当超时时间到达后 Java 线程将会返回到 RUNNABLE 状态。
+* 当线程调用同步方法时，在没有获取到锁的情况下，线程将会进入到 **BLOCKED（阻塞）** 状态。
+* 线程在执行 Runnable 的`run()`方法之后将会进入到 **TERMINATED（终止）** 状态。
+
+![221](./assets/221.png)
+
+sleep() 和 wait() 的区别和共同点：
+
+区别：`sleep()` 方法没有释放锁，而 `wait()` 方法释放了锁 。
+
+共同点：
+
+* 两者都可以暂停线程的执行。
+* `wait()` 通常被用于线程间交互/通信，`sleep() `通常被用于暂停执行。
+* `wait()` 方法被调用后，线程不会自动苏醒，需要别的线程调用同一个对象上的 `notify() `或者 `notifyAll()` 方法。`sleep() `方法执行完成后，线程会自动苏醒。或者可以使用 `wait(long timeout)` 超时后线程会自动苏醒。
+
+## 上下文切换
+
+切换时机：
+
+- 主动让出 CPU，比如调用了 `sleep()`, `wait()` 等。
+- 时间片用完，因为操作系统要防止一个线程或者进程长时间占用CPU导致其他线程或者进程饿死。
+- 调用了阻塞类型的系统中断，比如请求 IO，线程被阻塞。
+- 被终止或结束运行
+
+## 死锁
+
+条件：
+
+1. 互斥条件：该资源任意一个时刻只由一个线程占用。
+2. 请求与保持条件：一个线程因请求资源而阻塞时，对已获得的资源保持不放。
+3. 不剥夺条件:线程已获得的资源在未使用完之前不能被其他线程强行剥夺，只有自己使用完毕后才释放资源。
+4. 循环等待条件:若干线程之间形成一种头尾相接的循环等待资源关系。
+
+预防死锁：
+
+1. 破坏请求与保持条件 ：一次性申请所有的资源。
+2. 破坏不剥夺条件 ：占用部分资源的线程进一步申请其他资源时，如果申请不到，可以主动释放它占有的资源。
+3. 破坏循环等待条件 ：靠按序申请资源来预防。按某一顺序申请资源，释放资源则反序释放。破坏循环等待条件。
 
 # Unsafe
 
@@ -1602,9 +1877,9 @@ Unsafe 获取通过 `Unsafe.getUnsafe()` 来获取。
   * @return          true | false
   */
   public final native boolean compareAndSwapObject(Object o, long offset,  Object expected, Object update);
-
+  
   public final native boolean compareAndSwapInt(Object o, long offset, int expected,int update);
-
+  
   public final native boolean compareAndSwapLong(Object o, long offset, long expected, long update);
   ```
 

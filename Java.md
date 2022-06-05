@@ -2545,6 +2545,230 @@ sleep() 和 wait() 的区别和共同点：
 
 ## 垃圾回收
 
+Java 自动内存管理主要是针对 堆 内存中对象的分配与回收。
+
+堆的空间结构：
+
+![230](assets/230.png)
+
+* 大部分情况，对象都会首先在 Eden 区域分配，但大对象直接进入老年代，大对象就是需要大量连续内存空间的对象（比如：字符串、数组）。
+* 在一次新生代垃圾回收后，如果对象还存活，则会进入 s0 或者 s1，并且对象的年龄还会加 1，对象在 Survivor 中每熬过一次 MinorGC,年龄就增加 1 岁。
+* 当它的年龄增加到一定程度，就会被晋升到老年代。可参数设置晋升老年代的阈值 -XX:MaxTenuringThreshold。
+
+GC 类型：
+* 部分收集 (Partial GC)：
+  * 新生代收集（Minor GC / Young GC）：只对新生代进行垃圾收集；
+  * 老年代收集（Major GC / Old GC）：只对老年代进行垃圾收集。需要注意的是 Major GC 在有的语境中也用于指代整堆收集；
+  * 混合收集（Mixed GC）：对整个新生代和部分老年代进行垃圾收集。
+* 整堆收集 (Full GC)：收集整个 Java 堆和方法区。
+
+只要老年代的连续空间大于新生代对象总大小或者历次晋升的平均大小（叫做空间分配担保），就会进行 Minor GC，否则将进行 Full GC。
+
+对象的死亡判断：
+
+1. 引用计数法：给对象中添加一个引用计数器，每当有一个地方引用它，计数器就加 1；当引用失效，计数器就减 1；任何时候计数器为 0 的对象就是不可能再被使用的。
+
+效率高，但不能解决对象之间相互循环引用的问题，所以虚拟机没有选择这个算法。
+
+2. 可达性分析算法：通过 GC Roots 的对象作为起点，从这些节点开始向下搜索，节点所走过的路径称为引用链，当一个对象到 GC Roots 没有任何引用链相连的话，则证明此对象是不可用的，需要被回收，被标记两次后才会真正回收。
+
+GC Roots:
+* 虚拟机栈(栈帧中的本地变量表)中引用的对象
+* 本地方法栈(Native 方法)中引用的对象
+* 方法区中类静态属性引用的对象
+* 方法区中常量引用的对象
+* 所有被同步锁持有的对象
+
+引用：
+* 强引用：当内存空间不足，Java 虚拟机宁愿抛出 OutOfMemoryError 错误，也不会回收。
+* 软引用：如果内存空间足够，垃圾回收器就不会回收它，如果内存空间不足，就会回收这些对象的内存。
+* 弱引用：垃圾回收时，不管当前内存空间足够与否，都会回收它的内存。
+* 虚引用：用来跟踪对象被垃圾回收的活动。
+
+### 垃圾收集算法
+
+1. 标记-清除算法：首先标记出所有不需要回收的对象，在标记完成后统一回收掉所有没有被标记的对象，有两个问题：效率问题、标记清除后会产生大量不连续的碎片。
+2. 标记-复制算法：将内存分为大小相同的两块，每次使用其中的一块。当这一块的内存使用完后，就将还存活的对象复制到另一块去，然后再把使用的空间一次清理掉。
+3. 标记-整理算法：首先标记出所有不需要回收的对象，在标记完成后让所有存活的对象向一端移动，然后直接清理掉端边界以外的内存。
+4. 分代收集算法：一般将 java 堆分为新生代和老年代，根据各个年代的特点选择合适的垃圾收集算法，例如 新生代中，每次收集都会有大量对象死去，选择 标记-复制算法，老年代的对象存活几率是比较高的，而且没有额外的空间对它进行分配担保，选择 标记-清除 或 标记-整理算法。
+
+### 垃圾回收器
+
+垃圾收集器是垃圾收集算法的具体实现。
+
+1. Serial 收集器：单线程收集器，工作的时候必须暂停其他所有的工作线程。
+2. ParNew 收集器：Serial 收集器的多线程版本，能与 CMS 收集器配合工作。
+3. Parallel Scavenge 收集器：关注点是吞吐量，CPU 中用于运行用户代码的时间与 CPU 总消耗时间的比值，JDK1.8 默认使用的是 Parallel Scavenge + Parallel Old，通过 -XX:+PrintCommandLineFlags 查看。
+4. Serial Old 收集器：Serial 收集器的老年代版本，一个单线程收集器。
+5. Parallel Old 收集器：Parallel Scavenge 收集器的老年代版本，使用“标记-整理”算法。
+6. CMS 收集器：垃圾收集线程与用户线程同时工作，使用“标记-清除”算法。
+7. G1 收集器：不再分代收集，将内存划分为多个大小相等的 Region，根据需要扮演Eden、老年代等，Region是垃圾回收的最小单元，哪块垃圾多，就对哪部分收集，Mixed GC 模式。
+8. ZGC：标记-复制算法。
+
+## 故障检测工具
+
+1. jps：查看所有java进程。
+
+* jps -l：输出主类的全名，如果进程执行的是 Jar 包，输出 Jar 路径。
+* jps -v：输出虚拟机进程启动时 JVM 参数。
+* jps -m：输出传递给 Java 进程 main() 函数的参数。
+
+2. jstat: 监视虚拟机各种运行状态信息。
+
+* jstat -gc pid：显示与 GC 相关的堆信息。
+* jstat -gcutil pid：显示与 GC 相关的堆信息，显示百分比。
+* jstat -gccapacity pid：显示各个代的容量。
+
+3. jinfo：实时地查看和调整虚拟机各项参数，例如开启参数 `jinfo  -flag  +PrintGC 17340`。
+4. jmap：转储堆快照，如果不使用该命令，可添加 `-XX:+HeapDumpOnOutOfMemoryError` 参数可在 OOM 时拿到堆快照。
+
+* `jmap -dump:format=b,file=heap.hprof <pid>`
+* `jmap -heap <pid>`：查看当前堆信息。
+* `jmap -histo <pid>`：查看对象统计信息。
+* `jmap -histo:live <pid>`：立即GC查看存活对象统计信息。
+
+5. jhat：用于分析 heapdump 文件，它会建立一个 HTTP/HTML 服务器，让用户可以在浏览器上查看分析结果，例如 `jhat heap.hprof`,一般通过  http://localhost:7000/ 访问。
+6. jstack：生成当前线程快照。
+
+### 性能定位
+
+* CPU占满：
+1. `top -Hp <pid>`: 查看占用CPU高的线程。
+2. `jstack <pid> | grep -A 20 <hid>`：查看对应线程，hid 为 16进制，`printf '%x' <pid>` 转换16进制。
+
+* 内存泄露:
+1. 启动参数添加 -XX:+HeapDumpOnOutOfMemoryError 。
+2. 导入 MAT ，使用 Leak Suspects Report 查看概览报告，并分析对象大小统计。
+或使用 jmap 进行线上分析。
+
+* 死锁: 使用 `jstack <pid>` 会有死锁统计。
+* 上下文切换：`vmstat 1 10` 表示每1秒打印一次，打印10次,sy 表示内核态占用时间百分比，cs 表示切换次数。
+
+## 类加载机制
+
+类的生命周期：
+
+![231](assets/231.png)
+
+系统加载 Class 类型的文件主要三步：加载->连接->初始化。连接过程又可分为三步：验证->准备->解析。
+
+1. 加载：
+
+* 通过全类名获取定义此类的二进制字节流。
+* 将字节流所代表的静态存储结构转换为方法区的运行时数据结构。。
+* 在内存中生成一个代表该类的 Class 对象，作为方法区这些数据的访问入口。
+
+2. 验证：验证文件格式，元数据等等。
+3. 准备：为static变量分配内存并设置初始值，这些内存都将在方法区中分配。
+4. 解析：获取 类、字段、方法在内存中的指针或者偏移量。
+5. 初始化。
+
+初始化的时机：
+
+1. 当遇到 new 、 getstatic、putstatic 或 invokestatic 这 4 条直接码指令时，比如 new 一个类，读取一个静态字段(未被 final 修饰)，调用一个类的静态方法时。
+  * 当 jvm 执行 new 指令时会初始化类。即当程序创建一个类的实例对象。
+  * 当 jvm 执行 getstatic 指令时会初始化类。即程序访问类的静态变量(不是静态常量，常量会被加载到运行时常量池)。
+  * 当 jvm 执行 putstatic 指令时会初始化类。即程序给类的静态变量赋值。
+  * 当 jvm 执行 invokestatic 指令时会初始化类。即程序调用类的静态方法。
+2. 使用 java.lang.reflect 包的方法对类进行反射调用时，如 Class.forname("..."), newInstance() 等等。如果类没初始化，需要触发其初始化。
+3. 初始化一个类，如果其父类还未初始化，则先触发该父类的初始化。
+4. 当虚拟机启动时，用户需要定义一个要执行的主类 (包含 main 方法的那个类)，虚拟机会先初始化这个类。
+
+### 类加载器
+
+* BootstrapClassLoader(启动类加载器) ：最顶层的加载类，由 C++实现，负责加载 %JAVA_HOME%/lib目录下的 jar 包和类或者被 -Xbootclasspath参数指定的路径中的所有类。
+* ExtensionClassLoader(扩展类加载器) ：主要负责加载 %JRE_HOME%/lib/ext 目录下的 jar 包和类，或被 java.ext.dirs 系统变量所指定的路径下的 jar 包。
+* AppClassLoader(应用程序类加载器) ：面向我们用户的加载器，负责加载当前应用 classpath 下的所有 jar 包和类。
+
+双亲委派模型：
+
+![232](assets/232.png)
+
+* 在类加载的时候，系统会首先判断当前类是否被加载过。已经被加载的类会直接返回，否则才会尝试加载。
+* 加载的时候，首先会把该请求委派给父类加载器处理。
+* 当父类加载器无法处理时，才由自己来处理。
+* 当父类加载器为 null 时，会使用启动类加载器 BootstrapClassLoader 作为父类加载器，因此所有的请求最终都应该传送到顶层的启动类加载器 BootstrapClassLoader。
+
+双亲委派模型的好处：
+
+* 可以避免类的重复加载。
+* 保证核心 API 不被篡改。
+
+# 新特性
+## JDK8
+1. Lambda 表达式。
+2. Optional。
+3. Streams。
+4. Date API：
+
+* Clock: 时区敏感。
+
+```java
+Clock clock = Clock.systemDefaultZone();
+long millis = clock.millis();
+System.out.println(millis);//1552379579043
+Instant instant = clock.instant();
+System.out.println(instant);
+Date legacyDate = Date.from(instant); //2019-03-12T08:46:42.588Z
+System.out.println(legacyDate);//Tue Mar 12 16:32:59 CST 2019
+```
+
+* ZoneId : 时区。
+
+```java
+System.out.println(ZoneId.getAvailableZoneIds());
+
+ZoneId zone1 = ZoneId.of("Europe/Berlin");
+ZoneId zone2 = ZoneId.of("Brazil/East");
+```
+
+* DateTimeFormatter : 线程安全，`DateTimeFormatter formatterOfYyyy = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");`
+* Period & Duration：计算两个时间差值。
+* TemporalAdjusters：获取指定日期
+
+```java
+//获取当前月第一天：
+LocalDate firstDayOfThisMonth = today.with(TemporalAdjusters.firstDayOfMonth());
+// 取本月最后一天
+LocalDate lastDayOfThisMonth = today.with(TemporalAdjusters.lastDayOfMonth());
+```
+
+5. CompletableFuture。
+
+## JDK9
+
+1. G1 成为默认垃圾回收器。
+2. String 存储结构优化。
+3. 进程 API。
+4. Reactive Streams。
+
+## JDK10
+
+1. 局部变量类型推断(var)。
+
+## JDK11
+
+1. HTTP Client 标准化
+
+```java
+var request = HttpRequest.newBuilder()
+    .uri(URI.create("https://javastack.cn"))
+    .GET()
+    .build();
+var client = HttpClient.newHttpClient();
+
+// 同步
+HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+System.out.println(response.body());
+
+// 异步
+client.sendAsync(request, HttpResponse.BodyHandlers.ofString())
+    .thenApply(HttpResponse::body)
+    .thenAccept(System.out::println);
+```
+
+2. ZGC。
+
 # Unsafe
 
 Unsafe 位于jdk.internal.misc包下，主要提供一些用于执行低级别、不安全操作的方法，如直接访问系统内存资源、自主管理内存资源等。由于Unsafe类拥有直接操作系统内存空间的能力，使得程序出错的概率变大，使程序变得不安全。

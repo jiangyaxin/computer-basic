@@ -1748,6 +1748,18 @@ BlockingQueue 通过加锁来实现的阻塞队列，当队列容器已满，插
 
 `interrupt()`、 `isInterrupted()`：设置、查询线程的中断状态来控制程序，并不能直接中断线程，需根据该状态自行处理。
 
+
+LockSupport的park和unpark方法相比于Synchronize的wait和notify，notifyAll方法：
+
+1. 不需要获取锁，能直接阻塞线程。
+
+2. 以thread为操作对象更符合阻塞线程的直观定义。
+
+3. 可以准确地唤醒某一个线程（notify随机唤醒一个线程，notifyAll唤醒所有等待的线程）；
+
+4. unpark方法可以在park方法前调用。
+
+
 一个线程运行时发生异常会怎样？
 
 如果异常没有被捕获该线程将会停止执行。可使用 Thread#setUncaughtExceptionHandler(new ExceptionHandler()),ExceptionHandler 继承于 Thread.UncaughtExceptionHandler 。
@@ -1761,8 +1773,8 @@ BlockingQueue 通过加锁来实现的阻塞队列，当队列容器已满，插
     * 信号量。
     * 互斥量：synchronized
   * 用户模式：不需要切换到内核态，只在用户态完成操作。
-    * 原子操作。
-    * 临界区。
+    * 原子操作：Atomic
+    * 临界区：AQS
 
 2. 互斥：对于共享的进程系统资源，在各单个线程访问时的排它性，线程互斥可以看成是一种特殊的线程同步。
 
@@ -2071,6 +2083,7 @@ CAS 的缺点：
 * AtomicInteger：整型原子类
 * AtomicLong：长整型原子类
 * AtomicBoolean：布尔型原子类
+* LongAdder：低竞争时直接使用 base 变量 CAS 更新， 和AtomicLong一样，竞争激烈时使用 cell[] ,将不同的线程hash到不同的cell上进行累加，减少单值热点，效率高于 AtomicLong ，但会占用更多内存，cell[] 最大长度为核心数。
 
 ```java
 public final int get() //获取当前的值

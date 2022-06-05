@@ -1485,6 +1485,9 @@ ConcurrentHashMap 采用的是分段扩容法，即每个线程负责一段，�
 2. 正在迁移的桶，get操作不影响，迁移过程中原链表变没有变化，新链表是复制过去的，put操作会阻塞。
 3. 迁移完成的桶正常get、put操作，会由 ForwardingNode 转发给 nextTable。
 
+### ConcurrentSkipListMap
+
+高并发状态下有序哈希表，并且是无锁的，可在多线程环境下替代TreeMap，使用跳表来实现，即 在有序的链表上使用多级索引来定位元素。
 
 ## Set
 
@@ -1702,8 +1705,14 @@ int size;
 
 private final Comparator<? super E> comparator;
 
-transient int modCount;  
+transient int modCount;
 ```
+
+### ConcurrentLinkedQueue & BlockingQueue
+
+ConcurrentLinkedQueue 通过 CAS 实现的高并发状态下的高性能队列，不允许空原始，是非阻塞队列。
+
+BlockingQueue 通过加锁来实现的阻塞队列，当队列容器已满，插入线程会被阻塞，直到队列未满；当队列容器为空时，移除线程会被阻塞，直至队列非空时为止。BlockingQueue 是一个接口，常见的子类有 ArrayBlockingQueue、LinkedBlockingQueue 、PriorityBlockingQueue 。
 
 # 多线程
 
@@ -1713,6 +1722,668 @@ transient int modCount;
 
 - 并发：两个及两个以上的作业在同一 时间段 内先后执行。
 - 并行：两个及两个以上的作业在同一 时刻执行。
+
+## API
+
+线程的实现方式：
+
+* 继承 Thread。
+* 实现 Runable + Thread。
+* 实现 Callable + FutureTask。
+
+`wait()` ：在获取到共享对象监视器（即 synchronized ）的情况下可以暂停线程，并且会释放锁，如果没有获取到监视器会抛出 IllegalMonitorStateException ，返回的条件有两个：
+
+* 等待其他线程调用该对象的 `notify()`、`notifyAll()`，当然也需要获取监视器，否则抛出异常，如果有多个线程在等待， `notify()` 会随机唤醒一个，和优先级无关。
+* 其他线程调用该线程的 interrupt() ，该线程会抛出 InterruptedException 。
+
+`wait()`、 `notify()`、`notifyAll()` 都是对象级别，是对对象进行同步，通过对象来调用。
+
+
+`join()`：当前线程等待某个线程，如果调用该线程的 interrupt() ，该线程会抛出 InterruptedException 。
+`sleep()`：当前线程让出CPU的执行权，进入阻塞状态，调度时不考虑线程优先级，但是不会让出锁，执行结束后线程处于就绪状态，如果调用该线程的 interrupt() ，该线程会抛出 InterruptedException 。
+`yield()`：当前线程让出CPU的执行权，进入就绪状态，调度时按线程优先级调度，可能会立即再次执行，不会让出锁，如果调用该线程的 interrupt() ，该线程会抛出 InterruptedException 。
+
+`join()`、 `sleep()`、`yield()` 都是线程级别，通过线程来调用。
+
+
+`interrupt()`、 `isInterrupted()`：设置、查询线程的中断状态来控制程序，并不能直接中断线程，需根据该状态自行处理。
+
+一个线程运行时发生异常会怎样？
+
+如果异常没有被捕获该线程将会停止执行。可使用 Thread#setUncaughtExceptionHandler(new ExceptionHandler()),ExceptionHandler 继承于 Thread.UncaughtExceptionHandler 。
+
+线程同步和互斥：
+
+1. 同步：线程之间所具有的一种制约关系，一个线程的执行依赖另一个线程的消息，当它没有得到另一个线程的消息时应等待，直到消息到达时才被唤醒。
+
+  * 内核模式：使用时需要切换内核态与用户态。
+    * 事件。
+    * 信号量。
+    * 互斥量：synchronized
+  * 用户模式：不需要切换到内核态，只在用户态完成操作。
+    * 原子操作。
+    * 临界区。
+
+2. 互斥：对于共享的进程系统资源，在各单个线程访问时的排它性，线程互斥可以看成是一种特殊的线程同步。
+
+### 锁
+
+1. 悲观锁和乐观锁
+
+* 悲观锁：总是假设最坏的情况，每次去拿数据的时候都认为别人会修改，所以每次在拿数据的时候都会上锁，这样别人想拿这个数据就会阻塞直到它拿到锁，例如 synchronized 。
+* 乐观锁：每次去拿数据的时候都认为别人不会修改，所以不会上锁，但是在更新的时候会判断一下在此期间别人有没有去更新这个数据，适用于多读类型，例如 java.util.concurrent.atomic 包下的原子类。
+
+2. 公平锁与非公平锁
+
+* 公平锁：线程获取锁的顺序是按照请求锁的时间早晚来决定，例如 new ReentrantLock(true) 。
+* 非公平锁：不按照请求锁的时间早晚，谁先申请到是谁的，例如 new ReentrantLock(false) 。
+
+公平会带来开销，没有公平性需求尽量使用非公平锁。
+
+3. 独占锁与共享锁
+
+* 独占锁：任何时候都只有一个线程能获得锁，例如 ReentrantLock 。
+* 共享锁：可以同时由多个线程持有，例如 ReadWriteLock 。
+
+4. 可重入锁
+
+一个线程可以重复获取自己已经获取的锁。
+
+5. 自旋锁
+
+当前线程在获取锁时，如果发现锁已经被其他线程占有，不马上阻塞自己，在不放弃CPU使用权的情况下，多次尝试，这样避免获取锁失败后，被切换到内核态而被挂起。
+
+### synchronized
+
+保证方法或者代码块在运行时，同一时刻只有一个方法可以进入到临界区，同时它还可以保证共享变量的内存可见性。
+
+内存语义：
+
+* 进入 synchronized 代码块 ：把块中共享变量从线程的工作内存清除，这样再次读取变量时会直接从主存读取。
+* 退出 synchronized 代码块 ：把块中共享变量的修改刷新到主存。
+
+使用方式：
+
+* 修饰实例方法：对当前对象实例加锁。
+* 修饰静态方法：对当前class加锁。
+* 修饰代码块：对指定对象/类加锁。
+
+使用技巧：
+* synchronized 关键字加到 static 静态方法和 synchronized(class) 代码块上都是是给 Class 类上锁。
+* synchronized 关键字加到实例方法上是给对象实例上锁。
+* 不要使用 synchronized(String a) ，因为字符串常量池具有缓存功能。
+* 构造方法本身就属于线程安全的，不能使用 synchronized 关键字修饰。
+
+synchronized 通过显示或隐式调用moniterenter、moniterexit来完成锁的操作，这两个JVM指令基于对象头 `MarkWord`（储存锁类型） 和 `Object moniter` 来实现。
+
+synchronized锁的分类：无锁 -> 偏向锁 -> 轻量级锁 -> 重量级锁，锁可以升级，但不能降级。
+
+* 偏向锁：当一个线程访问同步代码块并获取锁时，会在Mark Word里存储锁偏向的线程ID。在线程进入和退出同步块时不再通过CAS操作来加锁和解锁，而是检测Mark Word里是否存储着指向当前线程的偏向锁。假如有两个线程来竞争该锁，那么偏向锁就升级成轻量级锁。
+* 轻量级锁：通过 CAS + 自旋的方式将 Mark Word 更新指向Lock Record的指针，如果更新成功则获取到锁，当自旋超过一定的次数，轻量级锁升级为重量级锁。
+* 重量级锁：底层基于操作系统的 Mutex Lock 实现，获取锁和释放锁需要切换到内核态。
+
+锁的优化：
+* 偏向锁通过对比Mark Word解决加锁问题，避免执行CAS操作。
+* 轻量级锁是通过用CAS操作和自旋来解决加锁问题，避免线程阻塞和唤醒而影响性能。
+* 重量级锁是将除了拥有锁的线程以外的线程都阻塞。
+
+### volatile
+
+不加锁的情况下，解决内存可见性的问题，单不能保证原子性，所以如果写入值时依赖当前值时线程不安全，例如 x+=1 ，需要 获取-计算-写入的三步操作。
+
+内存语义：
+
+* 写入变量时直接写入主存，读取变量时直接读取主存。
+* 避免指令重排序：确保写入之前的操作不会重排序到写入之后，读之后的操作不会重排序到写入之前。
+
+并发编程的三个重要特性：
+
+* 原子性 : 一次操作或者多次操作，要么所有的操作全部都得到执行并且不会受到任何因素的干扰而中断，要么都不执行。synchronized 可以保证代码片段的原子性。
+* 可见性 ：当一个线程对共享变量进行了修改，那么另外的线程都是立即可以看到修改后的最新值。volatile 关键字可以保证共享变量的可见性。
+* 有序性 ：代码在执行的过程中的先后顺序，Java 在编译器以及运行期间的优化，代码的执行顺序未必就是编写代码时候的顺序。volatile 关键字可以禁止指令进行重排序优化。
+
+synchronized 和 volatile 的区别：
+
+* volatile 是线程同步的轻量级实现，所以 volatile 性能肯定比synchronized关键字要好 。但是 volatile 关键字只能用于变量而 synchronized 关键字可以修饰方法以及代码块 。
+* volatile 关键字能保证数据的可见性，但不能保证数据的原子性。synchronized 关键字两者都能保证。
+* volatile关键字主要用于解决变量在多个线程之间的可见性，而 synchronized 关键字解决的是多个线程之间访问资源的同步性。
+
+#### 指令重排序
+
+编译器和CPU为了提高其执行效率，会将指令乱序执行，并且只会对不存在数据依赖性的指令重排序。
+
+`Singleton instance = new Singleton()` 这句代码本质上为三步：
+
+1. 为对象分配内存空间。
+2. 实例化对象数据。
+3. 将引用指向对象实例的内存空间。
+
+可能存在第3步排在第2步前面，也就是说可能 `myinstance != null` 返回 true，但是对象尚未初始化。
+
+### ReentrantLock
+
+synchronized 和 ReentrantLock 的相同点和区别：
+
+相同点：都是可重入锁。
+
+区别：
+* synchronized 依赖于 JVM 而 ReentrantLock 依赖于 API。
+* ReentrantLock 可通过 lock.lockInterruptibly() 中断等待锁的线程。
+* ReentrantLock 可指定 公平锁还是非公平锁，synchronized 只能是非公平锁。
+* synchronized 通过 wait() 和 notify()/notifyAll() 方法相结合可以实现等待/通知机制，ReentrantLock 通过 Condition接口 实现，并且一个Lock对象中可以创建多个Condition实例 。
+
+Condition#newCondition 可创建一个 Condition 。
+
+```java
+void await() throws InterruptedException; // 造成当前线程在接到信号或被中断之前一直处于等待状态。
+void awaitUninterruptibly(); // 造成当前线程在接到信号之前一直处于等待状态。【注意：该方法对中断不敏感】。
+long awaitNanos(long nanosTimeout) throws InterruptedException; // 造成当前线程在接到信号、被中断或到达指定等待时间之前一直处于等待状态。返回值表示剩余时间，如果在`nanosTimeout` 之前唤醒，那么返回值 `= nanosTimeout - 消耗时间` ，如果返回值 `<= 0` ,则可以认定它已经超时了。
+boolean await(long time, TimeUnit unit) throws InterruptedException; // 造成当前线程在接到信号、被中断或到达指定等待时间之前一直处于等待状态。
+boolean awaitUntil(Date deadline) throws InterruptedException; // 造成当前线程在接到信号、被中断或到达指定最后期限之前一直处于等待状态。如果没有到指定时间就被通知，则返回 true ，否则表示到了指定时间，返回返回 false 。
+
+// ========== 唤醒 ==========
+
+void signal(); // 唤醒一个等待线程。该线程从等待方法返回前必须获得与Condition相关的锁。
+void signalAll(); // 唤醒所有等待线程。能够从等待方法返回的线程必须获得与Condition相关的锁。
+```
+
+### 伪共享
+
+当多线程修改互相独立的变量时，如果这些变量存在于同一个缓存行，因为无法互不影响的共享同一个缓存行，会无意中影响彼此的性能，叫做伪共享。
+
+![225](assets/225.png)
+
+* CPU和主存之间有好几级缓存，缓存的最小操作单位时缓存行，通常一个缓存行由64个字节组成。
+* 程序运行过程中，缓存每次更新都从主内存中加载连续的 64 个字节。
+* 如果我们需要修改一个long型的变量a，会把它同一个缓存行的变量b也加载。
+* 这时一个 CPU 核心的线程在对 a 进行修改，另一个 CPU 核心的线程却在对 b 进行读取。
+* 当前者修改 a 时，会把 a 和 b 同时加载到前者核心的缓存行中，更新完 a 后其它所有包含 a 的缓存行都将失效，因为其它缓存中的 a 不是最新值了。
+* 当后者读取 b 时，发现这个缓存行已经失效了，需要从主内存中重新加载。
+* b 和 a 完全不相干，每次却要因为 a 的更新需要从主内存重新读取，它被缓存未命中给拖慢了。
+
+避免伪共享：
+
+1. 填充：
+
+```java
+public class PaddingAtomicLong extends AtomicLong {
+
+    /** Padding 6 long (48 bytes) */
+    public volatile long p1, p2, p3, p4, p5, p6 = 7L;
+
+    public PaddingAtomicLong() {
+        super();
+    }
+
+    public PaddingAtomicLong(long initialValue) {
+        super(initialValue);
+    }
+
+    /**
+     * 防止虚拟机优化对象，将属性删除
+     */
+    public long sumPaddingToPreventOptimization() {
+        return p1 + p2 + p3 + p4 + p5 + p6;
+    }
+}
+```
+
+2. JDK8 可使用 @sun.misc.Contended 注解，并在 JVM 启动参数上加上 -XX:-RestrictContended 。
+
+```java
+@sun.misc.Contended
+class MyLong {
+    volatile long value;
+}
+```
+
+### ThreadLocal
+
+ThreadLocal 为每个线程中都创建了一个副本，那么每个线程可以访问自己内部的副本变量，线程之间互不影响。
+
+* Thread类有一个类型为ThreadLocal.ThreadLocalMap的实例变量threadLocals，每个线程有一个自己的ThreadLocalMap。
+
+  ![226](assets/226.png)
+
+* ThreadLocalMap 使用数组存储，通过线性探测法解决hash冲突， key 为 ThreadLocal 的弱引用，value为实际的值。
+
+```java
+static class Entry extends WeakReference<ThreadLocal<?>> {
+    /** The value associated with this ThreadLocal. */
+    Object value;
+
+    Entry(ThreadLocal<?> k, Object v) {
+        super(k);
+        value = v;
+    }
+}
+```
+
+只要强引用存在，垃圾回收器将永远不会回收被引用的对象，使用 WeakReference 修饰的对象被称为弱引用，只要发生垃圾回收，若这个对象只被弱引用指向，那么就会被回收。
+
+引用图：实线表示强引用，虚线表示弱引用。
+
+![227](assets/227.png)
+
+为什么使用弱引用？
+* key 使用强引用：引用的ThreadLocal的对象被回收了，但是ThreadLocalMap还持有ThreadLocal的强引用，如果没有手动删除，ThreadLocal不会被回收，导致Entry内存泄漏。
+* key 使用弱引用：引用的ThreadLocal的对象被回收了，由于ThreadLocalMap持有ThreadLocal的弱引用，即使没有手动删除，ThreadLocal也会被回收。value在下一次ThreadLocalMap调用set、get、remove的时候会被清除。
+
+由于ThreadLocalMap的生命周期跟Thread一样长，如果 ThreadLocal 没有被外部强引用的情况下，在垃圾回收的时候，key 会被清理掉，而 value 不会被清理掉。这样一来，ThreadLocalMap 中就会出现 key 为 null 的 Entry，所以使用完 ThreadLocal 后需要手动调用remove()方法。
+
+#### InheritableThreadLocal
+
+子线程可以访问父线程设置的 ThreadLocal 变量。
+
+InheritableThreadLocal在线程池下是无效的，原因是只有在创建Thread时才会去复制父线程存放在InheritableThreadLocal中的值，而线程池场景下，主业务线程仅仅是将提交任务到任务队列中。
+
+可使用 TransmittableThreadLocal 解决，需要引入：
+
+```java
+<dependency>
+    <groupId>com.alibaba</groupId>
+    <artifactId>transmittable-thread-local</artifactId>
+    <version>2.10.2</version>
+</dependency>
+```
+
+### 线程池
+
+`execute() `和 `submit()` 的区别：
+
+1. execute()方法用于提交不需要返回值的任务，所以无法判断任务是否被线程池执行成功与否。
+2. submit()方法用于提交需要返回值的任务，线程池会返回一个 Future 类型的对象，通过这个 Future 对象可以判断任务是否执行成功。可以通过 Future 的 get()方法来获取返回值，get()方法会阻塞当前线程直到任务完成，而使用 get(long timeout，TimeUnit unit)方法则会阻塞当前线程一段时间后立即返回，这时候有可能任务没有执行完。
+
+如何创建线程池：
+
+1. 通过 ThreadPoolExecutor 构造方法创建。
+2. 通过 Executors 来创建，不推荐，存在资源耗尽的风险。
+
+> FixedThreadPool 和 SingleThreadExecutor ： 允许请求的队列长度为 Integer.MAX_VALUE ，可能堆积大量的请求，从而导致 OOM。</br>
+> CachedThreadPool 和 ScheduledThreadPool ： 允许创建的线程数量为 Integer.MAX_VALUE ，可能会创建大量线程，从而导致 OOM。
+
+#### ThreadPoolExecutor
+
+构造方法：
+
+```java
+public ThreadPoolExecutor(int corePoolSize,
+                      int maximumPoolSize,
+                      long keepAliveTime,
+                      TimeUnit unit,
+                      BlockingQueue<Runnable> workQueue,
+                      ThreadFactory threadFactory,
+                      RejectedExecutionHandler handler) {
+    if (corePoolSize < 0 ||
+        maximumPoolSize <= 0 ||
+        maximumPoolSize < corePoolSize ||
+        keepAliveTime < 0)
+            throw new IllegalArgumentException();
+    if (workQueue == null || threadFactory == null || handler == null)
+        throw new NullPointerException();
+    this.corePoolSize = corePoolSize;
+    this.maximumPoolSize = maximumPoolSize;
+    this.workQueue = workQueue;
+    this.keepAliveTime = unit.toNanos(keepAliveTime);
+    this.threadFactory = threadFactory;
+    this.handler = handler;
+}
+```
+
+![228](assets/228.png)
+
+1. corePoolSize: 核心线程数,可以同时运行的线程最小数量，决定添加的任务是开辟新的线程去执行，还是放到workQueue任务队列中去，一般 CPU 密集型任务(N+1)，比如在内存中大量排序，I/O 密集型任务(2N)，例如网络读取，文件读取。
+2. maximumPoolSize: 最大线程数，当队列中存放的任务达到 workQueue 最大容量的时候，能开辟的最大线程数量。
+3. workQueue: 任务队列，当新任务来的时候会先判断当前运行的线程数量是否达到核心线程数，如果达到的话，新任务就会被存放在队列中，可分为直接提交队列、有界任务队列、无界任务队列、优先任务队列。
+4. keepAliveTime：核心线程外空闲线程存活时间，当线程池中空闲线程数量超过corePoolSize时，多余的线程会在多长时间内被销毁。
+5. unit  keepAliveTime 参数的时间单位。
+6. threadFactory：executor 创建新线程的时候会用到。
+7. handler: 拒绝策略，当任务太多来不及处理时，如何拒绝任务。
+
+任务队列：
+
+1. 直接提交队列：SynchronousQueue，一个特殊的BlockingQueue，内部仅允许容纳一个元素,当一个线程插入一个元素后会被阻塞。
+2. 有界的任务队列：ArrayBlockingQueue，例如 new ArrayBlockingQueue<Runnable>(10)，这个最常用。
+3. 无界的任务队列：LinkedBlockingQueue。
+4. 优先任务队列：PriorityBlockingQueue。
+
+拒绝策略：如果当前同时运行的线程数量达到最大线程数量并且任务队列已满时执行handler。
+
+* ThreadPoolExecutor.AbortPolicy： 抛出 RejectedExecutionException来拒绝新任务的处理。
+* ThreadPoolExecutor.CallerRunsPolicy：如果 ThreadPoolExecutor 没有关闭，直接调用 任务的 run 方法，由父线程执行，如果需要保证每个任务都执行到，可以使用此策略。
+* ThreadPoolExecutor.DiscardPolicy： 不处理新任务，直接丢弃掉。
+* ThreadPoolExecutor.DiscardOldestPolicy： 此策略将丢弃最早的未处理的任务请求。
+
+### 原子类
+
+通过 CAS  + volatile + 自旋 实现。
+
+CAS 的缺点：
+
+* ABA 问题。
+* 循环时间长开销大，对于资源竞争严重的情况，CAS 自旋的概率会比较大。
+* 只能保证一个共享变量的原子操作，如果多个共享变量操作时，需要用锁。
+
+分为4类：
+
+1. 基本类型：
+
+* AtomicInteger：整型原子类
+* AtomicLong：长整型原子类
+* AtomicBoolean：布尔型原子类
+
+```java
+public final int get() //获取当前的值
+public final int getAndSet(int newValue)//获取当前的值，并设置新的值
+public final int getAndIncrement()//获取当前的值，并自增
+public final int getAndDecrement() //获取当前的值，并自减
+public final int getAndAdd(int delta) //获取当前的值，并加上预期的值
+boolean compareAndSet(int expect, int update) //如果输入的数值等于预期值，则以原子方式将该值设置为输入值（update）
+public final void lazySet(int newValue)//最终设置为newValue,使用 lazySet 设置之后可能导致其他线程在之后的一小段时间内还是可以读到旧的值。
+```
+
+2.数组类型：原子更新数组里的某个元素
+
+* AtomicIntegerArray：整型数组原子类
+* AtomicLongArray：长整型数组原子类
+* AtomicReferenceArray：引用类型数组原子类
+
+```java
+public final int get(int i) //获取 index=i 位置元素的值
+public final int getAndSet(int i, int newValue)//返回 index=i 位置的当前的值，并将其设置为新值：newValue
+public final int getAndIncrement(int i)//获取 index=i 位置元素的值，并让该位置的元素自增
+public final int getAndDecrement(int i) //获取 index=i 位置元素的值，并让该位置的元素自减
+public final int getAndAdd(int delta) //获取 index=i 位置元素的值，并加上预期的值
+boolean compareAndSet(int expect, int update) //如果输入的数值等于预期值，则以原子方式将 index=i 位置的元素值设置为输入值（update）
+public final void lazySet(int i, int newValue)//最终 将index=i 位置的元素设置为newValue,使用 lazySet 设置之后可能导致其他线程在之后的一小段时间内还是可以读到旧的值。
+```
+
+3. 引用类型：
+
+* AtomicReference：引用类型原子类
+* AtomicMarkableReference ：原子更新带有标记位的引用类型,使用 boolean 来标识是否改变。
+* AtomicStampedReference：原子更新带有版本号的引用类型。使用int来标识版本号，可以解决使用 CAS 进行原子更新时可能出现的 ABA 问题。
+
+```java
+public static void main(String[] args) {
+    AtomicReference<Person> ar = new AtomicReference<Person>();
+    Person person = new Person("SnailClimb", 22);
+    ar.set(person);
+    Person updatePerson = new Person("Daisy", 20);
+    // 原子替换引用
+    ar.compareAndSet(person, updatePerson);
+
+    System.out.println(ar.get().getName());
+    System.out.println(ar.get().getAge());
+}
+```
+
+4. 对象的属性修改类型
+* AtomicIntegerFieldUpdater：原子更新整型字段的更新器
+* AtomicLongFieldUpdater：原子更新长整型字段的更新器
+* AtomicReferenceFieldUpdater：原子更新引用类型字段的更新器
+
+```java
+public static void main(String[] args) {
+    AtomicIntegerFieldUpdater<User> a = AtomicIntegerFieldUpdater.newUpdater(User.class, "age");
+
+    User user = new User("Java", 22);
+    System.out.println(a.getAndIncrement(user));// 22
+    System.out.println(a.get(user));// 23
+}
+```
+
+### AQS(AbstractQueuedSynchronizer)
+
+AQS 是一个用来构建锁和同步器的框架, ReentrantLock、Semaphore、ReentrantReadWriteLock 都是基于该类实现。
+
+![229](assets/229.png)
+
+AQS 定义两种资源共享方式：
+
+1. Exclusive（独占）：只有一个线程能执行，如 ReentrantLock。又可分为公平锁和非公平锁。
+
+* 非公平锁在调用 lock 后，首先就会调用 CAS 进行一次抢锁，如果这个时候恰巧锁没有被占用，那么直接就获取到锁返回。
+* 非公平锁在 CAS 失败后，和公平锁一样都会进入到 tryAcquire 方法，在 tryAcquire 方法中，如果发现锁这个时候被释放了（state == 0），非公平锁会直接 CAS 抢锁，但是公平锁会判断等待队列是否有线程处于等待状态，如果有则不去抢锁，乖乖排到后面。
+
+如果这两次 CAS 都不成功，那么非公平锁和公平锁是一样的，都要进入到阻塞队列等待唤醒。
+
+2. Share（共享）：多个线程可同时执行，如 CountDownLatch、Semaphore、 CyclicBarrier、ReadWriteLock。
+
+属性：
+
+```java
+/**
+ * 内置 FIFO 链表头节点
+ */
+private transient volatile Node head;
+
+
+private transient volatile Node tail;
+
+/**
+ * 同步状态，不能线程通过改变该值来完成同步
+ */
+private volatile int state;
+```
+
+模板方法：其他方法都是 final ，无法被其他类重写.
+
+```java
+protected boolean tryAcquire(int)//独占方式。尝试获取资源，成功则返回true，失败则返回false。
+protected boolean tryRelease(int)//独占方式。尝试释放资源，成功则返回true，失败则返回false。
+protected int tryAcquireShared(int)//共享方式。尝试获取资源。负数表示失败；0表示成功，但没有剩余可用资源；正数表示成功，且有剩余资源。
+protected boolean tryReleaseShared(int)//共享方式。尝试释放资源，成功则返回true，失败则返回false。
+protected boolean isHeldExclusively()//该线程是否正在独占资源。只有用到condition才需要去实现它。
+```
+
+* ReentrantLock：state 初始化为 0，表示未锁定状态。A 线程 lock() 时，会调用 tryAcquire() 独占该锁并将 state+1 。此后，其他线程再 tryAcquire() 时就会失败，直到 A 线程 unlock() 到 state=0（即释放锁）为止，其它线程才有机会获取该锁。当然，释放锁之前，A 线程自己是可以重复获取此锁的（state 会累加）。
+* CountDownLatch ：任务分为 N 个子线程去执行，state 也初始化为 N，每个子线程执行完后 countDown() 一次，state 会 CAS 减 1，等到所有子线程都执行完后(即 state=0 )，会 LockSupport#unpark() 主线程，然后主线程就会从 await() 函数返回，继续后余动作。
+* Semaphore：运行多个线程同时访问，允许 N 个子线程去执行，state 也初始化为 N，每个子线程 acquire() 会时 state 减1，当state为0时会阻塞。
+
+```java
+Runnable run = new Runnable() {
+    @Override
+    public void run() {
+        try {
+            if (semp.availablePermits() > 0) {
+                System.out.println( NO + "线程启动");
+            } else {
+                System.out.println(NO + "线程启动，排队等待");
+            }
+            // 获取许可
+            semp.acquire();
+            System.out.println(NO + "线程执行" );
+            //模拟实际业务逻辑
+            Thread.sleep((long) (Math.random() * 10000));
+            // 访问完后，释放
+            semp.release();
+            System.out.println(NO + "线程释放");
+        } catch (InterruptedException e) {
+        }
+    }
+};
+```
+
+* CyclicBarrier：和 CountDownLatch 类似但是可以循环使用，但是使用加计数方式，	计数达到指定值时释放所有等待线程。可以让一组线程到达一个屏障时被阻塞，直到最后一个线程到达屏障时，屏障才会开门，所有被屏障拦截的线程才会继续干活，通过调用 await() 方法告诉 CyclicBarrier 已经到达屏障，即 state 加1。
+
+```java
+public class TravelTask implements Runnable{
+
+    private CyclicBarrier cyclicBarrier;
+    private String name;
+    private int arriveTime;
+
+    public TravelTask(CyclicBarrier cyclicBarrier,String name,int arriveTime){
+        this.cyclicBarrier = cyclicBarrier;
+        this.name = name;
+        this.arriveTime = arriveTime;
+    }
+
+    @Override
+    public void run() {
+        try {
+            Thread.sleep(arriveTime * 1000);
+            System.out.println(name +"到达集合点");
+            cyclicBarrier.await();
+            System.out.println(name +"开始旅行啦～～");
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } catch (BrokenBarrierException e) {
+            e.printStackTrace();
+        }
+    }
+}
+
+public class TourGuideTask implements Runnable{
+
+    @Override
+    public void run() {
+        System.out.println("****导游分发护照签证****");
+        try {
+            Thread.sleep(2000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+}
+
+public class Client {
+
+    public static void main(String[] args) throws Exception{
+        // 一起到达该线程后会先执行 TourGuideTask 才会往后面执行
+        CyclicBarrier cyclicBarrier = new CyclicBarrier(3,new TourGuideTask());
+        Executor executor = Executors.newFixedThreadPool(3);
+        executor.execute(new TravelTask(cyclicBarrier,"哈登",5));
+        executor.execute(new TravelTask(cyclicBarrier,"保罗",3));
+        executor.execute(new TravelTask(cyclicBarrier,"戈登",1));
+    }
+}
+```
+
+### CompletableFuture
+
+* runAsync() 接受的参数没有返回值。
+* supplyAsync() 接受的参数可以有返回值。
+
+* thenApply() 沿用上一个线程池，前一阶段处理结果为入参并且有返回值。
+* thenAccept() 前一阶段处理结果为入参没有返回值。
+* whenComplete() 接收两个入参，第一个为前一阶段结结果，第二个未 抛出的异常。
+* thenRun() 没有入参没有返回值。
+* exceptionally() 入参为异常，有返回值。
+
+* thenCompose()：顺序连接两个 CompletableFuture
+
+```java
+  CompletableFuture<String> future
+        = CompletableFuture.supplyAsync(() -> "hello!")
+        .thenCompose(s -> CompletableFuture.supplyAsync(() -> s + "world!"));
+assertEquals("hello!world!", future.get());
+```
+
+* thenCombine()：操作两个 CompletableFuture 的结果
+
+```java
+CompletableFuture<String> completableFuture
+        = CompletableFuture.supplyAsync(() -> "hello!")
+        .thenCombine(CompletableFuture.supplyAsync(
+                () -> "world!"), (s1, s2) -> s1 + s2)
+        .thenCompose(s -> CompletableFuture.supplyAsync(() -> s + "nice!"));
+assertEquals("hello!world!nice!", completableFuture.get());
+```
+
+* allOf()：并行多个CompletableFuture，可用来替换 CountDownLatch。
+* anyOf()：等待第一个返回，只要有一个执行完成即可。
+
+CompletableFuture 完成有两个方法 `public boolean complete(T value)`、`public boolean completeExceptionally(Throwable ex)` 分布对应正常结束和异常结束。获取结果有三个方法 `get()`（阻塞），`get(long timeout, TimeUnit unit)`（阻塞一段时间）,`getNow(T valueIfAbsent)`（如果没有获取到值 则使用默认值）
+
+### 单例
+
+1. 双重校验方式
+
+```java
+public class Singleton {
+
+    private volatile static Singleton uniqueInstance;
+
+    private Singleton() {
+    }
+
+    public  static Singleton getUniqueInstance() {
+        // 如果不加 volatile 关键字，指令重排可导致这里为 true ，但是未实例化完成。
+        if (uniqueInstance == null) {
+            synchronized (Singleton.class) {
+                if (uniqueInstance == null) {
+                    uniqueInstance = new Singleton();
+                }
+            }
+        }
+        return uniqueInstance;
+    }
+}
+```
+
+2. 懒汉
+
+```java
+public class Singleton {
+ private static Singleton instance;
+
+ private Singleton (){}
+
+ public static synchronized Singleton getInstance() {
+     if (instance == null) {
+            instance = new Singleton();
+        }
+     return instance;
+  }
+}
+```
+
+3. 饿汉
+
+```java
+public class Singleton {
+ private static Singleton instance = new Singleton();
+
+ private Singleton (){}
+
+ public static Singleton getInstance() {
+   return instance;
+ }
+}
+```
+
+4. 静态内部类：getInstance 才会加载,常用。
+
+```java
+public class Singleton {
+
+ private static class SingletonHolder {
+   private static final Singleton INSTANCE = new Singleton();
+ }
+
+ private Singleton (){}
+
+ public static final Singleton getInstance() {
+   return SingletonHolder.INSTANCE;
+ }
+}
+```
+
+5. 枚举：推荐使用
+
+```java
+public enum Singleton {
+
+    INSTANCE;
+
+    public void whateverMethod() {
+
+    }
+}
+```
+
 
 ## 生命周期
 
@@ -1949,9 +2620,9 @@ Unsafe 获取通过 `Unsafe.getUnsafe()` 来获取。
   * @return          true | false
   */
   public final native boolean compareAndSwapObject(Object o, long offset,  Object expected, Object update);
-  
+
   public final native boolean compareAndSwapInt(Object o, long offset, int expected,int update);
-  
+
   public final native boolean compareAndSwapLong(Object o, long offset, long expected, long update);
   ```
 

@@ -1755,7 +1755,7 @@ LockSupport的park和unpark方法相比于Synchronize的wait和notify，notifyAl
 
 2. 以thread为操作对象更符合阻塞线程的直观定义。
 
-3. 可以准确地唤醒某一个线程（notify随机唤醒一个线程，notifyAll唤醒所有等待的线程）；
+3. 可以准确地唤醒某一个线程（notify随机唤醒一个线程，notifyAll唤醒所有等待的线程）。
 
 4. unpark方法可以在park方法前调用。
 

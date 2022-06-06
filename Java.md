@@ -2638,7 +2638,7 @@ GC Roots:
 
 * 内存泄露:
 1. 启动参数添加 -XX:+HeapDumpOnOutOfMemoryError 。
-2. 导入 MAT ，使用 Leak Suspects Report 查看概览报告，并分析对象大小统计。
+2. 导入 MAT （下载地址 https://www.eclipse.org/mat/downloads.php） ，使用 Leak Suspects Report 查看概览报告，并分析对象大小统计。
 或使用 jmap 进行线上分析。
 
 * 死锁: 使用 `jstack <pid>` 会有死锁统计。

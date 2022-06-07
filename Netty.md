@@ -231,4 +231,107 @@ Nagle算法的规则：
 
 ## Buffer
 
-Buffer 本质是一块可以写入数据可以读取数据的内存。
+Buffer 本质是一块可以写入数据可以读取数据的内存，ByteBuffer、CharBuffer、IntBuffer 等都是它的子类，表示不同类型的数组。
+
+属性：mark <= position <= limit <= capacity
+
+```java
+/**
+ * 存储一个特定的Position,可以调用 reset() 方法恢复到这个Position。
+ */
+private int mark = -1;
+/**
+ * 下一个可以写入或者读取数据的位置，通过 flip() 方法将 limit = position ， position = 0
+ */
+private int position = 0;
+/**
+ * 可以写入或者读取数据的最大的位置，初始时 limit == capacity
+ */
+private int limit;
+/**
+ * buffer 容量
+ */
+private int capacity;
+```
+
+常用方法：
+
+```java
+/**
+ * mark = position 当前position标记
+ */
+public final Buffer mark();
+/**
+ * position = mark 重置到mark
+ */
+public final Buffer reset();
+/**
+ *  position = 0;limit = capacity;mark = -1; 清空缓冲
+ */
+public final Buffer clear();
+/**
+ * limit = position;position = 0;mark = -1; 写 -> 读
+ */
+public final Buffer flip();
+/**
+ * position = 0;mark = -1; 重新读取
+ */
+public final Buffer rewind();
+/**
+ * limit - position; 返回limit和position之间相对位置差
+ */
+public final int remaining();
+/**
+ * 是否由可访问的数组支持,数组属于java对象，存在于堆中，如果为true说明是 HeapByteBuffer，如果为false说明时 DirectByteBuffer
+ */
+public final boolean hasArray();
+/**
+ * hasArray() == true 时，获取 支撑数组
+ */
+public abstract Object array();
+/**
+ * 第一个元素在缓冲区中的偏移量，一般情况为 0 ， 当 使用 slice 时 则 不为 0 。
+ */
+public abstract int arrayOffset();
+```
+
+## ByteBuffer
+
+常用方法：
+
+```java
+/**
+ * 创建一个 HeapByteBuffer
+ */
+public static ByteBuffer allocate(int capacity);
+/**
+ * 创建一个 DirectByteBuffer
+ */
+public static ByteBuffer allocateDirect(int capacity);
+/**
+ * 创建一个 HeapByteBuffer 包装byte[]，HeapByteBuffer 或者 array 改变都会导致互相改变。
+ */
+public static ByteBuffer wrap(byte[] array)
+/**
+ * 创建一个新的 ByteBuffer 视图，可以操作 position -> limit 数据，和原ByteBuffer 共用一个数组， 新 ByteBuffer  position = 0 , limit = 原length，offset = 原position
+ */
+public abstract ByteBuffer slice();
+/**
+ * 创建一个一样新的 ByteBuffer 视图，和原ByteBuffer 共用一个数组
+ */
+public abstract ByteBuffer duplicate()
+/**
+ * 清除position前的数据，position -> limit 复制到数组起始位置
+ */
+public abstract ByteBuffer compact();
+
+public final ByteBuffer put(byte[] src);
+
+public abstract ByteBuffer put(byte b);
+
+public ByteBuffer get(byte[] dst);
+
+public abstract byte get();
+```
+
+### MappedByteBuffer & DirectByteBuffer & HeapByteBuffer

@@ -335,3 +335,155 @@ public abstract byte get();
 ```
 
 ### MappedByteBuffer & DirectByteBuffer & HeapByteBuffer
+
+内核数据 流入 堆内：内核内存(内核空间) -> JVM堆外内存(用户空间) -> JVM 堆内内存(用户空间)
+
+![240](assets/240.png)
+
+为什么需要将数据拷贝到堆外内存，再拷贝到堆内，而不直接拷贝到堆内？
+
+* 堆内存受GC管理的，而在拷贝需要提供对应的目的地址，拷贝由内核完成，内核不知道JVM的gc情况，JVM也不知道有多少数据，需要多大空间。
+* 拷贝中可能会出现堆内存中有垃圾被清理回收而导致的内存地址发生变化，可能造成目的地址也发生变化，出现未知错误。
+* 先拷贝到堆外，再由JVM拷贝至堆内，JVM是清楚自己的内存空间的。
+
+区别：
+* HeapByteBuffer 基于数组实现，内存分配在堆内。
+* DirectByteBuffer 通过 Unsafe#allocateMemory +  Unsafe#allocateMemory 分配堆外内存，引用对象在堆内，在 GC 时会回收掉不可达的  DirectByteBuffer ，并回收堆外内存，但由于 DirectByteBuffer 存在时间一般较长，所以大部分都会晋升到老年代，那么只能等到 Major GC 时才能回收，可通过 -XX:MaxDirectMemorySize 限制大小。
+* MappedByteBuffer 是 DirectByteBuffer 的父类，DirectByteBuffer由两种类型，一直是由DirectByteBuffer实现，一种由 MappedByteBuffer 实现，都是分配在堆外，不同的是 MappedByteBuffer 实现的堆外内存使用mmap技术映射了内核内存，这时内核内存和用户堆外内存共享，操作堆外内存等于直接操作内核内存，避免了数据的复制，FileChannel#transferTo 就是使用的这种内存。
+* MappedByteBuffer 由 FileChannel#map 创建，DirectByteBuffer & HeapByteBuffer 通过 ByteBuffer 创建。
+
+FileChannel、SocketChannel等在通过 IOUtil 进行 非DirectBuffer IO读写操作时，底层会使用一个临时的 IOVecWrapper 来和系统进行真正的IO交互，IOVecWrapper 本质上也是一个 堆外直接内存，使用完后这个临时的 IOVecWrapper 会被缓存到ThreadLocal，当直接使用 IOUtil 操作非DirectBuffer 的线程数较多或者 IO 操作的数据量较大时，会导致临时的DirectByteBuffer 占用大量堆外内存造成内存泄露。可通过 -Djdk.nio.maxCachedBufferSize 限制，超过这个限制 不会被缓存到 ThreadLocal。
+
+MappedByteBuffer 释放：
+
+```java
+private static void unmap(MappedByteBuffer bb) {
+     Cleaner cl = ((DirectBuffer)bb).cleaner();
+     if (cl != null){
+         cl.clean();
+     }
+}
+```
+
+堆外内存的优势：
+* 保持一个较小的堆内内存，以减少垃圾收集对应用的影响。
+* 在某些场景下可以提升程序I/O操纵的性能，减少去了将数据从堆内内存拷贝到堆外内存的步骤。
+
+什么情况下使用堆外内存？
+* 堆外内存适用于生命周期中等或较长的对象。
+* 直接的文件拷贝操作，或者I/O操作。
+* 使用 池+堆外内存 的组合方式，来对生命周期较短，但涉及到I/O操作的对象进行堆外内存的再使用。
+
+### 分析堆外内存
+
+1. 启动时添加 -XX:NativeMemoryTracking=detail 参数，会有性能损耗，生产环境不宜使用，`-XX:+UnlockDiagnosticVMOptions -XX:+PrintNMTStatistics` 在 NMT 启用的情况下，在 JVM 退出时输出最后的内存使用数据。
+2. 使用 `jcmd <pid> VM.native_memory detail scale=MB` 打印JVM内存占用。
+   * 使用 `jcmd <pid> VM.native_memory baseline` 设置基准值，再使用 `jcmd <pid> VM.native_memory scale=MB detail.diff` 查看增长值。
+
+    ![241](assets/241.png)
+
+    其中 reserved 向操作系统申请的内存， committed 已经使用的内存， mmap，malloc 是两种不同的内存申请分配方式，arena 是通过 malloc 方式分配的内存但是代码执行完并不释放，放入 arena chunk 中之后还会继续使用。
+     * Java Heap：堆空间
+     * Class：保存类的元数据，其实就是 metaspace，包含两部分： 一是 metadata，被-XX:MaxMetaspaceSize限制最大大小，另外是 class space，被-XX:CompressedClassSpaceSize限制最大大小。
+     * Thread：线程栈占用，每个线程栈占用大小受-Xss限制。
+     * Code：JIT 的代码缓存，为了在不同平台运行JVM字节码，需要将其转换成机器指令。程序运行时，JIT编译器负责这个编译工作，并将编译后的指令存在 Code Cache 区域。
+     * GC：gc算法使用的空间。
+     * Compiler：编译器自身操作使用。
+     * Internal：命令行解析，JVMTI 使用的内存。
+     * Other：尚未归类的。
+     * Symbol ：常量池、符号表引用占用，常量池占用的大小，字符串常量池受-XX:StringTableSize个数限制。
+     * Native Memory Tracking：NMT内存采集本身占用的内存大小。
+     * Arena Chunk：所有通过 arena 方式分配的内存。
+   并未统计 Direct Buffer 、MMap Buffer 内存。
+3. 对应直接内存可通过 Jprofile 查看 MBeans 的 java.nio.BufferPool 监控，单位是字节。
+
+## Selector
+
+负责检测一个或多个 Channel ，阻塞在 select() 方法上，注册的事件出现。
+
+创建：
+
+```java
+Selector selector = Selector.open();
+```
+
+注册：Channel必须处于非阻塞模式下。这意味着不能将FileChannel与Selector一起使用，因为FileChannel不能切换到非阻塞模式。
+
+```java
+channel.configureBlocking(false);
+SelectionKey key = channel.register(selector, SelectionKey.OP_READ | SelectionKey.OP_WRITE)
+```
+响应事件：select() 会阻塞方法，直到有事件就绪时才返回，就绪事件会添加到 selectedKeys() 方法，注意处理完就绪事件需要 remove 。
+
+```java
+Selector selector = Selector.open();
+channel.configureBlocking(false);
+SelectionKey key = channel.register(selector, SelectionKey.OP_READ);
+while(true) {
+  int readyChannels = selector.select();
+  if(readyChannels == 0) continue;
+  Set selectedKeys = selector.selectedKeys();
+  Iterator keyIterator = selectedKeys.iterator();
+  while(keyIterator.hasNext()) {
+    SelectionKey key = keyIterator.next();
+    if(key.isAcceptable()) {
+        // a connection was accepted by a ServerSocketChannel.
+    } else if (key.isConnectable()) {
+        // a connection was established with a remote server.
+    } else if (key.isReadable()) {
+        // a channel is ready for reading
+    } else if (key.isWritable()) {
+        // a channel is ready for writing
+    }
+    keyIterator.remove();
+  }
+}
+```
+### SelectionKey
+
+```java
+// 返回当前感兴趣的事件列表
+int interestSet = key.interestOps();
+
+// 也可通过interestSet判断其中包含的事件
+boolean isInterestedInAccept  = interestSet & SelectionKey.OP_ACCEPT;
+boolean isInterestedInConnect = interestSet & SelectionKey.OP_CONNECT;
+boolean isInterestedInRead    = interestSet & SelectionKey.OP_READ;
+boolean isInterestedInWrite   = interestSet & SelectionKey.OP_WRITE;
+
+// 可以通过interestOps(int ops)方法修改事件列表
+key.interestOps(interestSet | SelectionKey.OP_WRITE);
+
+// 返回当前事件关联的通道，可转换的选项包括:`ServerSocketChannel`和`SocketChannel`
+Channel channel = key.channel();
+
+//返回当前事件所关联的Selector对象
+Selector selector = key.selector();
+```
+
+# Netty
+## 零拷贝
+
+传统IO ： 4次数据拷贝 + 4 次上下文切换
+
+![245](assets/245.png)
+
+1. 操作系统零拷贝：
+  * mmap/write：三次数据复制（其中只有一次 CPU COPY）以及4次上下文切换(因为需要两个系统调用)，mmap 就是将不同的虚拟地址映射到同一个物理地址上。
+
+    ![244](assets/244.png)
+
+  * sendfile：三次数据复制（其中只有一次 CPU COPY）以及2次上下文切换。
+
+    ![243](assets/243.png)
+
+  * 带有 scatter/gather 的 sendfile：只有两次数据复制（都是 DMA COPY）及 2 次上下文切换，直接将 Read Buffer 的内存地址、偏移量记录到相应的 Socket Buffer 中，本质是上就是使用相同的虚拟地址
+
+    ![246](assets/246.png)
+
+2. java 零拷贝：
+  * FileChannel#transferTo：优先使用 sendfile ，如果操作系统不支持再使用 MappedByteBuffer 。
+  * MappedByteBuffer：使用 mmap 技术映射到堆外内存。
+  * DirectByteBuffer：使用堆外内存，减少堆内外的数据拷贝。
+
+3. Netty 零拷贝：

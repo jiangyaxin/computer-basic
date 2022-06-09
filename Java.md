@@ -2603,14 +2603,34 @@ GC Roots:
 
 垃圾收集器是垃圾收集算法的具体实现。
 
-1. Serial 收集器：单线程收集器，工作的时候必须暂停其他所有的工作线程。
-2. ParNew 收集器：Serial 收集器的多线程版本，能与 CMS 收集器配合工作。
-3. Parallel Scavenge 收集器：关注点是吞吐量，CPU 中用于运行用户代码的时间与 CPU 总消耗时间的比值，JDK1.8 默认使用的是 Parallel Scavenge + Parallel Old，通过 -XX:+PrintCommandLineFlags 查看。
-4. Serial Old 收集器：Serial 收集器的老年代版本，一个单线程收集器。
-5. Parallel Old 收集器：Parallel Scavenge 收集器的老年代版本，使用“标记-整理”算法。
+1. Serial 收集器：单线程新生代收集器，工作的时候必须暂停其他所有的工作线程，收集时用户线程不能工作。
+2. ParNew 收集器：Serial 收集器的多线程版本，能与 CMS 收集器配合工作，收集时用户线程不能工作。
+3. Parallel Scavenge 收集器：多线程新生代收集器，关注点是吞吐量，CPU 中用于运行用户代码的时间与 CPU 总消耗时间的比值，JDK1.8 默认使用的是 Parallel Scavenge + Parallel Old，通过 -XX:+PrintCommandLineFlags 查看，收集时用户线程不能工作。
+4. Serial Old 收集器：Serial 收集器的老年代版本，一个单线程收集器，收集时用户线程不能工作。
+5. Parallel Old 收集器：Parallel Scavenge 收集器的老年代版本，使用“标记-整理”算法，收集时用户线程不能工作。
 6. CMS 收集器：垃圾收集线程与用户线程同时工作，使用“标记-清除”算法。
-7. G1 收集器：不再分代收集，将内存划分为多个大小相等的 Region，根据需要扮演Eden、老年代等，Region是垃圾回收的最小单元，哪块垃圾多，就对哪部分收集，Mixed GC 模式。
-8. ZGC：标记-复制算法。
+7. G1 收集器：不再分代收集，将内存划分为多个大小相等的 Region，根据需要扮演新生代（eden、Survior区）、老年代、大对象（humongous区）等，Region是垃圾回收的最小单元，哪块垃圾多，就对哪部分收集，Mixed GC 模式。
+  * ​G1规定大于Region的一半的对象成为大对象，同时不参与分代。
+  * Region并不是固定为新生代或者老年代，通常情况为自由状态，只有在需要的时候会被划分为指定的分代并且存放特定对象。
+  * 新生代使用复制算法，会把存活对象拷贝到一块region进行存放，同时存活对象大于一定的region占比不会进行复制（下文会提到），把整个region清理并且进行回收。
+  * 老年代则使用标记-整理算法，同样的道理也会直接把垃圾对象的region给清理掉。
+  * 大对象是横跨多个region并由专门的region存放，一旦回收直接干掉大对象把对应的region清理掉。
+
+    ```shell
+    -XX:Heap Region Size：手动指定region的大小。单个region的大小指定，默认为2M,4g内存当中
+    -XX:G1NewSizePercent： 手动指定新生代初始占比，默认是5%
+    -XX:G1MaxNewSizePercent：新生代的最大占比默认是60%
+    ```
+
+8. ZGC：标记-复制算法，ZGC在标记、转移和重定位阶段几乎都是并发，做到低延时。
+
+  ![242](assets/242.png)
+
+缩短单次 GC 回收时间：
+1. 并发进行回收（CMS，只能做到一部分并发，无法解决"浮动垃圾"问题）。
+2. 只回收部分垃圾（G1）。
+3. 回收部分垃圾并且并发（ZGC）。
+
 
 ## 故障检测工具
 

@@ -488,6 +488,427 @@ Netty是 一个异步事件驱动的网络应用程序框架，用于快速开�
 
 ### Channel
 
+Channel 是 Netty 抽象的网络IO读写的接口，不是 JDK NIO 的 Channel，采用Facade模式进行统一封装，为SocketChannel和ServerSocketChannel提供统一的视图，采用聚合而非包含的方式将相关的功能类聚合，由Channel统一负责分配和调度，功能实现灵活。
+
+为什么新开发 Channel ？
+
+* JDK的SocketChannel和ServerSocketChannel没有提供统一的操作接口，使用起来不方便。
+* JDK的SocketChannel和ServerSocketChannel是SPI类接口，由具体的虚拟机厂家来提供适应不同的操作系统，不方便扩展。
+* Netty的channel需要能跟Netty整体框架融合在一起，比如IO模型、基于ChannelPipie的定制模型，以及基于元数据描述配置化的TCP参数等，JDK的SocketChannel和ServerSocketChannel都没有提供。
+
+Channel 继承 ChannelOutboundInvoker 、 AttributeMap 、Comparable，其中 ChannelOutboundInvoker 负责 网络的连接断开、读写等操作，AttributeMap 提供 Channel 上传输数据的能力。另外Chanel 自己提供一些 聚合 框架其他部分的功能，例如 获取该Channel的EventLoop、获取ByteBuf分配器ByteBufAllocator、获取Pipeline 等。
+
+Channel 所有的IO操作都是异步的，使用 ChannelFuture 占位。
+
+Server端启动主流程：
+* ServerSocketChannel 注册到 BossEventLoop
+* ServerSocketChannel 绑定端口（并注册ACCPET事件）
+* 调用 AbstractNioMessageChannel.NioMessageUnsafe#read() （由BossEventLoop select 获取到ACCPET事件后调用）
+* 从ServerSocketChannel获取SocketChannel并创建NioSocketChannel（read()方法调用NioServerSocketChannel#doReadMessages ）
+* pipeline.fireChannelRead(NioSocketChannel Pipeline)
+* ServerBootstrap.ServerBootstrapAcceptor#channelRead() 将 ChannelInitializer 添加到 NioSocketChannel Pipeline
+* 将NioSocketChannel 注册到 WorkEventLoop，触发 ChannelInitializer#initChannel 添加 自定义 ChannelHandler，并移除ChannelInitializer
+* WorkEventLoop select 获取到 READ 事件 调用 AbstractNioByteChannel.NioByteUnsafe#read()
+* 使用NioSocketChannel#doReadBytes 循环读取数据，并触发 pipeline.fireChannelRead(byteBuf)，
+* 读取完成后调用 pipeline.fireChannelReadComplete()
+
+#### AbstractChannel
+
+负责聚合Channel所使用的功能，例如 Pipeline、EventLoop、Unsafe 等，实现 ChannelOutboundInvoker 接口功能，即直接通知 Pipeline，经过 pipeline 异步调用，除此之外还实现调用 Unsafe 获取 localAddress 、 remoteAddress 的模板方法。
+
+属性：
+
+```java
+// 父类 Channel ，如果是 ServerSocketChannel 该值为null，如果是 SocketChannel 该值为创建该 Channel 的 ServerSocketChannel。
+private final Channel parent;
+// 通道 id 不能重复
+private final ChannelId id;
+// IO操作真正的实现类，不建议用户调用.
+private final Unsafe unsafe;
+// 当前Channel对应的DefaultChannelPipeline
+private final DefaultChannelPipeline pipeline;
+private final VoidChannelPromise unsafeVoidPromise = new VoidChannelPromise(this, false);
+private final CloseFuture closeFuture = new CloseFuture(this);
+
+private volatile SocketAddress localAddress;
+private volatile SocketAddress remoteAddress;
+// 当前Channel注册的EventLoop
+private volatile EventLoop eventLoop;
+private volatile boolean registered;
+private boolean closeInitiated;
+private Throwable initialCloseCause;
+
+/** Cache for the string representation of this channel */
+private boolean strValActive;
+private String strVal;
+```
+
+#### AbstractUnsafe
+
+一个 Channel 的生命周期只由一个 EventLoop 完成，无锁化串行设计提高性能。
+
+##### register
+
+ServerSocketChannel注册流程： AbstractChannel#doRegister() -> pipeline.invokeHandlerAddedIfNeeded()（即 ChannelHandler#handlerAdded） ->  pipeline.fireChannelRegistered();
+
+SocketChannel注册流程： AbstractChannel#doRegister() -> pipeline.invokeHandlerAddedIfNeeded()（即 ChannelHandler#handlerAdded） ->  pipeline.fireChannelRegistered() -> ChannelInitializer#channelRegistered -> ChannelInitializer#initChannel（添加自定义ChannelHandler，然后移除 ChannelInitializer）  -> pipeline.fireChannelActive() -> beginRead() ->  AbstractChannel#doBeginRead() ->  AbstractNioChannel覆盖doBeginRead方法注册 READ 事件
+
+```java
+@Override
+ public final void register(EventLoop eventLoop, final ChannelPromise promise) {
+     ObjectUtil.checkNotNull(eventLoop, "eventLoop");
+     if (isRegistered()) {
+         promise.setFailure(new IllegalStateException("registered to an event loop already"));
+         return;
+     }
+
+     // 判断 Channel 和 EventLoop 是否匹配，eventLoop分很多种类型，有NIO的，还有Epoll的
+     if (!isCompatible(eventLoop)) {
+         promise.setFailure(
+                 new IllegalStateException("incompatible event loop type: " + eventLoop.getClass().getName()));
+         return;
+     }
+
+     // Channel 持有注册到的 EventLoop 的引用，给后续使用，为了使 一个 Channel 的生命周期只由一个 EventLoop 完成。
+     AbstractChannel.this.eventLoop = eventLoop;
+
+     // 该方法可能由任何线程调用，如果直接调用 register0 ，不符合 一个 Channel 的生命周期只由一个 EventLoop 完成 的设计。
+     // 如果调用 register 的线程和 EventLoop 中的线程是同一个线程，直接执行 register0。
+     // 如果不是同一个线程，则提交到 EventLoop 的任务队列中，等待它执行。
+     if (eventLoop.inEventLoop()) {
+         register0(promise);
+     } else {
+         try {
+             eventLoop.execute(new Runnable() {
+                 @Override
+                 public void run() {
+                     register0(promise);
+                 }
+             });
+         } catch (Throwable t) {
+             logger.warn(
+                     "Force-closing a channel whose registration task was not accepted by an event loop: {}",
+                     AbstractChannel.this, t);
+             closeForcibly();
+             closeFuture.setClosed();
+             safeSetFailure(promise, t);
+         }
+     }
+ }
+
+ private void register0(ChannelPromise promise) {
+     try {
+         if (!promise.setUncancellable() || !ensureOpen(promise)) {
+             return;
+         }
+         boolean firstRegistration = neverRegistered;
+         // 模板方法
+         doRegister();
+         neverRegistered = false;
+         registered = true;
+
+         // 在通知 promise 之前调用，调用ChannelHandler#handlerAdded，如果失败则调用 ChannelHandler#handlerRemoved，例如 ChannelInitializer#handlerAdded 就是在这里被调用，将自定义的 Handler 添加进来。
+         pipeline.invokeHandlerAddedIfNeeded();
+
+         // 观察者模式，通过设置 promise ，通知监听 promise 的 listener， 暂时理解ChannelHandler 是观察者
+         safeSetSuccess(promise);
+
+         // 传播 fireChannelRegistered 事件。
+         pipeline.fireChannelRegistered();
+         // 对于服务端:  javaChannel().socket().isBound(); 即  当Channel绑定上了端口   isActive()才会返回true
+         // 对于客户端的连接 ch.isOpen() && ch.isConnected(); 返回true , 就是说, Channel是open的 打开状态的就是true
+         // ServerSocketChannel 不会触发这里，还没有完成绑定
+         if (isActive()) {
+             if (firstRegistration) {
+                 pipeline.fireChannelActive();
+             } else if (config().isAutoRead()) {
+                 // 将 readInterestOp 注册到 SelectionKey
+                 beginRead();
+             }
+         }
+     } catch (Throwable t) {
+         // Close the channel directly to avoid FD leak.
+         closeForcibly();
+         closeFuture.setClosed();
+         safeSetFailure(promise, t);
+     }
+ }
+
+ @Override
+public final void beginRead() {
+    assertEventLoop();
+
+    if (!isActive()) {
+        return;
+    }
+
+    try {
+        doBeginRead();
+    } catch (final Exception e) {
+        invokeLater(new Runnable() {
+            @Override
+            public void run() {
+                pipeline.fireExceptionCaught(e);
+            }
+        });
+        close(voidPromise());
+    }
+}
+```
+
+#### bind
+
+ServerSocketChannel 注册完才会触发绑定端口。
+
+ServerSocketChannel 的 Pipeline 为 HeadContext -> ServerBootstrap.ServerBootstrapAcceptor -> TailContext
+
+流程：AbstractChannel#doBind -> pipeline.fireChannelActive() -> HeadContext#channelActive -> channel#read -> pipeline#read -> AbstractChannel.AbstractUnsafe#beginRead() ->  AbstractChannel#doBeginRead() ->  AbstractNioChannel覆盖doBeginRead方法注册 ACCEPT 事件。
+
+```java
+public final void bind(final SocketAddress localAddress, final ChannelPromise promise) {
+    assertEventLoop();
+
+    if (!promise.setUncancellable() || !ensureOpen(promise)) {
+        return;
+    }
+
+    if (Boolean.TRUE.equals(config().getOption(ChannelOption.SO_BROADCAST)) &&
+        localAddress instanceof InetSocketAddress &&
+        !((InetSocketAddress) localAddress).getAddress().isAnyLocalAddress() &&
+        !PlatformDependent.isWindows() && !PlatformDependent.maybeSuperUser()) {
+        logger.warn(
+                "A non-root user can't receive a broadcast packet if the socket " +
+                "is not bound to a wildcard address; binding to a non-wildcard " +
+                "address (" + localAddress + ") anyway as requested.");
+    }
+
+    //  由于端口的绑定未完成，所以 wasActive是 false
+    boolean wasActive = isActive();
+    try {
+        doBind(localAddress);
+    } catch (Throwable t) {
+        safeSetFailure(promise, t);
+        closeIfClosed();
+        return;
+    }
+
+    if (!wasActive && isActive()) {
+        invokeLater(new Runnable() {
+            @Override
+            public void run() {
+                // 通过 HeadContext#channelActive 最终会调用 AbstractNioChannel#doBeginRead 完成 ACCEPT 事件注册
+                pipeline.fireChannelActive();
+            }
+        });
+    }
+
+    safeSetSuccess(promise);
+}
+```
+
+#### AbstractNioChannel
+
+维护 SelectableChannel 的真正引用，将原生的 channel注册进 Selector中 ，并且可以操作 Channel 感兴趣的 SelectionKey 。
+
+1. 将 SelectableChannel 注册到 EventLoop 中的 Selector。
+
+调用顺序: Channel使用Unsafe -> 调用 AbstractChannel.AbstractUnsafe#register -> 调用 AbstractChannel.AbstractUnsafe#register0 -> 调用 AbstractChannel#doRegister -> AbstractNioChannel覆盖doRegister方法
+
+```java
+@Override
+protected void doRegister() throws Exception {
+    boolean selected = false;
+    for (;;) {
+        try {
+            // 注册事件为 0 ，表示对任何事件都不感兴趣。
+            // 将 Channel 当成附件，方便 SelectionKey 快速匹配到 Channel 供后面使用。
+            selectionKey = javaChannel().register(eventLoop().unwrappedSelector(), 0, this);
+            return;
+        } catch (CancelledKeyException e) {
+            if (!selected) {
+                // 如果存在 SelectionKey 被取消了，强制调用selectNow清空取消掉的 SelectionKey 缓存。
+                // 然后再次调用 注册。
+                eventLoop().selectNow();
+                selected = true;
+            } else {
+                throw e;
+            }
+        }
+    }
+}
+```
+
+2. 向 Selector 注册 readInterestOp。
+
+流程： AbstractChannel.AbstractUnsafe#beginRead() -> AbstractChannel#doBeginRead() -> 由覆盖AbstractNioChannel#doBeginRead()
+
+```java
+@Override
+protected void doBeginRead() throws Exception {
+    final SelectionKey selectionKey = this.selectionKey;
+    if (!selectionKey.isValid()) {
+        return;
+    }
+
+    readPending = true;
+
+    final int interestOps = selectionKey.interestOps();
+    if ((interestOps & readInterestOp) == 0) {
+        selectionKey.interestOps(interestOps | readInterestOp);
+    }
+}
+```
+
+#### AbstractNioMessageChannel
+
+负责 ServerSocketChannel#read() 的 ACCPET 事件。
+
+```java
+
+private final List<Object> readBuf = new ArrayList<Object>();
+
+@Override
+public void read() {
+    assert eventLoop().inEventLoop();
+    final ChannelConfig config = config();
+    final ChannelPipeline pipeline = pipeline();
+    final RecvByteBufAllocator.Handle allocHandle = unsafe().recvBufAllocHandle();
+    allocHandle.reset(config);
+
+    boolean closed = false;
+    Throwable exception = null;
+    try {
+        try {
+            do {
+               // readBuf 保存新连接的 SocketChannel
+                int localRead = doReadMessages(readBuf);
+                if (localRead == 0) {
+                    break;
+                }
+                if (localRead < 0) {
+                    closed = true;
+                    break;
+                }
+
+                allocHandle.incMessagesRead(localRead);
+            } while (allocHandle.continueReading());
+        } catch (Throwable t) {
+            exception = t;
+        }
+
+        int size = readBuf.size();
+        for (int i = 0; i < size; i ++) {
+            readPending = false;
+            //调用 ServerBootstrapAcceptor#channelRead() 将 SocketChannel 交给 WorkEventLoop 处理
+            pipeline.fireChannelRead(readBuf.get(i));
+        }
+        readBuf.clear();
+        allocHandle.readComplete();
+        pipeline.fireChannelReadComplete();
+
+        if (exception != null) {
+            closed = closeOnReadError(exception);
+
+            pipeline.fireExceptionCaught(exception);
+        }
+
+        if (closed) {
+            inputShutdown = true;
+            if (isOpen()) {
+                close(voidPromise());
+            }
+        }
+    } finally {
+        if (!readPending && !config.isAutoRead()) {
+            removeReadOp();
+        }
+    }
+}
+```
+
+#### AbstractNioByteChannel
+
+负责 SocketChannel#read() 的 READ 事件。
+
+```java
+@Override
+ public final void read() {
+     final ChannelConfig config = config();
+     if (shouldBreakReadReady(config)) {
+         clearReadPending();
+         return;
+     }
+     final ChannelPipeline pipeline = pipeline();
+     final ByteBufAllocator allocator = config.getAllocator();
+     final RecvByteBufAllocator.Handle allocHandle = recvBufAllocHandle();
+     allocHandle.reset(config);
+
+     ByteBuf byteBuf = null;
+     boolean close = false;
+     try {
+         do {
+             byteBuf = allocHandle.allocate(allocator);
+             // 读取 SocketChannel 的数据流
+             allocHandle.lastBytesRead(doReadBytes(byteBuf));
+             if (allocHandle.lastBytesRead() <= 0) {
+                 byteBuf.release();
+                 byteBuf = null;
+                 close = allocHandle.lastBytesRead() < 0;
+                 if (close) {
+                     readPending = false;
+                 }
+                 break;
+             }
+
+             allocHandle.incMessagesRead(1);
+             readPending = false;
+             // 调用用户自定义 ChannelHandler
+             pipeline.fireChannelRead(byteBuf);
+             byteBuf = null;
+         } while (allocHandle.continueReading());
+
+         allocHandle.readComplete();
+         pipeline.fireChannelReadComplete();
+
+         if (close) {
+             closeOnRead(pipeline);
+         }
+     } catch (Throwable t) {
+         handleReadException(pipeline, byteBuf, t, close, allocHandle);
+     } finally {
+         if (!readPending && !config.isAutoRead()) {
+             removeReadOp();
+         }
+     }
+ }
+```
+
+##### ChannelId
+
+由五部分组成：
+
+1. MAC地址（EUI-48/EUI-64）
+2. 当前进程ID
+3. 系统时间
+4. 纳秒时间
+5. 随机32位整数
+6. 一个32位自增整数
+
+![249](assets/249.png)
+
+1. Netty最需要保证的是本机内的ChannelId不会产生重复，Mac地址的引入可用于区分不同主机
+2. 第二部分引入了进程ID，用于区分同一机器上的两个JVM
+3. 第三部分是一个自增序列ID，基本保证Id的自增性质，用于防止两个值冲突。
+4. 第四部分是纳秒时间和毫秒时间的异或运算，nano存在的问题是可能存在实现的情况以及实现后现有情况末尾的字节总是0。如果有nano那么取nano，然后与时间戳进行异或运算填补nano末尾的0
+5. 第五部分的话是增加了随机性。
+
+
+#### NioServerSocketChannel
+
+![248](assets/248.png)
+
+基于 NIO selector 实现 ServerChannel。
+
 ## TCP粘包、拆包
 
 TCP 是面向流的协议，是一串没有界限的数据， TCP 也不知道上层业务数据的具体含义，所以在数据分片时并不会按照上层业务数据的逻辑进行分片，而是根据实际情况大小进行分片，这样在业务上的一个完整数据可能被划分到多个分片里面，多个数据也可能被分到一个片里面，所以服务端一次读取到的字节数时不确定的。

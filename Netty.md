@@ -662,6 +662,8 @@ ServerSocketChannel 注册完才会触发绑定端口。
 
 ServerSocketChannel 的 Pipeline 为 HeadContext -> ServerBootstrap.ServerBootstrapAcceptor -> TailContext
 
+SocketChannel 的 Pipeline 为 HeadContext -> 自定义ChannelHandler -> TailContext
+
 流程：AbstractChannel#doBind -> pipeline.fireChannelActive() -> HeadContext#channelActive -> channel#read -> pipeline#read -> AbstractChannel.AbstractUnsafe#beginRead() ->  AbstractChannel#doBeginRead() ->  AbstractNioChannel覆盖doBeginRead方法注册 ACCEPT 事件。
 
 ```java
@@ -902,12 +904,13 @@ public void read() {
 4. 第四部分是纳秒时间和毫秒时间的异或运算，nano存在的问题是可能存在实现的情况以及实现后现有情况末尾的字节总是0。如果有nano那么取nano，然后与时间戳进行异或运算填补nano末尾的0
 5. 第五部分的话是增加了随机性。
 
+### EventLoop & EventLoopGroup
 
-#### NioServerSocketChannel
-
-![248](assets/248.png)
-
-基于 NIO selector 实现 ServerChannel。
+* 一个 EventLoopGroup 包含一个或多个 EventLoop ，即 EventLoopGroup : EventLoop = 1 : n 。
+* 一个 EventLoop 在它的生命周期内，只能与一个 Thread 绑定，即 EventLoop : Thread = 1 : 1 。
+* 所有有 EventLoop 处理的 I/O 事件都将在它专有的 Thread 上被处理，从而保证线程安全，即 Thread : EventLoop = 1 : 1。
+* 一个 Channel 在它的生命周期内只能注册到一个 EventLoop 上，即 Channel : EventLoop = n : 1 。
+* 一个 EventLoop 可被分配至一个或多个 Channel ，即 EventLoop : Channel = 1 : n 。
 
 ## TCP粘包、拆包
 

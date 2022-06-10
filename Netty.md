@@ -912,6 +912,340 @@ public void read() {
 * 一个 Channel 在它的生命周期内只能注册到一个 EventLoop 上，即 Channel : EventLoop = n : 1 。
 * 一个 EventLoop 可被分配至一个或多个 Channel ，即 EventLoop : Channel = 1 : n 。
 
+![250](assets/250.png)
+![251](assets/251.png)
+
+几个概念:
+* EventExecutor：主要负责任务的提交、线程的管理，任务分为 普通任务、调度任务、定时任务，调用 execute(Runnable task) 方法时会启动线程，循环调用 EventLoop#run 和 任务。
+* EventLoop：继承 EventExecutor ，主要负责实现 Channel 的注册，以及select操作，处理IO请求。
+* EventExecutorGroup：负责管理多个EventExecutor，当任务提交时，使用 DefaultEventExecutorChooserFactory 选择一个EventExecutor，然后调用 EventExecutor 的提交方法。
+* NioEventLoopGroup：负责管理多个EventLoop：继承，当注册时，使用 DefaultEventExecutorChooserFactory 选择一个EventLoop，然后调用 EventExecutor 的组成方法。
+
+EventLoop 有2类工作：
+1. 处理由自己实现的 IO 读写。
+2. 处理 EventExecutor 的实现的任务,任务又分为两类：
+* 系统任务：通过 execute(Runnable task) 提交，当 IO 线程 和 用户线程同时操作网络资源时，通过 inEventLoop 判断，将用户线程的操作转换成Task放入队列，然后由IO线程从队列中取出执行，从而实现局部无锁化，减少并发的锁竞争。
+* 定时任务：通过 schedule(Runnable command,long delay,TimeUnit unit) 提交。
+
+IO任务 和 普通任务根据 ioRatio 进行分配执行时间，默认 50%。
+
+SelectedKey 的优化：通过反射 SelectorImpl 将 Set<SelectionKey> selectedKeys 转换成 SelectedSelectionKeySet，SelectedSelectionKeySet 使用 数组 存储 SelectionKey ，相比 Set<SelectionKey> 底层使用 HashMap 存储读写性能更高。
+
+select() bug 规避：在一个周期内使用 selectCnt 对空轮询进行计数，如果达到阀值，判断 JDK 发生 Selector CPU 100% bug，然后从重建 Selector 。
+
+使用：
+* 使用 BossEventLoopGroup 和 WorkEventLoopGroup ，BossEventLoopGroup数量大小通常设置为 1。
+* 尽量不在 ChannelHandler 中启动用户线程，属于 NIO 线程。
+* 解码放在解码Handler 中进行，不要切换到用户线程中完成消息解码。
+* NIO 线程不能阻塞，任务应该派发到业务线程中执行。
+
+#### Reactor 线程模型
+
+1. 单线程模型：
+
+![252](assets/252.png)
+
+所有IO操作在同一个NIO线程完成，不适合高并发场景，当NIO线程负载过重后，处理速度将变慢，导致大量客户端重连，重发，继续加重线程负载，并且只有一个线程，一旦阻塞就不能接收和处理外部消息。
+
+2. 多线程模型：
+
+![253](assets/253.png)
+
+IO操作 在一个线程池中完成，其中一个线程用于处理 ACCEPT 事件，其他线程用于处理 READ 、WRITE 事件。
+
+3. 主从多线程模型：
+
+![254](assets/254.png)
+
+ACCEPT 事件使用一个线程池处理， READ 、WRITE 事件 使用另一个线程池处理。Acceptor线程池仅仅只用于客户端的登陆、握手和安全认证，一旦链路建立成功，就将链路注册到后端subReactor线程池的IO线程上，负责后续的IO操作。
+
+### ChannelFuture & Promise
+
+* ChannelFuture：未来节点、异步操作的占位符，相对于原生Future 扩展 获取异常、监听回调、阻塞等待等功能，常用的实现有 FailedChannelFuture、SucceededChannelFuture、FailedFuture、SucceededFuture。
+* Promise：一个特殊的 Futrue ，可以修改 它的状态，常用于传入I/O业务代码中，用于I/O结束后设置成功（或失败）状态，并回调方法，常用的实现有 DefaultChannelPromise、DefaultPromise,底层使用 AtomicReferenceFieldUpdater + volatile 更新 result。
+
+ChannelFuture 的状态：
+
+```java
+/**
+ *                                      +---------------------------+
+ *                                      | Completed successfully    |
+ *                                      +---------------------------+
+ *                                 +---->      isDone() = true      |
+ * +--------------------------+    |    |   isSuccess() = true      |
+ * |        Uncompleted       |    |    +===========================+
+ * +--------------------------+    |    | Completed with failure    |
+ * |      isDone() = false    |    |    +---------------------------+
+ * |   isSuccess() = false    |----+---->      isDone() = true      |
+ * | isCancelled() = false    |    |    |       cause() = non-null  |
+ * |       cause() = null     |    |    +===========================+
+ * +--------------------------+    |    | Completed by cancellation |
+ *                                 |    +---------------------------+
+ *                                 +---->      isDone() = true      |
+ *                                      | isCancelled() = true      |
+ *                                      +---------------------------+
+ */
+
+ChannelFuture f = b.connect(...);
+f.awaitUninterruptibly();
+
+// Now we are sure the future is completed.
+assert f.isDone();
+
+if (f.isCancelled()) {
+  // Connection attempt cancelled by user
+} else if (!f.isSuccess()) {
+  f.cause().printStackTrace();
+} else {
+  // Connection established successfully
+}
+```
+
+ChannelFuture方法：
+1. Java原生
+
+```java
+// 尝试取消执行
+boolean cancel(boolean mayInterruptIfRunning);
+// 是否已经被取消执行
+boolean isCancelled();
+// 是否已经执行完毕
+boolean isDone();
+// 阻塞获取执行结果
+V get() throws InterruptedException, ExecutionException;
+// 阻塞获取执行结果或超时后返回
+V get(long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException;
+```
+
+2. 状态判断
+
+```java
+// 判断是否执行成功
+boolean isSuccess();
+// 判断是否可以取消执行
+boolean isCancellable();
+```
+
+3. 获取导致I/O操作异常
+
+```java
+Throwable cause();
+```
+
+4. 回调
+
+```java
+// 增加回调方法
+Future<V> addListener(GenericFutureListener<? extends Future<? super V>> listener);
+// 增加多个回调方法
+Future<V> addListeners(GenericFutureListener<? extends Future<? super V>>... listeners);
+// 删除回调方法
+Future<V> removeListener(GenericFutureListener<? extends Future<? super V>> listener);
+// 删除多个回调方法
+Future<V> removeListeners(GenericFutureListener<? extends Future<? super V>>... listeners);
+```
+
+5. 阻塞等待结果返回：sync方法阻塞等待结果且如果执行失败后向外抛出导致失败的异常，await方法仅阻塞等待结果返回，不向外抛出异常。
+
+```java
+// 阻塞等待，且如果失败抛出异常
+Future<V> sync() throws InterruptedException;
+// 同上，区别是不可中断阻塞等待过程
+Future<V> syncUninterruptibly();
+
+// 阻塞等待
+Future<V> await() throws InterruptedException;
+// 同上，区别是不可中断阻塞等待过程
+Future<V> awaitUninterruptibly();
+```
+
+Promise方法：
+
+```java
+// 设置成功状态并回调
+Promise<V> setSuccess(V result);
+boolean trySuccess(V result);
+// 设置失败状态并回调
+Promise<V> setFailure(Throwable cause);
+boolean tryFailure(Throwable cause);
+// 设置为不可取消状态
+boolean setUncancellable();
+```
+
+#### ChannelFutureListener
+
+示例：
+
+```java
+// io.netty.bootstrap.AbstractBootstrap.java
+else {
+    final PendingRegistrationPromise promise = new PendingRegistrationPromise(channel);
+    regFuture.addListener(new ChannelFutureListener() {
+        @Override
+        public void operationComplete(ChannelFuture future) throws Exception {
+            Throwable cause = future.cause();
+            if (cause != null) {
+                promise.setFailure(cause);
+            } else {
+                promise.registered();
+
+                doBind0(regFuture, channel, localAddress, promise);
+            }
+        }
+    });
+    return promise;
+}
+```
+
+### ChannelPipeline & ChannelHandlerContext & ChannelHandler
+
+  ![255](assets/255.png)
+
+* ChannelPipeline：通过链表实现过滤器模式，负责管理链表节点，接受IO事件的触发，并在管道上传播，每个 Channel 都有自己独立的 Pipeline，默认的实现类为 DefaultChannelPipeline 。
+* ChannelHandlerContext：ChannelPipeline 的 链表节点，包含 ChannelHandler 及相关上下文信息，负责将 IO 事件传递给下一个节点，常用的实现类为 DefaultChannelHandlerContext、HeadContext、TailContext。
+* ChannelHandler：处理出站入站的处理器。
+
+* ServerSocketChannel 的 Pipeline 为 HeadContext -> ServerBootstrap.ServerBootstrapAcceptor -> TailContext
+* SocketChannel 的 Pipeline 为 HeadContext -> 自定义ChannelHandler -> TailContext
+
+```java
+                                              I/O Request
+                                              via Channel or
+                                              ChannelHandlerContext
+                                                    |
++---------------------------------------------------+---------------+
+|                           ChannelPipeline         |               |
+|                                                  \|/              |
+|    +---------------------+            +-----------+----------+    |
+|    | Inbound Handler  N  |            | Outbound Handler  1  |    |
+|    +----------+----------+            +-----------+----------+    |
+|              /|\                                  |               |
+|               |                                  \|/              |
+|    +----------+----------+            +-----------+----------+    |
+|    | Inbound Handler N-1 |            | Outbound Handler  2  |    |
+|    +----------+----------+            +-----------+----------+    |
+|              /|\                                  .               |
+|               .                                   .               |
+| ChannelHandlerContext.fireIN_EVT() ChannelHandlerContext.OUT_EVT()|
+|        [ method call]                       [method call]         |
+|               .                                   .               |
+|               .                                  \|/              |
+|    +----------+----------+            +-----------+----------+    |
+|    | Inbound Handler  2  |            | Outbound Handler M-1 |    |
+|    +----------+----------+            +-----------+----------+    |
+|              /|\                                  |               |
+|               |                                  \|/              |
+|    +----------+----------+            +-----------+----------+    |
+|    | Inbound Handler  1  |            | Outbound Handler  M  |    |
+|    +----------+----------+            +-----------+----------+    |
+|              /|\                                  |               |
++---------------+-----------------------------------+---------------+
+                |                                  \|/
++---------------+-----------------------------------+---------------+
+|               |                                   |               |
+|       [ Socket.read() ]                    [ Socket.write() ]     |
+|                                                                   |
+|  Netty Internal I/O Threads (Transport Implementation)            |
++-------------------------------------------------------------------+
+```
+
+* 入站（read）从 HeadContext -> TailContext。
+* 出站（write）从 TailContext -> HeadContext。
+* ChannelPipeline#addLast是直接将 Chandler 添加到 HeadContext 后面。
+
+
+ChannelHandler 的生命周期：
+
+* handlerAdded：当把 ChannelHandler 添加到 ChannelPipeline 中时调用此方法
+* handlerRemoved：当把 ChannelHandler 从 ChannelPipeline 中移除的时候会调用此方法
+* exceptionCaught：当 ChannelHandler 在处理数据的过程中发生异常时会调用此方法，当发生异常，ChannelHandlerContext 不会再向下传播。
+
+ChannelInboundHandler：处理入站操作。
+* ChannelRegistered：当Channel被注册到EventLoop且能够处理IO事件时会调用此方法
+* ChannelUnregistered：当Channel从EventLoop注销且无法处理任何IO事件时会调用此方法
+* ChannelActive：当Channel已经连接到远程节点(或者已绑定本地address)且处于活动状态时会调用此方法
+* ChannelInactive：当Channel与远程节点断开，不再处于活动状态时调用此方法
+* ChannelReadComplete：当Channel的某一个读操作完成时调用此方法
+* ChannelRead：当Channel有数据可读时调用此方法
+* ChannelWritabilityChanged：当Channel的可写状态发生改变时调用此方法，可以调用Channel的isWritable方法检测Channel的可写性，还可以通过ChannelConfig来配置write操作相关的属性
+* userEventTriggered：当ChannelInboundHandler的fireUserEventTriggered方法被调用时才调用此方法。
+
+ChannelOutboundHandler：处理出站操作。
+* bind：当Channel绑定到本地address时会调用此方法
+* connect：当Channel连接到远程节点时会调用此方法
+* disconnect：当Channel和远程节点断开时会调用此方法
+* close：当关闭Channel时会调用此方法
+* deregister：当Channel从它的EventLoop注销时会调用此方法
+* read：当从Channel读取数据时会调用此方法
+* flush：当Channel将数据冲刷到远程节点时调用此方法
+* write：当通过Channel将数据写入到远程节点时调用此方法
+
+通常我们实现 ChannelHandler 时，会选择继承 ChannelInboundHandlerAdapter 、 ChannelOutboundHandlerAdapter 、ChannelDuplexHandler，或者更为推荐的 SimpleChannelInboundHandler 。
+
+如果 ChannelHandler 是线程安全的，可以使用 @Sharable 注解标识，这样可以让多个ChannelPipeline 使用同一个ChannelHandler。 被 @Skip 注解的方法会直接跳过。
+
+ChannelHandler 一定不能阻塞。
+
+#### ChannelInitializer
+
+一个特殊的 ChannelInboundHandlerAdapter ，在 SocketChannel 创建时被触发 channelRegistered ，由它来添加自定义的 ChannelHandler ，并再添加完将自己移除。
+
+### ServerBootStrap & BootStrap
+
+负责服务器和客户端的创建，ServerBootStrap 负责将一个进程绑定到某个指定的端口，BootStrap 负责将一个进程连接到另一个指定主机的正在运行的进程。
+
+### ByteBuf
+
+类型：
+1. 内存类型：堆内存和直接内存，例如 PooledHeapByteBuf、PooledDirectByteBuf。
+2. 分配模式：分为池化与非池化，例如 PooledHeapByteBuf、UnpooledHeapByteBuf。
+3. 操作类型：分为Unsafe与非Unsafe，例如  PooledHeapByteBuf、PooledUnsafeHeapByteBuf。
+
+常用方法：
+
+1. 读操作
+
+| 操作                               | 说明                                                            |
+| ---------------------------------- | --------------------------------------------------------------- |
+| readBoolean()                      | 返回当前readIndex的Boolean值，readIndex增加1                    |
+| readByte()                         | 返回当前readIndex处的字节值，readIndex增加1                     |
+| readUnsignedByte()                 | 返回当前readIndex处的无符号字节值，readIndex增加1               |
+| readShort()                        | 返回当前readIndex处的无符号short值，readIndex增加2              |
+| readShortLE()                      | 使用小端计算返回 Short 值，readIndex增加2                       |
+| readUnsignedShort()                | 返回当前readIndex处的short值，readIndex增加2                    |
+| readMedium()                       | 读取 3 个字节24位转换为 int，readIndex增加3                     |
+| readInt()                          | 返回当前readIndex处的int值，readIndex增加4                      |
+| readIntLE()                        | 使用小端计算返回int值，readIndex增加4                           |
+| readUnsignedInt()                  | 返回当前readIndex处的无符号int值,返回类型为long，readIndex增加4 |
+| readLong()                         | 返回当前readIndex处的long值，readIndex增加8                     |
+| readBytes(ByteBuf dst, int length) | 读取 length 长度写入到 dst，readIndex增加8                        |
+
+2. 写操作
+
+
+#### AbstractByteBuf
+
+属性：
+
+```java
+// 读指针，下一个可以读取的索引
+int readerIndex;
+// 写指针，下一个可以写入的索引
+int writerIndex;
+// 读指针标记，可以将 读指针 调整到该 位置。
+private int markedReaderIndex;
+// 写指针标记，可以将 写指针 调整到该 位置。
+private int markedWriterIndex;
+// 最大容量
+private int maxCapacity;
+```
+
+![256](assets/256.png)
+
+* 每读取一个字节，readerIndex递增1；直到readerIndex等于writerIndex，表示ByteBuf已经不可读；
+* 每写入一个字节，writerIndex递增1；直到writerIndex等于capacity，表示ByteBuf已经不可写；
+* 当writerIndex等于capacity表示底层字节数组需要扩容，且最大扩容不能超过max capacity，capacity() 由子类去实现。
+
 ## TCP粘包、拆包
 
 TCP 是面向流的协议，是一串没有界限的数据， TCP 也不知道上层业务数据的具体含义，所以在数据分片时并不会按照上层业务数据的逻辑进行分片，而是根据实际情况大小进行分片，这样在业务上的一个完整数据可能被划分到多个分片里面，多个数据也可能被分到一个片里面，所以服务端一次读取到的字节数时不确定的。

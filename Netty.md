@@ -885,7 +885,7 @@ public void read() {
  }
 ```
 
-##### ChannelId
+#### ChannelId
 
 由五部分组成：
 
@@ -1190,11 +1190,19 @@ ChannelHandler 一定不能阻塞。
 
 一个特殊的 ChannelInboundHandlerAdapter ，在 SocketChannel 创建时被触发 channelRegistered ，由它来添加自定义的 ChannelHandler ，并再添加完将自己移除。
 
+#### Decoder & Encoder
+
 ### ServerBootStrap & BootStrap
 
 负责服务器和客户端的创建，ServerBootStrap 负责将一个进程绑定到某个指定的端口，BootStrap 负责将一个进程连接到另一个指定主机的正在运行的进程。
 
+#### Option
+
 ### ByteBuf
+
+优点：
+
+​	1. 支持池化
 
 类型：
 1. 内存类型：堆内存和直接内存，例如 PooledHeapByteBuf、PooledDirectByteBuf。
@@ -1205,29 +1213,99 @@ ChannelHandler 一定不能阻塞。
 
 1. 读操作
 
-| 操作                               | 说明                                                            |
-| ---------------------------------- | --------------------------------------------------------------- |
-| readBoolean()                      | 返回当前readIndex的Boolean值，readIndex增加1                    |
-| readByte()                         | 返回当前readIndex处的字节值，readIndex增加1                     |
-| readUnsignedByte()                 | 返回当前readIndex处的无符号字节值，readIndex增加1               |
-| readShort()                        | 返回当前readIndex处的无符号short值，readIndex增加2              |
-| readShortLE()                      | 使用小端计算返回 Short 值，readIndex增加2                       |
-| readUnsignedShort()                | 返回当前readIndex处的short值，readIndex增加2                    |
-| readMedium()                       | 读取 3 个字节24位转换为 int，readIndex增加3                     |
-| readInt()                          | 返回当前readIndex处的int值，readIndex增加4                      |
-| readIntLE()                        | 使用小端计算返回int值，readIndex增加4                           |
-| readUnsignedInt()                  | 返回当前readIndex处的无符号int值,返回类型为long，readIndex增加4 |
-| readLong()                         | 返回当前readIndex处的long值，readIndex增加8                     |
-| readBytes(ByteBuf dst, int length) | 读取 length 长度写入到 dst，readIndex增加8                        |
+| 操作                                          | 说明                                                         |
+| --------------------------------------------- | ------------------------------------------------------------ |
+| readBoolean()                                 | 返回当前readIndex的Boolean值，readIndex增加1                 |
+| readByte()                                    | 返回当前readIndex处的字节值，readIndex增加1                  |
+| readUnsignedByte()                            | 返回当前readIndex处的无符号字节值，readIndex增加1            |
+| readShort()                                   | 返回当前readIndex处的无符号short值，readIndex增加2           |
+| readShortLE()                                 | 使用小端计算返回 Short 值，readIndex增加2                    |
+| readUnsignedShort()                           | 返回当前readIndex处的short值，readIndex增加2                 |
+| readMedium()                                  | 读取 3 个字节24位转换为 int，readIndex增加3                  |
+| readInt()                                     | 返回当前readIndex处的int值，readIndex增加4                   |
+| readIntLE()                                   | 使用小端计算返回int值，readIndex增加4                        |
+| readUnsignedInt()                             | 返回当前readIndex处的无符号int值,返回类型为long，readIndex增加4 |
+| readLong()                                    | 返回当前readIndex处的long值，readIndex增加8                  |
+| readBytes(ByteBuf dst, int length)            | 读取 length 长度写入到 dst，readIndex增加length              |
+| readCharSequence(int length, Charset charset) | 读取 length 长度返回 CharSequence，readIndex增加length       |
 
 2. 写操作
 
+| 操作                                                      | 说明                                                         |
+| --------------------------------------------------------- | ------------------------------------------------------------ |
+| writeBoolean(boolean value)                               | 在当前writeIndex处写入一个boolean值，并将writeIndex增加1     |
+| writeByte(int value)                                      | 在当前writeIndex处写入一个int值，忽略高位24位，并将writeIndex增加1，应当小于等于255，否则会被截断 |
+| writeShort(int value)                                     | 在当前writeIndex处写入一个int值，忽略高位16位，并将writeIndex增加2，应当小于等于65535，否则会被截断 |
+| writeShortLE(int value)                                   | 在当前writeIndex处写入一个int值，使用小端字节序，忽略高位16位，并将writeIndex增加2，应当小于等于65535，否则会被截断 |
+| writeMedium(int value)                                    | 在当前writeIndex处写入一个int值，忽略高位8位，并将writeIndex增加3，应当小于等于65535*255，否则会被截断 |
+| writeMediumLE(int value)                                  | 在当前writeIndex处写入一个int值，使用小端字节序，忽略高位8位，并将writeIndex增加3，应当小于等于65535*255，否则会被截断 |
+| writeInt(int value)                                       | 在当前writeIndex处写入一个int值，并将writeIndex增加4         |
+| writeIntLE(int value)                                     | 在当前writeIndex处写入一个int值，使用小端字节序，并将writeIndex增加4 |
+| writeLong(long value)                                     | 在当前writeIndex处写入一个long值，并将writeIndex增加8        |
+| writeLongLE(long value)                                   | 在当前writeIndex处写入一个long值，使用小端字节序，并将writeIndex增加8 |
+| writeChar(int value)                                      | 在当前writeIndex处写入一个int值，忽略高位16位，并将writeIndex增加2，低2位字节视为 2字节 UTF-8 字符 |
+| writeFloat(float value)                                   | 在当前writeIndex处写入一个float值，并将writeIndex增加4       |
+| writeDouble(double value)                                 | 在当前writeIndex处写入一个double值，并将writeIndex增加8      |
+| writeBytes(ByteBuf src)                                   | 在当前writeIndex处写入 readableBytes ，并将writeIndex增加 readableBytes |
+| writeZero(int length)                                     | 填充 length 长度 0x00                                        |
+| writeCharSequence(CharSequence sequence, Charset charset) | 写入 CharSequence ，writeIndex 增加长度跟编码有关，UTF-8 位 长度的2倍 |
+
+3. 随机读取：getXXXX，和 readXXXX 方法相似，readIndex 不变
+4. 随机写入：setXXXX，和 writeXXXX 方法相似，writeIndex 不变
+
+5. 可读字节：
+
+| 操作                   | 说明                                                         |
+| ---------------------- | ------------------------------------------------------------ |
+| readableBytes()              | 可读取字节，writerIndex - readerIndex |
+| isReadable() | 可读字节是否大于0               |
+
+6. 可写字节：
+
+| 操作                                                | 说明                             |
+| --------------------------------------------------- | -------------------------------- |
+| writableBytes()                                     | 可写字节，capacity - writerIndex |
+| isWritable(int size)                                | 可写字节是否大于size             |
+| ensureWritable(int minWritableBytes, boolean force) | 可写入多大内容，是否扩容         |
+
+7. 索引操作：
+
+| 操作                   | 说明                                                         |
+| ---------------------- | ------------------------------------------------------------ |
+| clear()                | 丢弃所有字节，writeIndex = readIndex = 0                     |
+| discardReadBytes()     | 丢弃已读字节，将未读字节复制到 索引 0                        |
+| discardSomeReadBytes() | 当 writeIndex == readIndex ，丢弃所有字节，当 readIndex 大于容量一半，丢弃已读字节，否则不丢弃字节。 |
+| markReaderIndex()      | 标记 readerIndex                                             |
+| resetReaderIndex()     | 重置到 readerIndex                                           |
+| markWriterIndex()      | 标记 writerIndex                                             |
+| resetWriterIndex       | 重置到 writerIndex                                           |
+| skipBytes(int length)  | 跳过 length 字节                                             |
+
+8. 查找操作：
+
+| 操作                                            | 说明                                                         |
+| ----------------------------------------------- | ------------------------------------------------------------ |
+| indexOf(int fromIndex, int toIndex, byte value) | 1. from>to,从from到to查找第一个值，包含from<br />2. from<to,从to到from查找第一个值，包含 to |
+| bytesBefore(byte value)                         | 查找第一个值索引 - readerIndex                               |
+| bytesBefore(int length, byte value)             | 在指定length查找第一个值索引 - readerIndex                   |
+| bytesBefore(int index, int length, byte value)  | 从指定索引搜索，而不是 readerIndex                           |
+| forEachByte(ByteProcessor processor)            | 指定byte匹配规则，返回一个查找的值                           |
+
+9. 派生缓冲区：返回新的ByteBuf，具有自己的读索引、写索引和标记索引，但是内部储存和原ByteBuf使用同一个，任何一个修改数据都可以修改所有视图。
+
+| 操作        | 说明                                                         |
+| ----------- | ------------------------------------------------------------ |
+| slice()     | 返回可读字节视图，最大长度为可读字节长度，与原ByteBuf使用一个引用计数 |
+| duplicate() | 返回新视图，最大长度与之前一样，与原ByteBuf使用一个引用计数  |
+| copy()      | 深复制一个新的ByteBuf                                        |
 
 #### AbstractByteBuf
 
 属性：
 
 ```java
+// static，所有bytebuf公用，用来检测内存泄漏问题
+static final ResourceLeakDetector<ByteBuf> leakDetector =      ResourceLeakDetectorFactory.instance().newResourceLeakDetector(ByteBuf.class);
 // 读指针，下一个可以读取的索引
 int readerIndex;
 // 写指针，下一个可以写入的索引
@@ -1245,6 +1323,84 @@ private int maxCapacity;
 * 每读取一个字节，readerIndex递增1；直到readerIndex等于writerIndex，表示ByteBuf已经不可读；
 * 每写入一个字节，writerIndex递增1；直到writerIndex等于capacity，表示ByteBuf已经不可写；
 * 当writerIndex等于capacity表示底层字节数组需要扩容，且最大扩容不能超过max capacity，capacity() 由子类去实现。
+
+##### 内存泄漏探测
+
+#### AbstractReferenceCountedByteBuf
+
+通过 volatile + CAS 修改 refCnt,refCnt 初始化为 2，采用位运算， retain() 左移一位 ,release() 右移一位，当调用 release() 等于 1 时，开始释放对象，在实际实现中不是采用是否等于1来判断，而是使用 refCnt  & 1 判断奇偶数来判断，偶数表示引用还存在，奇数表示对象被释放。
+
+#### UnpooledHeapByteBuf & UnpooledUnsafeHeapByteBuf
+
+属性：
+
+```java
+// 持有 ByteBufAllocator 的引用，可通过 alloc() 获取
+private final ByteBufAllocator alloc;
+// 储存数据的数组，可以使用 array() 更方便的位运算
+byte[] array;
+private ByteBuffer tmpNioBuf;
+```
+
+扩容时使用 System.copyarray() 复制到新数组。
+
+
+
+UnpooledHeapByteBuf 使用字节数组的索引即array[index]访问，UnpooledUnsafeHeapByteBuf 使用 baseAddress + Index的得到字节的地址，然后从该地址取得字节，以提高性能。
+
+#### UnpooledDirectByteBuf & UnpooledUnsafeDirectByteBuf
+
+属性：
+
+```java
+// 储存数据，使用 ByteBuffer.allocateDirect(initialCapacity)  分配
+ByteBuffer buffer; 
+private ByteBuffer tmpNioBuf;
+private int capacity;
+private boolean doNotFree;
+```
+
+扩容时创建一个新的 ByteBuffer ，使用 ByteBuffer#put 将 原ByteBuffer 复制过去，再将 原ByteBuffer 释放内存。
+
+
+
+UnpooledDirectByteBuf  使用 DirectByteBuffer API 访问，UnpooledUnsafeHeapByteBuf 使用 memoryAddress + Index 地址访问，速度更快。
+
+#### PooledByteBuf
+
+属性：
+
+```java
+private final Handle<PooledByteBuf<T>> recyclerHandle;
+// 初始化所属的块
+protected PoolChunk<T> chunk;
+protected long handle;
+// 内存类型
+protected T memory;
+protected int offset;
+protected int length;
+int maxLength;
+// 线程本地缓存，当同一线程释放 PooledByteBuf ，会先添加到本地缓存，并不会真正释放
+PoolThreadCache cache;
+ByteBuffer tmpNioBuf;
+private ByteBufAllocator allocator;
+```
+
+* 先将内存分为多个Chunk，16MB
+
+* 按使用率将 Chunk 归类为多个  PoolChunkList，PoolChunkList有 QINIT 、 Q0 、 Q25 、 Q50 、Q75 、Q100 6种，代表不同的使用率,使用链表组织数据结构：
+
+  ![257](assets/257.png)
+
+* 一个Chunk分为切分为 2048 块 Page ,8KB，储存在 PriorityQueue数组（runsAvail），其中PriorityQueue存放的是handle，handle可以理解为一个句柄，维护一个内存块的信息，内存标识符。
+
+* runsAvail数组默认长度为40，每个位置index上放的handle代表了存在一个可用内存块，并且可分配大小 大于等于当前的pageSize，小于下一页的pageSize。
+
+* 分配时分为 Small内存块 、Normal内存块 分开分配。
+
+*  Small内存块使用 PoolSubpage  。
+
+* Normal内存块 直接从 PriorityQueue 中划分 page。
 
 ## TCP粘包、拆包
 
@@ -1291,3 +1447,8 @@ TCP 分片的依据是 在三次握手的时候，在两端主机之间被计算
   * DirectByteBuffer：使用堆外内存，减少堆内外的数据拷贝。
 
 3. Netty 零拷贝：
+
+- Netty 提供了CompositeByteBuf 类, 它可以将多个 ByteBuf 合并为一个逻辑上的 ByteBuf, 避免合并多个ByteBuf 时各个 ByteBuf 之间的拷贝。
+- 通过 wrap 操作, 我们可以将 byte[] 数组、ByteBuf、ByteBuffer等包装成一个 Netty ByteBuf 对象, 避免通过write api 产生的拷贝操作。
+- ByteBuf支持slice操作, 因此可以将 ByteBuf 分解为多个共享同一个存储区域的 ByteBuf, 避免内存的拷贝。
+- 通过 FileRegion 包装的FileChannel.tranferTo 实现文件传输。

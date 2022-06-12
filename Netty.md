@@ -1198,11 +1198,17 @@ ChannelHandler 一定不能阻塞。
 
 #### Option
 
+通过 ChannelOption 配置，常用的有 SO_BACKLOG、SO_KEEPALIVE、TCP_NODELAY 。
+
 ### ByteBuf
 
 优点：
 
-​	1. 支持池化
+​1. 支持池化。
+2. 支持引用计数。
+3. 读写使用不同索引，不同使用 flip 转换。
+4. 容量按需增长。
+5. 复合缓冲区实现多个ByteBuf合并时，不用拷贝。
 
 类型：
 1. 内存类型：堆内存和直接内存，例如 PooledHeapByteBuf、PooledDirectByteBuf。
@@ -1299,6 +1305,8 @@ ChannelHandler 一定不能阻塞。
 | duplicate() | 返回新视图，最大长度与之前一样，与原ByteBuf使用一个引用计数  |
 | copy()      | 深复制一个新的ByteBuf                                        |
 
+10. 引用计数：retain() 引用计数加1 ， release() 引用计数减1
+
 #### AbstractByteBuf
 
 属性：
@@ -1326,6 +1334,9 @@ private int maxCapacity;
 
 ##### 内存泄漏探测
 
+* 启动时添加 -Dio.netty.leakDetectionLevel=ADVANCED 开启采样，每次产生一个堆外内存检查一次。
+* SIMPLE:默认的内存检测级别，以一个时间间隔，默认是每创建113个直接内存（堆外内存）时检测一次。
+
 #### AbstractReferenceCountedByteBuf
 
 通过 volatile + CAS 修改 refCnt,refCnt 初始化为 2，采用位运算， retain() 左移一位 ,release() 右移一位，当调用 release() 等于 1 时，开始释放对象，在实际实现中不是采用是否等于1来判断，而是使用 refCnt  & 1 判断奇偶数来判断，偶数表示引用还存在，奇数表示对象被释放。
@@ -1344,8 +1355,6 @@ private ByteBuffer tmpNioBuf;
 
 扩容时使用 System.copyarray() 复制到新数组。
 
-
-
 UnpooledHeapByteBuf 使用字节数组的索引即array[index]访问，UnpooledUnsafeHeapByteBuf 使用 baseAddress + Index的得到字节的地址，然后从该地址取得字节，以提高性能。
 
 #### UnpooledDirectByteBuf & UnpooledUnsafeDirectByteBuf
@@ -1354,15 +1363,13 @@ UnpooledHeapByteBuf 使用字节数组的索引即array[index]访问，UnpooledU
 
 ```java
 // 储存数据，使用 ByteBuffer.allocateDirect(initialCapacity)  分配
-ByteBuffer buffer; 
+ByteBuffer buffer;
 private ByteBuffer tmpNioBuf;
 private int capacity;
 private boolean doNotFree;
 ```
 
 扩容时创建一个新的 ByteBuffer ，使用 ByteBuffer#put 将 原ByteBuffer 复制过去，再将 原ByteBuffer 释放内存。
-
-
 
 UnpooledDirectByteBuf  使用 DirectByteBuffer API 访问，UnpooledUnsafeHeapByteBuf 使用 memoryAddress + Index 地址访问，速度更快。
 
@@ -1401,6 +1408,44 @@ private ByteBufAllocator allocator;
 *  Small内存块使用 PoolSubpage  。
 
 * Normal内存块 直接从 PriorityQueue 中划分 page。
+
+#### CompositeByteBuf
+
+将多个ByteBuf 组成一个逻辑ByteBuf，底层共享存储，实现多个ByteBuf合并成一个ByteBuf时不用拷贝。
+
+#### ByteBufHolder
+
+提供一个包含 ByteBuf 的抽象，默认实现为 DefaultByteBufHolder ，一般继承该类，用于除了储存 ByteBuf 外，还储存其他值。
+
+#### ByteBufAllocator
+
+有两种实现 PooledByteBufAllocator 和 UnpooledByteBufAllocator , 默认使用 PooledByteBufAllocator。
+
+常用api:
+
+| 操作                    | 说明                                                 |
+| ----------------------- | ---------------------------------------------------- |
+| buffer()                | 根据directByDefault字段，决定 buffer 类型，默认false |
+| heapBuffer()            | 初始大小256，最大容量 Integer.MAX_VALUE              |
+| directBuffer()          | 初始大小256，最大容量 Integer.MAX_VALUE              |
+| compositeBuffer()       | 根据directByDefault字段，决定 buffer 类型，默认false |
+| compositeHeapBuffer()   | 最大组件数量为16                                     |
+| compositeDirectBuffer() | 最大组件数量为16                                     |
+
+#### ByteBufUtil & HeapByteBufUtil & UnsafeByteBufUtil
+
+* ByteBufUtil.hexDump 常用来打印 16 进制字符串。
+* HeapByteBufUtil 将byte[]数组转换成 基本数据类型。
+* UnsafeByteBufUtil 直接读取内存转换成 基本数据类型。
+
+#### Unpooled
+
+使用 UnpooledByteBufAllocator 分配
+
+* buffer()：创建堆缓存区。
+* directBuffer()：创建直接缓存区。
+* wrappedBuffer()：和入参使用相同的 byte[],不需要复制。
+* copiedBuffer()：深拷贝一个 ByteBuf，会复制一个新的  byte[]。
 
 ## TCP粘包、拆包
 
@@ -1448,7 +1493,7 @@ TCP 分片的依据是 在三次握手的时候，在两端主机之间被计算
 
 3. Netty 零拷贝：
 
-- Netty 提供了CompositeByteBuf 类, 它可以将多个 ByteBuf 合并为一个逻辑上的 ByteBuf, 避免合并多个ByteBuf 时各个 ByteBuf 之间的拷贝。
-- 通过 wrap 操作, 我们可以将 byte[] 数组、ByteBuf、ByteBuffer等包装成一个 Netty ByteBuf 对象, 避免通过write api 产生的拷贝操作。
-- ByteBuf支持slice操作, 因此可以将 ByteBuf 分解为多个共享同一个存储区域的 ByteBuf, 避免内存的拷贝。
-- 通过 FileRegion 包装的FileChannel.tranferTo 实现文件传输。
+  * Netty 提供了CompositeByteBuf 类, 它可以将多个 ByteBuf 合并为一个逻辑上的 ByteBuf, 避免合并多个ByteBuf 时各个 ByteBuf 之间的拷贝。
+  * 通过 wrap 操作, 我们可以将 byte[] 数组、ByteBuf、ByteBuffer等包装成一个 Netty ByteBuf 对象, 避免通过write api 产生的拷贝操作。
+  * ByteBuf支持slice操作, 因此可以将 ByteBuf 分解为多个共享同一个存储区域的 ByteBuf, 避免内存的拷贝。
+  * 通过 FileRegion 包装的FileChannel.tranferTo 实现文件传输。

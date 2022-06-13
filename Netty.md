@@ -1234,6 +1234,8 @@ Websocket常用编解码器：HttpServerCodec、HttpObjectAggregator、WebSocket
 
 IP黑白名单：RuleBasedIpFilter
 
+码流日志打印：LoggingHandler
+
 ### ServerBootStrap & BootStrap
 
 负责服务器和客户端的创建，ServerBootStrap 负责将一个进程绑定到某个指定的端口，BootStrap 负责将一个进程连接到另一个指定主机的正在运行的进程。
@@ -1526,6 +1528,12 @@ channel.writeAndFlush(region).addListener(
 协议示例：
 
   [协议示例](assets/协议示例.doc)
+
+测试检测指标：
+
+![259](assets/259.png)
+
+![260](assets/260.png)
 
 ## 单元测试
 

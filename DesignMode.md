@@ -791,4 +791,10 @@ public class StatePatternDemo {
 领域：
 ![263](assets/263.png)
 
+应用架构：
 ![264](assets/264.png)
+
+模型元素：
+* 实体：
+* 值对象：
+* 服务：：

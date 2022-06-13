@@ -1192,6 +1192,37 @@ ChannelHandler 一定不能阻塞。
 
 #### Decoder & Encoder
 
+1. 解码器可继承 ByteToMessageDecoder、ReplayingDecoder、MessageToMessageDecoder
+2. 编码器可继承 MessageToByteEncoder、MessageToMessageEncoder
+3. 混合型编解码器可继承 ByteToMessageCodec、MessageToMessageCodec、CombinedChannelDuplexHandler 。
+
+ByteToMessageDecoder有几个重点：
+
+* decode(ctx, in, out) 中 in 不用担心释放，只需使用 skipByte 即可，父类通过 MERGE_CUMULATOR 将 in 剩余未读字节 和 新从socket读取字节 复制到一个新 ByteBuf ，并释放 in。
+* ByteBuf.readBytes(int) 等一些返回 ByteBuf 的方法如果没有添加到 out list 需要主动释放，可以使用  ByteBuf.readSlice(int) 来避免这种问题，或者使用 getXX ，但要注意 index 位置，防止 超出边界值。
+* 不得使用 @Sharable 注解。
+* out 会在 channelRead 最后回收。
+
+ReplayingDecoder：遇到半包时通过抛出 ReplayingDecoder.REPLAY 异常，进入结束解码，等待下一次读取数据。
+
+常用的 ByteToMessageDecoder：
+* FixedLengthFrameDecoder：定长帧解码器。
+* DelimiterBasedFrameDecoder：分割符解码器。
+* LineBasedFrameDecoder：换行符解码器，`\r\n`、`\n`都视为换行符。
+* LengthFieldBasedFrameDecoder：
+  * maxFrameLength：最大帧长度，如果超过，此次数据会被丢弃。
+  * lengthFieldOffset：长度域偏移。如果数据开始的几个字节可能不是表示数据长度，所以需要后移几个字节才是长度域。
+  * lengthFieldLength：长度域字节数。用几个字节来表示数据长度。
+  * lengthAdjustment：长度域后实际长度 - 长度域长度，因为长度域长度可能包含 head 长度，需要 减去
+  * initialBytesToStrip：将本帧跳过几个字节，添加到 out。
+
+常用 MessageToByteEncoder：
+* LengthFieldPrepender：
+  * byteOrder：表示Length字段本身占用的字节数使用的是大端还是小端编码
+  * lengthFieldLength：表示Length字段本身占用的字节数,只可以指定 1, 2, 3, 4, 或 8。
+  * lengthAdjustment：表示Length字段调整值。
+  * lengthIncludesLengthFieldLength：表示Length字段本身占用的字节数是否包含在Length字段表示的值中。
+
 ### ServerBootStrap & BootStrap
 
 负责服务器和客户端的创建，ServerBootStrap 负责将一个进程绑定到某个指定的端口，BootStrap 负责将一个进程连接到另一个指定主机的正在运行的进程。
@@ -1199,6 +1230,8 @@ ChannelHandler 一定不能阻塞。
 #### Option
 
 通过 ChannelOption 配置，常用的有 SO_BACKLOG、SO_KEEPALIVE、TCP_NODELAY 。
+
+ServerBootStrap中option()设置 SeverSocketChannel,childOption() 设置 SocketChannel。
 
 ### ByteBuf
 
@@ -1446,6 +1479,33 @@ private ByteBufAllocator allocator;
 * directBuffer()：创建直接缓存区。
 * wrappedBuffer()：和入参使用相同的 byte[],不需要复制。
 * copiedBuffer()：深拷贝一个 ByteBuf，会复制一个新的  byte[]。
+
+## 单元测试
+
+通过 EmbeddedChannel 测试 Pipeline 的出站、入站。
+
+| 操作 | 	说明 |
+| writeInbound | 		将入站消息写到EmbeddedChannel中。如果可以通过readInbound方法从EmbeddedChannel中读取数据，则返回true |
+| readInbound | 		从EmbeddedChannel中读取入站消息。任何返回东西都经过整个ChannelPipeline。如果没有任何可供读取的，则返回null |
+| writeOutbound | 		将出站消息写到EmbeddedChannel中，如果现在可以通过readOutbound从EmbeddedChannel中读取到东西，则返回true |
+| readOutbound | 		从EmbeddedChannel中读取出站消息。任何返回东西都经过整个ChannelPipeline。如果没有任何可供读取的，则返回null |
+
+```java
+EmbeddedChannel channel = new EmbeddedChannel(new FixedLengthFrameDecoder(3));
+channel.writeInbound(input.retain());
+channel.finish();
+
+ByteBuf read = channel.readInbound();
+```
+
+```java
+EmbeddedChannel channel = new EmbeddedChannel(new AbsIntegerEncoder());
+channel.writeOutbound(buf);
+channel.finish();
+
+channel.readOutbound();
+```
+
 
 ## TCP粘包、拆包
 

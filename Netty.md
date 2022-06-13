@@ -1223,6 +1223,17 @@ ReplayingDecoder：遇到半包时通过抛出 ReplayingDecoder.REPLAY 异常，
   * lengthAdjustment：表示Length字段调整值。
   * lengthIncludesLengthFieldLength：表示Length字段本身占用的字节数是否包含在Length字段表示的值中。
 
+Http常用编解码器：HttpServerCodec、HttpClientCodec、HttpObjectAggregator、HttpContentCompressor、HttpContentDecompressor、SslHandler
+
+Websocket常用编解码器：HttpServerCodec、HttpObjectAggregator、WebSocketServerProtocolHandler、TextFrameHandler、BinaryFrameHandler、ContinuationFrameHandler
+
+空闲和超时：
+* IdleStateHandler （空闲时间太长，触发 IdleStateEvent，通过 userEventTriggered 接收）
+* ReadTimeoutHandler （抛出 ReadTimeoutException，通过 exceptionCaught 接收）
+* WriteTimeoutHandler （抛出 WriteTimeouException，通过 exceptionCaught 接收 ）
+
+IP黑白名单：RuleBasedIpFilter
+
 ### ServerBootStrap & BootStrap
 
 负责服务器和客户端的创建，ServerBootStrap 负责将一个进程绑定到某个指定的端口，BootStrap 负责将一个进程连接到另一个指定主机的正在运行的进程。
@@ -1479,6 +1490,42 @@ private ByteBufAllocator allocator;
 * directBuffer()：创建直接缓存区。
 * wrappedBuffer()：和入参使用相同的 byte[],不需要复制。
 * copiedBuffer()：深拷贝一个 ByteBuf，会复制一个新的  byte[]。
+
+### FileRegion
+
+文件写入channel ，底层使用 FileChannel#transferTo 。
+
+```java
+FileInputStream in = new FileInputStream(file);
+FileRegion region = new DefaultFileRegion(in.getChannel,0,file.length);
+channel.writeAndFlush(region).addListener(
+    new ChannelFutureListener() {
+      public void operationComplete(ChannelFuture future) throw Exception{
+         if(!future.isSuccess()){
+           Throwable cause = future.cause();
+         }
+      }
+    }
+)
+```
+
+## 自定义协议
+
+1. 链路建立：需要IP地址或者号段的黑白名单安全认证机制，或者 SSL 认证。
+2. 链路关闭：读写过程发生IO异常、心跳超时、编码异常等，主动关闭连接。
+3. 可靠性设计：
+  * 心跳：客户端间隔时间T发送心跳，统计心跳未响应次数，当次数达到阀值断开链路，间隔一段时间发起重连。服务端空闲时间T后，统计次数加1，只要接收到消息即清零，达到阀值关闭链路。
+  * 重连：重连由客户端发起，需要间隔一段时间，并打印重连日志。
+  * 重复登录保护：服务端接收客户端握手请求消息后，对IP进行校验，在缓存的地址表中查看是否已经登录，如果已经登录则拒绝重复登录，并且通过 服务端心跳检测筛除无效连接，清空该连接的缓存信息，防止重复登录保护机制拒绝。
+  * 消息缓存重发，在链路恢复前，缓存在消息队列中的消息不能丢失。
+4. 安全性设计：使用认证机制。
+5. 扩展性设计：
+
+  ![258](assets/258.png)
+
+协议示例：
+
+![协议示例](assets/协议示例.doc)
 
 ## 单元测试
 

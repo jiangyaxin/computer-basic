@@ -112,7 +112,7 @@ redis中模式匹配通配符：
 ### 2、哈希
 
 ```bash
-# 将哈希表 key 中的字段 field 的值设为 value 
+# 将哈希表 key 中的字段 field 的值设为 value
 # Redis 4.0 起，可一次设置一个或多个 field/value 对
 # 字段是哈希表中的一个新建字段，并且值设置成功，返回 1 。
 # 哈希表中域字段已经存在且旧值已被新值覆盖，返回 0 。
@@ -149,7 +149,7 @@ hmget key field1 [field2]
 # 为哈希表 key 中的指定字段的整数值加上增量 increment
 hincrby key field increment
 
-# 为哈希表 key 中的指定字段的浮点数值加上增量 increment 
+# 为哈希表 key 中的指定字段的浮点数值加上增量 increment
 hincrbyfloat key field increment
 
 # 获取哈希表中字段的数量
@@ -263,7 +263,7 @@ srem key member1 [member2]
 smove source destination member
 
 # 返回第一个集合独自拥有的成员
-sdiff key1 [key2] 
+sdiff key1 [key2]
 
 # 返回第一个集合独自拥有的成员，并存入 destination
 sdiffstore destination key1 [key2]
@@ -313,7 +313,7 @@ zcard key
 zcount key min max
 
 # 有序集合中对指定成员的分数加上增量 increment
-zincrby key increment member 
+zincrby key increment member
 
 # 返回有序集中，成员的分数值
 zscore key member
@@ -614,7 +614,7 @@ client-output-buffer-limit pubsub 32mb 8mb 60
 
 ```bash
 # 添加元素
-pfadd <key> [element...] 
+pfadd <key> [element...]
 # 计算总数，不准确，存在0.81%误差
 pfcount <key>
 # 合并
@@ -641,7 +641,7 @@ geodist key <member1> <member2> <unit>
 # asc|desc:返回结果按照离中心节点距离做升序或者降序。
 # store <key>:返回结果保存到指定键。
 # storedist <key>:将返回结果离中心节点距离保存到指定键。
-georadius key <longitude> <latitude> <radiusm|km|ft|mi> 
+georadius key <longitude> <latitude> <radiusm|km|ft|mi>
 # 获取geohash,由二维经纬度转换成一纬字符，两个字符串越相似，距离越近，长度越长精度越高，9位精度在2米左右
 geohash key [member...]
 # 删除地理位置信息
@@ -673,13 +673,13 @@ zrem key member
    ```sql
    # 利用mysql的隔离性：唯一索引
    # 创建一张锁表
-   CREATE TABLE `methodLock` ( 
-     `id` int(11) NOT NULL AUTO_INCREMENT COMMENT '主键', 
-     `method_name` varchar(64) NOT NULL DEFAULT '' COMMENT '锁定的方法名', 
-     `desc` varchar(1024) NOT NULL DEFAULT '备注信息', 
-     `update_time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '保存数据时间，自动生成', 
-     PRIMARY KEY (`id`), 
-     UNIQUE KEY `uidx_method_name` (`method_name `) USING BTREE 
+   CREATE TABLE `methodLock` (
+     `id` int(11) NOT NULL AUTO_INCREMENT COMMENT '主键',
+     `method_name` varchar(64) NOT NULL DEFAULT '' COMMENT '锁定的方法名',
+     `desc` varchar(1024) NOT NULL DEFAULT '备注信息',
+     `update_time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '保存数据时间，自动生成',
+     PRIMARY KEY (`id`),
+     UNIQUE KEY `uidx_method_name` (`method_name `) USING BTREE
    ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='锁定中的方法';
 
    # 锁表
@@ -714,7 +714,7 @@ zrem key member
    DEL  product:10001			    //执行完业务释放锁
    # 但是这样会有问题
    # 举个例子：
-   # 线程 1 在开始的时候比较幸运，获得了锁，最先开始执行任务，但是，由于他比较耗时，最后锁超时自动释放了他都还没执行完。 
+   # 线程 1 在开始的时候比较幸运，获得了锁，最先开始执行任务，但是，由于他比较耗时，最后锁超时自动释放了他都还没执行完。
    # 因此，线程 2 和线程3 的机会来了。而这一轮，线程2 比较幸运，得到了锁。
    # 可是，当线程2正在执行任务期间，线程1 执行完了，还把线程2的锁给释放了。
    # 所以使用lua改进逻辑：
@@ -722,7 +722,7 @@ zrem key member
    2. 查询当前锁 current_value = get mylock
    3. 判断    if current_value == thread1_magic_num  -- > 是  我（线程1）的锁
              else                                   -- > 不是 我（线程1）的锁
-   4. 是我的锁就释放，否则不能释放（而是执行自己的其他逻辑）。  
+   4. 是我的锁就释放，否则不能释放（而是执行自己的其他逻辑）。
 
    # 不靠谱的情况：
    # 如果是在redis sentinel集群中,当我们申请一个锁的时候，对应就是一条命令 `setnx mykey myvalue`。
@@ -774,7 +774,7 @@ zrem key member
            config.useSingleServer().setAddress("redis://172.0.0.1:6379")
            .setPassword("777777");
            config.setCodec(new StringCodec());
-           //设置看门狗的时间，不配置的话默认30000 
+           //设置看门狗的时间，不配置的话默认30000
            config.setLockWatchdogTimeout(12000);
            RedissonClient redisson =  Redisson.create(config);
            return redisson;
@@ -836,7 +836,7 @@ zrem key member
       当更新操作简单，如只是将这个值直接修改为某个值时，更新cache与淘汰cache的消耗差不多
       但当更新操作的逻辑较复杂时，需要涉及到其它数据，如用户购买商品付款时，需要考虑打折等因素，这样需要缓存与数据库进行多次交互，将打折等信息传入缓存，再与缓存中的其它值进行计算才能得到最终结果，此时更新cache的消耗要大于直接淘汰cache
     所以选择直接淘汰缓存更好，如果之后需要再次读取这个数据，最多会有一次缓存失败。
-  
+
 #更新的另外一个问题？
     当并发较大，同时有两个线程需要对同一个数据进行更新时，可能会出现以下问题：
 	方案一.先更新(update)缓存，再更新数据库
@@ -856,7 +856,7 @@ zrem key member
   1.更新数据库与淘汰缓存是两个步骤，只能先后执行，如果在执行过程中后一步执行失败，哪种方案的影响最小？
   2.如果不考虑执行失败的情况，但更新数据库与淘汰缓存必然存在一个先后顺序，在上一个操作执行完毕，下一个操作还未完成时，如果并发较大，仍旧会导致数据库与缓存中的数据不一致，在这种情况下，用哪种方案影响最小？
   
-  对于数据库而言，读写操作可以只作用在同一台服务器上，即底层只有一个数据库，也可以将读操作放在从库，写操作放在主库，即底层是主从架构，对于主从架构还需要考虑主从延迟。 
+  对于数据库而言，读写操作可以只作用在同一台服务器上，即底层只有一个数据库，也可以将读操作放在从库，写操作放在主库，即底层是主从架构，对于主从架构还需要考虑主从延迟。
   
 	#情景一：更新数据库与淘汰缓存需要先后执行，如果在执行过程中后一步执行失败，哪种方案对业务的影响最小？
 		#方案一.先淘汰缓存，再更新数据库
@@ -878,7 +878,7 @@ zrem key member
 				 A线程进行写操作，先成功淘汰缓存，但由于网络或其它原因，还未更新数据库或正在更新
   			   B线程进行读操作，发现缓存中没有想要的数据，从数据库中读取数据，但此时A线程还未完成更新操作，
   			   所以读取到的是旧数据，并且B线程将旧数据放入缓存。注意此时是没有问题的，因为数据库中的数据还未完成更新，所以数据库与缓存此时存储的都是旧值，                 数据没有不一致
-  			   
+  
   			   在B线程将旧数据读入缓存后，A线程终于将数据更新完成，此时是有问题的，数据库中是更新后的新数据，
   			   缓存中是更新前的旧数据，数据不一致。如果在缓存中没有对该值设置过期时间，旧数据将一直保存在缓存中，数据将一直不一致，直到之后再次对该值进行				修改时才会在缓存中淘汰该值
 				此时可能会导致cache与数据库的数据一直或很长时间不一致
@@ -895,7 +895,7 @@ zrem key member
 				2.延时双删+设置缓存的超时时间
 				    不一致的原因是，在淘汰缓存之后，旧数据再次被读入缓存，且之后没有淘汰策略，
 				    所以解决思路就是，在更新数据库后，再次淘汰缓存，即淘汰缓存两次(延迟双删)。
-				  
+
 				    引入延时双删后，执行步骤变为下面这种情形：
                         A线程进行写操作，先成功淘汰缓存，但由于网络或其它原因，还未更新数据库或正在更新
                         B线程进行读操作，从数据库中读入旧数据，共耗时N秒
@@ -954,22 +954,22 @@ zrem key member
 	#其它
         重试机制可以采利用“消息队列MQ”来实现
         通过订阅binlog来异步更新缓存，可以通过canal中间件来实现
-  
-  
+
+
     #读写分离情况下，缓存和数据库不一致问题
     	由于主从库同步会有一定时间间隔，如果主库更新完成，缓存也已经删除，但是从库还未同步，但是这个时候触发读操作会读取从库的旧数据，并更新到缓存。
     #方案一.利用数据库自身特性
     	mysql中有全同步复制机制、半同步复制、异步复制三种复制方案。
     	当我们使用全同步复制机制时当A提交更新请求主库事务之后，不是立即返回，而是等到所有的从库节点必须收到、APPLY并且提交这些事务，
     	主库线程才返回请求A结果，才能做后续操作。这样就解决了数据同步延迟的问题。
-  
+
     	oracle共享存储
     	oracle的共享储存所有数据储存在同一个地方，只是启动了多个DB服务，所以不存在数据同步问题，当然这个部署方案不是严格意义的读写分离，储存是同一个。
     #方案二.缓存标记法
     	1. A发起写请求，更新了主库，但在缓存中设置一个标记，代表此数据已经更新。
-		2. 设置此标记，要加上过期时间，可以为预估的主库和从库同步延迟的时间
-		3. B发起读请求的时候，先判断此请求的业务在缓存中有没有更新标记
-		4. 如果存在标记，走主库；如果没有走从库。
+  		2. 设置此标记，要加上过期时间，可以为预估的主库和从库同步延迟的时间
+  		3. B发起读请求的时候，先判断此请求的业务在缓存中有没有更新标记
+  		4. 如果存在标记，走主库；如果没有走从库。
 	#方案三.延迟删除
 		订阅binlog，投递一个延迟消息，延迟消息的延迟时间，设置为主库与从库的数据同步延迟的时间，监听到延迟消息，在删除缓存。
 
@@ -1007,7 +1007,7 @@ zrem key member
 
 	1.命令本身的优化：减少使用慢查询，比如：
 	时间复杂度O(n)的命令，如hgetall、smember，lrange等;
-	生成环境慎用monitor命令、禁用keys命令、注意使用del命令(删除一个List/Hash/Set/ZSet类型时，它的复杂度是O(n))， 
+	生成环境慎用monitor命令、禁用keys命令、注意使用del命令(删除一个List/Hash/Set/ZSet类型时，它的复杂度是O(n))，
 		当del时：
 	 	如果是List类型，你可以执行lpop或者rpop，直到所有元素删除完成。
 		如果是Hash/Set/ZSet类型，你可以先执行hscan/sscan/scan查询，再执行hdel/srem/zrem依次删除每个元素。
@@ -1047,11 +1047,17 @@ zrem key member
         3.使用代理，在代理中进行统计，但并非所有的redis架构都有代理。
         4.服务端使用redis命令，如monitor，但存在性能隐患。
         5.在机器节点对redis进行抓包分析，但是热key网络流量和系统负载较高，抓包可能导致情况进一步恶化，比如ELK体系下使用packetbeat插件。
-  
-    解决方案：
-    	1.利用二级本地缓存，将热点key缓存在本地,分散热key压力。
+
+    并发读解决方案：
+    	1.利用二级本地缓存，将热点key缓存在本地,分散热key压力，设置定时轮询拉取分布式缓存到本地，或者加入消息队列更新本地缓存。
     	2.备份热点key，将热点key在多个redis备份起来，当热key请求进来的时候，从有备份的redis选取一台。
     	3.开启Redis持久化机制，尽快恢复缓存数据，一旦重启，就能从磁盘上自动加载数据恢复内存中的数据。
+    并发写解决方案：
+      1. 使用 watch 命令实现乐观锁。
+      2. 使用分布式锁， tryLock(long waitTime,long leaseTime,TimeUnit unit) 。
+      3. 合并写请求，将多次请求合并成一次，但要避免超卖问题。
+      4. 排队串行写。
+      5. 抢购限流。
     业内解决方案：
     	可以查看：有赞透明多级缓存解决方案.md
 
@@ -1062,14 +1068,14 @@ zrem key member
 	3.使用互斥锁，在某个key失效时，第一个请求使用互斥锁锁住key，其他请求获取不到数据也获取不到锁就先睡眠一段时间，
       等第一个请求从DB查询到了数据，并加入到缓存之后，其他请求再请求缓存，
       如果缓存还是没有数据，可能是第一个请求获取数据失败，这个时候锁应该主动解开或者若宕机，锁则超时解开，再由其他请求获取锁，再执行加载数据。
-  
+
   	 作为并发较大的应用，使用缓存有三个目标：
   	 	1.加快用户访问速度，提高用户体验。
   	 	2.降低后端负载，减少潜在的风险，保证系统平稳。
   	 	3.保证数据尽可能及时更新。
   	 互斥锁策略：存在隐患，如果重建缓存过程出现问题或者时间较长，可能会存在死锁或者线程池阻塞，但是能够较好的降低储存负载，一致性也比较好。
   	 不过期策略：不会有击穿的问题，但是会存在数据不一致情况。
-  	  
+
 # 缓存预热
 	1.数据量不大的时候，工程启动的时候进行加载缓存动作
 	2.数据量大的时候，设置一个定时任务脚本，进行缓存的刷新
@@ -1513,7 +1519,7 @@ serverCron 默认100ms执行一次，可以通过 redis.conf 中 hz 来配置。
 <参数N> CRLF
 
 例如：
-set hello world 
+set hello world
 
 *3
 $3

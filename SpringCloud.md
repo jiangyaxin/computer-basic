@@ -319,7 +319,7 @@ loadbalancer：用于替代Ribbon，负责负载均衡。
 
 ## OpenFeign
 
-内置 loadbalancer 做负载均衡。
+SpringCloud 高版本 openfeign 已经移除 Hystrix 和 Ribbon，内置 loadbalancer 做负载均衡，推荐使用 Resilience4j 做熔断。
 
 ### 使用
 
@@ -785,3 +785,136 @@ public class BlockingLoadBalancerClient implements LoadBalancerClient {
 3. 使用 Web 请求工具对目标服务进行远程调用。
 
 # 容错
+
+常见的熔断器有：Sentinel、Hystrix、Resilience4j
+
+![294](assets/294.png)
+
+隔离机制：
+
+1. 线程池隔离：每个依赖建立一个线程池，存储对当前依赖的请求。
+
+好处：
+* 应对突发流量：当流量洪峰到来时，不能及时处理的请求会被存储到线程池队列里慢慢处理。
+* 运行环境隔离：因为某些原因导致自己所在线程池被耗尽，也不会对系统的其他服务造成影响。
+缺点：
+* 每个依赖的服务都会申请线程池，会带来一定的资源消耗。
+
+2. 信号量隔离：通过信号量限制当前系统运行的数量，每个请求都会使信号量加+，如果信号量达到最大值，多于请求将被丢弃。
+
+缺点：无法应对突发流量。
+
+![295](assets/295.png)
+
+## Hystrix
+
+解决问题：
+1. 保护线程资源：防止单个服务的故障耗尽系统中的所有线程资源。
+3. 提供降级（FallBack）方案：在超时、资源不足时进行降级，提供一个设计好的降级方案，通常是一个兜底方法，当请求失败后即调用该方法。
+4. 熔断防止故障扩散：当失败率达到阀值时自动触发降级。
+5. 缓存：支持实时监控、报警、控制。
+
+降级场景：
+1. 程序运行异常。
+2. 服务超时。
+3. 熔断器处于打开状态。
+4. 线程池资源耗尽。
+
+熔断状态：
+1. 熔断关闭状态（Closed）：当务访问正常时，熔断器处于关闭状态，服务调用方可以正常地对服务进行调用。
+2. 熔断开启状态（Open）：默认情况下，在固定时间内接口调用出错比率达到一个阈值（例如 50%），熔断器会进入熔断开启状态。进入熔断状态后，后续对该服务的调用都会被切断，熔断器会执行本地的降级（FallBack）方法。
+3. 半熔断状态（Half-Open）： 在熔断开启一段时间之后，熔断器会进入半熔断状态。在半熔断状态下，熔断器会尝试恢复服务调用方对服务的调用，允许部分请求调用该服务，并监控其调用成功率。如果成功率达到预期，则说明服务已恢复正常，熔断器进入关闭状态；如果成功率仍旧很低，则重新进入熔断开启状态。
+
+### 使用
+
+1. 引入依赖：
+
+```java
+<dependency>
+  <groupId>org.springframework.cloud</groupId>
+  <artifactId>spring-cloud-starter-netflix-hystrix</artifactId>
+</dependency>
+```
+
+2. 使用 @EnableCircuitBreaker 开启熔断。
+3. 使用 @HystrixCommand 和 @HystrixObservableCommand 配置熔断。
+
+```java
+@HystrixCommand(commandKey = "getCompanyInfoById",
+                groupKey = "company-info",
+                threadPoolKey = "company-info",
+                fallbackMethod = "fallbackMethod",
+                threadPoolProperties = {
+                    @HystrixProperty(name = "coreSize", value = "30"),
+                    @HystrixProperty(name = "maxQueueSize", value = "101"),
+                    @HystrixProperty(name = "keepAliveTimeMinutes", value = "2"),
+                    @HystrixProperty(name = "queueSizeRejectionThreshold", value = "15"),
+                 })
+```
+
+* commandKey: 代表一个接口, 如果不配置，默认是@HystrixCommand注解修饰的函数的函数名。
+* groupKey: 代表一个服务，一个服务可能会暴露多个接口。 Hystrix会根据组来组织和统计命令的告、仪表盘等信息。Hystrix命令默认的线程划分也是根据组来实现。默认情况下，Hystrix会让相同组名的命令使用同一个线程池，所以我们需要在创建Hystrix命令时为其指定命令组来实现默认的线程池划分。
+* threadPoolKey: 对线程池进行更细粒度的配置，默认等于groupKey的值。如果依赖服务中的某个接口耗时较长，需要单独特殊处理，最好单独用一个线程池，这时候就可以配置threadpool key。也可以多个服务接口设置同一个threadPoolKey构成线程组。
+* fallbackMethod：@HystrixCommand注解修饰的函数的回调函数，@HystrixCommand修饰的函数必须和这个回调函数定义在同一个类中，因为定义在了同一个类中，所以fackback method可以是public/private均可。
+* 线程池配置：coreSize表示核心线程数，hystrix默认是10；maxQueueSize表示线程池的最大队列大小； keepAliveTimeMinutes表示非核心线程空闲时最大存活时间；queueSizeRejectionThreshold：该参数用来为队列设置拒绝阈值。通过该参数，即使队列没有达到最大值也能拒绝请求。
+
+## Sentinel
+
+# 配置管理
+
+解决问题：
+1. 所有配置数据在配置中心，进入服务器或容器内也无法知道配置信息。
+2. 配置数据从配置中心获取，动态修改后，配置中心会推送新的配置到各个应用。
+3. 所有实例配置都从配置中心获取，不存在数据不一致的问题。
+4. 配置中心可进行版本管理，在配置数据下发过程中出现问题，可以回滚到上一版本。
+
+## SpringCloud启动流程
+
+Springboot加载配置文件：SpringApplication 使用 ConfigFileApplicationListener 根据 Environment 中 spring.config.name 加载配置文件 PropertySource 到 Environment。
+
+![296](assets/296.png)
+
+1. SpringBoot 发布 ApplicationEnvironmentPreparedEvent 触发 SpringCloud 的 BootstrapApplicationListener 监听。
+2. 通过判断 spring.cloud.bootstrap.enabled 和 environment中是否存在bootstrap的PropertySource 来决定是否创建 BootstrapContext 。
+3. 将 spring.config.name = bootstrap 设置到 Environment。
+4. 使用 SpringApplicationBuilder 创建 SpringApplication，由 ConfigFileApplicationListener 加载 bootstrap.yml 到 Environment，创建 BootstrapContext，并添加 AncestorInitializer 监听 ApplicationContext 的创建，在 ApplicationContext 创建之后将 BootstrapContext 设置为 ApplicationContext 的父上下文。
+
+![297](assets/297.png)
+
+5. 创建 ApplicationContext 时会触发 PropertySourceBootstrapConfiguration，PropertySourceBootstrapConfiguration 通过加 ConfigServicePropertySourceLocator、NacosPropertySourceLocator、CustomPropertySourceLocator 完成从配置中心加载 PropertySource。
+
+### 配置刷新
+
+![298](assets/298.png)
+
+1. 通过 RefreshAutoConfiguration 配置 ContextRefresher。
+2. 通过 RefreshEndpointAutoConfiguration 配置 refresh 端点。
+3. refresh 端点 被触发时调用 ContextRefresher 刷新。
+
+ContextRefresher 使用 SpringApplicationBuilder 创建临时 context ，再从临时 context 的 Environment 中取出  PropertySource，覆盖当前 context 的  PropertySource。
+
+## SpringCloudContext 扩展点
+
+* RefreshEvent：发布该事件会使 RefreshEventListener 调用 ContextRefresher 刷新。
+* EnvironmentChangeEvent：ContextRefresher 刷新完成之后会发布该事件，事件中包含keys集合，储存改变的数据。
+* @RefreshScope：被该注解修饰的示例在收到 RefreshEvent 后会被销毁，再次获取该实例的时候会重新构造，意味着会重新解析表达式。
+
+值得注意的是 发布RefreshEvent 和 @RefreshScope 不能存在同一个类总，否则会造成死锁。
+
+* @ConfigurationProperties 修饰的类会在 EnvironmentChangeEvent 触发时重新绑定，通过 ConfigurationPropertiesRebinder 实现。
+
+## SpringCloudConfig
+
+### 使用
+
+
+
+# 网关
+
+# 链路跟踪
+
+# 监控
+
+# 消息总线
+
+# 消息驱动

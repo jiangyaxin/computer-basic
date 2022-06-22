@@ -615,3 +615,173 @@ org.springframework.cloud.openfeign.loadbalancer.FeignLoadBalancerAutoConfigurat
 | feign.httpclient.time-to-live-unit         | SECONDS                                       |                                                                                                           |
 | feign.circuitbreaker.enabled               | false                                         | 如果为true，则将使用Hystrix断路器包装OpenFeign客户端。</br> 2020版本后，之前为 feign.hystrix.enabled=true |
 | feign.okhttp.enabled                       | false                                         | 启用Feign使用OK HTTP Client。                                                                             |
+
+## LoadBalancer
+
+openfeign 默认使用 负载均衡配置。
+
+### 使用
+
+对不同的服务使用不同的负载策略：
+
+```java
+@LoadBalancerClients(
+value = {
+
+@LoadBalancerClient(value = "loadbalancer-provider", configuration = CustomRandomConfig.class),
+@LoadBalancerClient(value = "loadbalancer-log", configuration = CustomRoundRobinConfig.class)
+}, defaultConfiguration = LoadBalancerClientConfiguration.class
+)
+public class RestTemplateConfig {
+}
+```
+
+* ladbalancer-provider 服务使用的负载均衡策略是 RandomLoadBalancer 随机负载均衡。
+* loadbalancer-log 使用的是 RoundRobinLoadBalancer 轮训策略。
+* 其他没有标识的则使用默认的配置 LoadBalancerClientConfiguration（轮询）。
+
+创建负载均衡客户端：@LoadBalanced 通过将拦截器设置到 RestTemplate，实现负载均衡
+
+```java
+@LoadBalanced
+@Bean
+public RestTemplate restTemplate() {
+    return new RestTemplate();
+}
+```
+
+常用配置：重试配置对 openfeign 不生效，需要使用 Retryer 编码实现。
+
+```yaml
+spring:
+  application:
+    name: loadbalancer-consumer
+  cloud:
+    loadbalancer:
+      # 以下配置为 LoadBalancerProperties 配置类
+      clients:
+        # default 表示全局配置，如要针对某个服务，则填写对应的服务名即可
+        default:
+          retry:
+            enbled: true
+            # 是否所有的请求都重试，false 表示只有 GET 请求才重试
+            retryOnAllOperations: true
+            # 同一个实例的重试次数，不包括第一次调用；比如填了 3，实际会调用 4 次
+            maxRetriesOnSameServiceInstance: 3
+            # 其他实例的重试次数，多节点的情况下使用
+            maxRetriesOnNextServiceInstance: 0
+```
+
+自定义负载均衡策略，可实现 ReactorServiceInstanceLoadBalancer ，一般可复制 RoundRobinLoadBalancer 修改，例如：
+
+```java
+public class PeachLoadBalancer implements ReactorServiceInstanceLoadBalancer {
+    private static final Log log = LogFactory.getLog(RoundRobinLoadBalancer.class);
+
+    final AtomicInteger position;//请求的次数
+
+    final String serviceId; //服务名称 用于提示报错信息的
+
+    private int flag = 0; //自己定义的计数器
+
+    //两个参数的构造方法 需要服务名称和实例提供者 这个在方法中传递进来
+    public PeachLoadBalancer(ObjectProvider<ServiceInstanceListSupplier> serviceInstanceListSupplierProvider,
+                                  String serviceId) {
+        //如果不传人请求次数就自己初始化 反正每次都+1
+        this(new Random().nextInt(1000), serviceId,serviceInstanceListSupplierProvider);
+    }
+
+    public PeachLoadBalancer(int seedPosition, String serviceId, ObjectProvider<ServiceInstanceListSupplier> serviceInstanceListSupplierProvider) {
+        this.position = new AtomicInteger(seedPosition);
+        this.serviceId = serviceId;
+        this.serviceInstanceListSupplierProvider = serviceInstanceListSupplierProvider;
+    }
+
+    ObjectProvider<ServiceInstanceListSupplier> serviceInstanceListSupplierProvider;
+    @Override
+    public Mono<Response<ServiceInstance>> choose(Request request) {
+        //从服务提供者中获取到当前request请求中的serviceInstances并且遍历
+        ServiceInstanceListSupplier supplier = serviceInstanceListSupplierProvider
+                .getIfAvailable(NoopServiceInstanceListSupplier::new);
+        return supplier.get(request).next()
+                .map(serviceInstances -> processInstanceResponse(supplier, serviceInstances));
+    }
+
+    private Response<ServiceInstance> processInstanceResponse(ServiceInstanceListSupplier supplier,
+                                                              List<ServiceInstance> serviceInstances) {
+        Response<ServiceInstance> serviceInstanceResponse = getInstanceResponse(serviceInstances);
+        if (supplier instanceof SelectedInstanceCallback && serviceInstanceResponse.hasServer()) {
+            ((SelectedInstanceCallback) supplier).selectedServiceInstance(serviceInstanceResponse.getServer());
+        }
+        return serviceInstanceResponse;
+    }
+
+    private Response<ServiceInstance> getInstanceResponse(List<ServiceInstance> instances) {
+        if (instances.isEmpty()) {
+            if (log.isWarnEnabled()) {
+                log.warn("No servers available for service: " + serviceId);
+            }
+            return new EmptyResponse();
+        }
+        //pos是当前请求的次数 这样可以自定义负载均衡的切换  这个每次+1的操作是复制的 最好是不删
+        int pos = Math.abs(this.position.incrementAndGet());
+
+        if (pos%4==0){
+            //是4的倍数就切换
+            flag += 1;
+        }
+        if (flag >= instances.size()){
+            flag = 0;
+        }
+        //主要的就是这句代码设置负载均衡切换
+        ServiceInstance instance = instances.get(flag);
+        return new DefaultResponse(instance);
+    }
+}
+```
+
+### 工作流程
+
+![293](assets/293.png)
+
+1. 从注册中心获取服务列表，通过 ServiceInstanceListSupplier 获取。
+
+```java
+public ServiceInstanceListSupplier discoveryClientServiceInstanceListSupplier(
+    ConfigurableApplicationContext context) {
+    // 从服务发现与缓存中获取服务实例
+    return ServiceInstanceListSupplier.builder().withBlockingDiscoveryClient().withCaching().build(context);
+}
+```
+
+2. 根据负载策略找到目标服务，重新构造请求地址。
+
+```java
+public class BlockingLoadBalancerClient implements LoadBalancerClient {
+
+	private final ReactiveLoadBalancer.Factory<ServiceInstance> loadBalancerClientFactory;
+
+    @Override
+	public <T> T execute(String serviceId, LoadBalancerRequest<T> request) throws IOException {
+        // 略...
+        // 在 choose 方法获取服务实例
+		ServiceInstance serviceInstance = choose(serviceId, lbRequest);
+		// 略...
+		return execute(serviceId, serviceInstance, lbRequest);
+	}
+
+    @Override
+	public <T> ServiceInstance choose(String serviceId, Request<T> request) {
+        // loadBalancerClientFactory 是 NamedContextFactory 的实现类，根据服务名获取子容器 ReactorServiceInstanceLoadBalancer 实例
+		ReactiveLoadBalancer<ServiceInstance> loadBalancer = loadBalancerClientFactory.getInstance(serviceId);
+		// 调用负载均衡策略获取目标服务实例
+        Response<ServiceInstance> loadBalancerResponse = Mono.from(loadBalancer.choose(request)).block();
+        // 略...
+		return loadBalancerResponse.getServer();
+	}
+}
+```
+
+3. 使用 Web 请求工具对目标服务进行远程调用。
+
+# 容错

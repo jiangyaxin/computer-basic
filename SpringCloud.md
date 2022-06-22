@@ -616,6 +616,10 @@ org.springframework.cloud.openfeign.loadbalancer.FeignLoadBalancerAutoConfigurat
 | feign.circuitbreaker.enabled               | false                                         | 如果为true，则将使用Hystrix断路器包装OpenFeign客户端。</br> 2020版本后，之前为 feign.hystrix.enabled=true |
 | feign.okhttp.enabled                       | false                                         | 启用Feign使用OK HTTP Client。                                                                             |
 
+## gRPC
+
+## Dubbo
+
 ## LoadBalancer
 
 openfeign 默认使用 负载均衡配置。
@@ -872,6 +876,8 @@ public class BlockingLoadBalancerClient implements LoadBalancerClient {
 
 Springboot加载配置文件：SpringApplication 使用 ConfigFileApplicationListener 根据 Environment 中 spring.config.name 加载配置文件 PropertySource 到 Environment。
 
+所有配置文件存在于 Environment 中。
+
 ![296](assets/296.png)
 
 1. SpringBoot 发布 ApplicationEnvironmentPreparedEvent 触发 SpringCloud 的 BootstrapApplicationListener 监听。
@@ -889,7 +895,7 @@ Springboot加载配置文件：SpringApplication 使用 ConfigFileApplicationLis
 
 1. 通过 RefreshAutoConfiguration 配置 ContextRefresher。
 2. 通过 RefreshEndpointAutoConfiguration 配置 refresh 端点。
-3. refresh 端点 被触发时调用 ContextRefresher 刷新。
+3. refresh 端点 被触发时调用 ContextRefresher 刷新，可通过 SpringCloudBus 的 bus-refresh 端点来达到多节点配置动态刷新的目的。
 
 ContextRefresher 使用 SpringApplicationBuilder 创建临时 context ，再从临时 context 的 Environment 中取出  PropertySource，覆盖当前 context 的  PropertySource。
 
@@ -907,13 +913,248 @@ ContextRefresher 使用 SpringApplicationBuilder 创建临时 context ，再从�
 
 ### 使用
 
+#### 服务端
 
+1. 添加依赖。
+
+```xml
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-config-server</artifactId>
+</dependency>
+```
+
+2. 添加配置。
+
+```yaml
+spring:
+  cloud:
+    config:
+      server:
+        # Spring Cloud Config Server 的 Git 存储器的配置项，对应 MultipleJGitEnvironmentProperties 类
+        git:
+          # Git 仓库地址
+          uri: https://xxxx
+          # 读取文件的根地址
+          search-paths: /
+          # 使用的默认分支，默认为 master
+          default-label: master
+#          username: ${CODING_USERNAME}
+#          password: ${CODING_PASSWORD}
+```
+
+git.uri 可以使用 file://xxxx/xx 来配置本地仓库，方便开发调试。
+
+当 spring.active.profiles=native 时，使用本地文件系统，默认路径和Springboot一样。
+
+3. 使用 @EnableConfigServer 配置开启。
+
+EnvironmentController 提供 HTTP 接口，可通过接口访问。
+
+```java
+@RequestMapping(path = "/{name}/{profiles:.*[^-].*}", produces = MediaType.APPLICATION_JSON_VALUE)
+
+@RequestMapping("/{name}-{profiles}.properties")
+
+@RequestMapping("/{label}/{name}-{profiles}.properties")
+
+@RequestMapping("{name}-{profiles}.json")
+
+@RequestMapping("/{label}/{name}-{profiles}.json")
+
+@RequestMapping({ "/{name}-{profiles}.yml", "/{name}-{profiles}.yaml" })
+
+@RequestMapping({ "/{label}/{name}-{profiles}.yml", "/{label}/{name}-{profiles}.yaml" })
+```
+
+![299](assets/299.png)
+
+1. {name}：配置文件的名字。Spring Cloud Config Client 默认约定，使用应用名 spring.application.name 读取对应的配置文件。
+2. {profiles}：配置文件的 Profile，一般用于解决不同环境下的配置文件。Spring Cloud Config Client 默认约定，使用 spring.profiles.active 读取对应的 Profile 配置文件。
+3. {label}：标签。在使用 Spring Cloud Config Server 使用 Git 作为存储器时，{label} 对应的是分支。
+
+#### 客户端
+
+1. 添加依赖。
+
+```xml
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-config</artifactId>
+</dependency>
+```
+
+2. 添加配置。
+
+```yaml
+spring:
+  cloud:
+    config:
+      profile: dev
+      label: master
+      uri: http://ip:port
+```
+
+或者使用 集群配置：
+
+```yaml
+spring:
+  cloud:
+    config:
+      discovery:
+        enabled: true
+        serviceId: config-server
+      profile: dev
+      label: master
+```
+
+3. 使用 @RefreshScope 重新绑定数据。
+
+## nacos
 
 # 网关
 
+功能：
+1. 将所有的API统一聚合，统一对外暴露，外界系统不需要知道微服务系统中各服务互相调用的复杂性。
+2. 网关服务可以做用户身份认证和权限认证。
+3. 可以实现监控功能，实时日志输出。
+4. 可以实现流量监控，对高流量服务进行降级。
+
+## Zuul
+
+基于 Servlet，采用阻塞和多线程方式，当内部延迟严重、设备故障较多时会引起资源紧张。
+
+### 使用
+
+1. 引入依赖
+
+```xml
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-zuul</artifactId>
+</dependency>
+```
+
+2. 使用 @EnableZuulProxy 开启配置。
+3. 添加路由规则
+
+```yaml
+zuul.routes.xxxx.path=/xxxx/**
+zuul.routes.api-a.serviceId=xxxx
+
+# 本地跳转
+zuul.routes.xxxx.path=/xxxx/**
+zuul.routes.xxxx.url=forward:/local
+```
+
+可以通过继承 ZuulFilter 实现自己的过滤器，比如鉴权。
+
+1. 继承 ZuulFilter
+
+```java
+String filterType();
+
+int filterOrder();
+
+boolean shouldFilter();
+
+Object run();
+```
+
+过滤器包含4个特征：过滤类型、执行顺序、执行条件、具体操作。
+
+1. filterType：该函数需要返回一个字符串来代表过滤器的类型，而这个类型就是在HTTP请求过程中定义的各个阶段。在Zuul中默认定义了四种不同生命周期的过滤器类型，具体如下：
+  * pre：可以在请求被路由之前调用。
+  * routing：在路由请求时候被调用,负责转发。
+  * post：在routing和error过滤器之后被调用。
+  * error：处理请求时发生错误时被调用。
+2. filterOrder：通过int值来定义过滤器的执行顺序，数值越小优先级越高。
+3. shouldFilter：返回一个boolean类型来判断该过滤器是否要执行。我们可以通过此方法来指定过滤器的有效范围。
+4. run：过滤器的具体逻辑。在该函数中，我们可以实现自定义的过滤逻辑，来确定是否要拦截当前的请求，不对其进行后续的路由，或是在请求路由返回结果之后，对处理结果做一些加工等。
+
+默认的过滤器：
+
+![300](assets/300.png)
+
+2. 注入到 Spring 容器。
+
+## SpringCloudGateWay
+
 # 链路跟踪
 
+解决问题：
+* 提供链路追踪：可以清楚的看出一个请求经过了哪些服务。
+* 性能分析：可以很方便的看出每个采集请求的耗时。
+* 优化链路：对于频繁地调用一个服务，可以针对业务做一些优化措施
+
+## Sleuth + Zipkin
+
+基本概念：
+* span：基本工作单位，每次发送一个远程调用服务就会产生一个 Span。Span 是一个 64 位的唯一 ID。通过计算 Span 的开始和结束时间，就可以统计每个服务调用所花费的时间。
+
+* Trace：一系列 Span 组成的树状结构，一个 Trace 认为是一次完整的链路，内部包含 n 多个 Span。Trace 和 Span 存在一对多的关系，Span 与 Span 之间存在父子关系。
+
+* Annotations：用来及时记录一个事件的存在，一些核心 annotations 用来定义一个请求的开始和结束。
+
+```java
+cs - Client Sent：客户端发起一个请求，这个 annotation 描述了这个 span 的开始；
+sr - Server Received：服务端获得请求并准备开始处理它，如果 sr 减去 cs 时间戳便可得到网络延迟；
+ss - Server Sent：请求处理完成（当请求返回客户端），如果 ss 减去 sr 时间戳便可得到服务端处理请求需要的时间；
+cr - Client Received：表示 span 结束，客户端成功接收到服务端的回复，如果 cr 减去 cs 时间戳便可得到客户端从服务端获取回复的所有所需时间。
+```
+
+Zipkin 分为服务端和客户端，客户端也就是微服务的应用，客户端会配置服务端的 URL 地址，一旦发生服务间的调用的时候，会被配置在微服务里面的 Sleuth 的监听器监听，并生成相应的 Trace 和 Span 信息发送给服务端。发送的方式有两种，一种是消息总线的方式如 RabbitMQ 发送，还有一种是 HTTP 报文的方式发送。
+
+sleuth 在发起请求时会在请求头中加入信息：
+1. X-B3-TraceId：一条请求链路的唯一标识。
+2. X-B3-SpanId：一个工作单元的唯一标识。
+3. X-B3-ParentSpanId：上一个工作单元，Root Span该值为空。
+4. X-B3-Sampled：是否被采样，1表示输出，0表示不输出。
+5. X-Span-Name：工作单元的名称。
+
+可在日志输出上引用这些信息，如 %X{X-B3-TraceId:-}
+
+![301](assets/301.png)
+
+### 使用
+
+1. 搭建zipkin 服务端,可访问官方 https://zipkin.io/ 安装,docker 安装如下：
+
+```bash
+docker run -d -p 9411:9411 openzipkin/zipkin
+#或者增加es存储环境
+docker run -d -p 9411:9411 --env STORAGE_TYPE=elasticsearch --env ES_HOSTS=http://192.168.0.100:9200  openzipkin/zipkin
+```
+
+2. 配置客户端
+
+```xml
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-sleuth</artifactId>
+</dependency>
+
+<dependency>
+   <groupId>org.springframework.cloud</groupId>
+   <artifactId>spring-cloud-starter-zipkin</artifactId>
+ </dependency>
+```
+
+```yaml
+spring:
+  zipkin:
+    base-url: http://127.0.0.1:9411
+  sleuth:
+    sampler:
+      # 采样率
+      probability: 1.0
+```
+
+3. 访问 http://127.0.0.1:9411/zipkin/ 页面。
+
 # 监控
+
+
 
 # 消息总线
 

@@ -1154,8 +1154,116 @@ spring:
 
 # 监控
 
+## SpringbootAdmin
+
+通过 Actuator 收集应用系统的健康状态、内存、线程、堆栈、配置等信息，并提供可视化的监控平台。
+
+SpringbootAdmin 分为 服务端和客户端：
+* spring-boot-admin-server通过采集actuator端点数据显示在spring-boot-admin-ui上，已知的端点几乎都有进行采集。
+* spring-boot-admin-client是对Actuator的封装，提供应用系统的性能监控数据。此外，还可以通过spring-boot-admin动态切换日志级别、导出日志、导出heapdump、监控各项性能指标等。
+
+### 使用
+
+服务端：
+
+1. 引入依赖
+
+```xml
+<dependency>
+   <groupId>de.codecentric</groupId>
+   <artifactId>spring-boot-admin-starter-server</artifactId>
+</dependency>
+```
+
+2. 使用 @EnableAdminServer 开启服务。
+
+客户端：
+
+1. 引入依赖
+
+```xml
+<dependency>
+   <groupId>de.codecentric</groupId>
+   <artifactId>spring-boot-admin-starter-client</artifactId>
+</dependency>
+```
+
+2. 添加配置
+
+```yaml
+spring:
+  boot:
+    admin:
+      client:
+        # 服务端 url
+        url: http://127.0.0.1:9090
+management:
+  endpoints:
+    web:
+      exposure:
+        # 暴漏的接口 - 所有接口
+        include: "*"
+```
+# 消息驱动
 
 
 # 消息总线
 
-# 消息驱动
+消息总线是一种消息传递基础结构，它允许不同的系统通过一组共享的接口进行通信，降低应用间的依赖。
+
+使用场景：
+1. 消息路由到一个或多个目的地。
+2. 消息转化为其他的表现方式。
+3. 执行消息的拒绝、分解，并将结果发送到它们的目的地，然后重新组合响应返回给消息用户。
+4. 使用发布-订阅模式来提供内容或基于主题的消息路由。
+
+## SpringCloudBus + kafka
+
+### 使用
+
+1. 引入依赖
+
+```xml
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-bus-kafka</artifactId>
+</dependency>
+```
+
+2. 添加配置
+
+```java
+spring:
+  cloud:
+    bus:
+#      是否开启，默认为 true
+      enabled: true
+#      目标消息队列，默认为 springCloudBus
+      destination: springCloudBus
+      ack:
+#        收到event,回复ack event,默认 为true
+        enabled: false
+      trace:
+        enabled: false
+    stream:
+      kafka:
+        binder:
+          brokers:
+            - ip:port
+            - ip:port
+            - ip:port
+          required-acks: 1
+      bindings:
+#        bus默认Channel，定义在 org.springframework.cloud.bus.BusConstants
+        springCloudBusInput:
+          group: ${spring.application.name}
+```
+3. 使用 @RemoteApplicationEventScan 开启 RemoteApplicationEvent 扫描。
+4. 发布 RemoteApplicationEvent 。
+5. 使用 @EventListener 注解监听事件。
+
+SpringCloudBus默认提供的远程事件：
+1. EnvironmentChangeRemoteApplicationEvent：配置信息修改远程事件，任意应用修改，总线上所有应用接收到该远程事件。
+2. AckRemoteApplicationEvent：远程事件发送成功响应。
+3. RefreshRemoteApplicationEvent：配置刷新远程事件。
+4. UnknownRemoteApplicationEvent：未知远程事件，当没有使用  @RemoteApplicationEventScan 时，会被识别为 UnknownRemoteApplicationEvent 。

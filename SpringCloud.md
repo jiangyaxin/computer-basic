@@ -1233,8 +1233,496 @@ public interface Message<T> {
 }
 ```
 
-Message 的两个方法，分别用于获取消息体和消息头，
+Message 的两个方法，分别用于获取消息体和消息头，MessageHeaders 实现了 java.util.Map ，是一个 Immutable 类型的对象。
 
+可使用 MessageBuilder 的静态方法创建，如 MessageBuilder.withPayload("xxx").setHeader("k","v").build() 。
+
+Message有以下几种实现类：
+* GenericMessage：不可变的普通消息。
+* ErrorMessage：错误消息，Payload 是 Throwable。
+* MutableMessage：可变消息。
+
+## MessageChannel
+
+```java
+public interface MessageChannel {
+
+	long INDEFINITE_TIMEOUT = -1;
+
+	default boolean send(Message<?> message) {
+		return send(message, INDEFINITE_TIMEOUT);
+	}
+
+	boolean send(Message<?> message, long timeout);
+}
+```
+
+```java
+public interface PollableChannel extends MessageChannel {
+
+	@Nullable
+	Message<?> receive();
+
+	@Nullable
+	Message<?> receive(long timeout);
+
+}
+```
+
+```java
+public interface PollableChannel extends MessageChannel {
+
+	@Nullable
+	Message<?> receive();
+
+	@Nullable
+	Message<?> receive(long timeout);
+
+}
+
+public interface SubscribableChannel extends MessageChannel {
+
+	boolean subscribe(MessageHandler handler);
+
+	boolean unsubscribe(MessageHandler handler);
+}
+```
+
+PollableChannel 使用拉取的方式获取消息，SubscribableChannel 使用订阅的方式使用 MessageHandler 处理消息。
+
+ChannelInterceptor 用于在 SubscribableChannel 发送消息前、发送消息后、发送消息完成时进行拦截，对于 PollableChannel 类型会在消息接收前、接收后、接收完成时进行拦截。
+
+自定义 SubscribableChannel，可通过继承 AbstractSubscribableChannel 来实现。
+
+## SpringIntegration
+
+1. MessageDispatcher：消息分发器，负责将消息分发给 MessageHandler ，例如 BroadcastingDispatcher 使用广播模式。
+2. Transformer：消息转换器，负责把 Message A 转换成 Message B。
+3. MessageSelector：消息选择器，与 MessageFilter 配合对消息进行过滤然后发送到新的消息通道。
+4. MessageRouter：根据不同的条件将消息发送给不同的 MessageChannel。
+5. Aggregator：消息聚合器，把一组消息根据一些条件聚合成一团消息。
+6. Splitter：消息分割器，把一条消息根据一些条件分割成多条消息。
+7. ChannelAdapter：通道适配器，分为 OutboundChannelAdapter （负责MessageChannel上的消息发送到应用上）、InboundChannelAdapter （读取应用上的消息发送到MessageChannel）
+8. MessagingGateway：消息网关，以Http网关的形式将消息的操作暴露出去。
+9. PollingConsumer：消息轮询消费者，会在 Receiver 内部一直轮询拉取。
+
+使用：
+
+```java
+@Filter(inputChannel = "input",discardChannel = "discard",outputChannel = "output")
+public boolean receiveByFilter(String receiveMsg){
+  if(receiveMsg.contains("keywords")){
+    return true;
+  }
+  return false;
+}
+
+@Transformer(inputChannel = "input",outputChannel = "output")
+public Message receiveByTransformer(Message message){
+  message.getHeaders().remove("secret");
+  return message;
+}
+
+@InboundChannelAdapter(value = "input", poller = @Poller(fixedDelay = "10000",maxMessagesPerPoll = "1"))
+public MessageSource<OrderMsg> orderMessageSource() {
+  return () -> {
+    return MessageBuilder.withPayload(new OrderMsg(randomGoods,random.nextInt(5))).build();
+  };
+}
+```
+
+## SpringCloudStream
+
+Binder 是外部消息系统的抽象。
+
+Bindings 由 Binder 创建，是实际消息交互的桥梁，对应一个消费者或者生产者。
+
+### 老版本
+
+编程模型由@EnableBinding、@Output、@Input、@StreamListener、@SendTo 组成。
+
+@StreamListener、@Transformer、@Filter 底层实际构造了一个 MessageHandler。
+
+生产者：
+
+```java
+@SpringBootApplication
+public class ProducerApplication {
+
+    public static void main(String[] args) {
+        SpringApplication.run(ProducerApplication.class, args);
+    }
+}
+
+@RestController
+@EnableBinding(MySource.class)
+public class Producer {
+
+    @Autowired
+    private MySource channel;
+
+    @RequestMapping("/send")
+    public String send() {
+        channel.output().send(MessageBuilder.withPayload(new Date()).build());
+        return "success";
+    }
+}
+
+public interface MySource {
+    String OUTPUT = "output";
+
+    @Output(MySource.OUTPUT)
+    MessageChannel output();
+}
+```
+
+配置文件:
+
+```yaml
+spring:
+  rabbitmq:
+    host: 192.168.163.128
+    username: cms
+    password: cms-mq-admin
+  cloud:
+    stream:
+      bindings:
+        output:
+          destination: my-test-channel
+server:
+  port: 8082
+```
+
+
+可使用 `spring.cloud.stream.bindings.<channelName>.producer.errorChannelEnabled=true` 打开消息发送失败的处理逻辑，如果消息发送失败会发送到 topic.errors 的 DirectChannel，可以订阅该通道，处理错误消息，例如：
+
+```java
+@ServcieActivator(intputChannel = "xxxx.errors")
+public void receiveProduceError(Message receiveMsg){
+  System.out.println("receive error msg:" + receiveMsg);
+}
+```
+
+@ServcieActivator 不具备消息转换的能力，@StreamListener 具备消息转换的能力。
+
+消费者：
+
+```java
+@SpringBootApplication
+public class ConsumerApplication {
+
+    public static void main(String[] args) {
+        SpringApplication.run(ConsumerApplication.class, args);
+    }
+}
+
+@EnableBinding(MySink.class)
+public class Consumer {
+    @StreamListener(MySink.INPUT)
+    public void receive(Message<String> message) {
+        System.out.println("接收到MQ消息:" + message.getPayload());
+    }
+}
+
+public interface MySink {
+    String INPUT = "input";
+
+    @Input(MySink.INPUT)
+    SubscribableChannel input();
+}
+```
+
+配置文件：
+
+```yaml
+spring:
+  rabbitmq:
+    host: 192.168.163.128
+    username: cms
+    password: cms-mq-admin
+  cloud:
+    stream:
+      bindings:
+        input:
+          destination: my-test-channel
+server:
+  port: 8081
+```
+
+如果消息接收失败会发送到 topic.group.errors 的 DirectChannel，可以订阅该通道，处理错误消息，例如：
+
+```java
+@ServcieActivator(intputChannel = "xxxx.xxxx-group.errors")
+public void receiveConsumeError(Message receiveMsg){
+  System.out.println("receive error msg:" + receiveMsg);
+}
+```
+
+### 新版本
+
+1. 定时驱动的消息队列：
+
+* 使用 Supplier、Function、Consumer 定义生产者和消费者。
+
+```java
+@Bean
+public Function<String, String> uppercase() {
+    return value -> {
+        System.out.println("Received: " + value);
+        return value.toUpperCase()
+    };
+}
+
+@Bean
+public Supplier<Date> date() {
+  return () -> new Date(12345L);
+}
+```
+
+* 使用 `input - <functionName> + -in- + <index>`、`output - <functionName> + -out- + <index>` 绑定管道，当有多个管道需要做聚合时通过index区分。
+
+例如： `spring.cloud.stream.function.bindings.uppercase-in-0=input`
+
+* 使用 `spring.cloud.stream.poller.fixedDelay` 定义生产多久产生一条消息，默认 1s 中一条。
+
+示例：
+
+```java
+@SpringBootApplication
+public class ProducerApplication {
+
+    public static void main(String[] args) {
+        SpringApplication.run(ProducerApplication.class, args);
+    }
+
+    @Bean
+    public Supplier<Date> source1() {
+        return () -> new Date();
+    }
+}
+```
+
+```yaml
+spring:
+  rabbitmq:
+    host: 192.168.163.128
+    username: cms
+    password: cms-mq-admin
+
+  cloud:
+    stream:
+      bindings:
+        source1-out-0:
+          destination: test1
+    function:
+      definition: source1
+
+server:
+  port: 8083
+```
+
+2. 手动触发的消息队列：StreamBridge
+
+生产者：
+
+```java
+@SpringBootApplication
+public class ProducerApplication {
+
+    public static void main(String[] args) {
+        SpringApplication.run(ProducerApplication.class, args);
+    }
+}
+
+@RestController
+public class Producer {
+
+    @Autowired
+    private StreamBridge streamBridge;
+
+    @RequestMapping("/send1")
+    public String send1() {
+        streamBridge.send("source1-out-0", new Date());
+        return "success1";
+    }
+
+    @RequestMapping("/send2")
+    public String send2() {
+        streamBridge.send("source2-out-0", LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+        return "success2";
+    }
+
+}
+```
+
+配置文件:
+
+```yaml
+spring:
+  rabbitmq:
+    host: 192.168.133.128
+    username: dev-user
+    password: devpassword
+
+  cloud:
+    stream:
+      bindings:
+        source1-out-0:
+          destination: test2
+        source2-out-0:
+          destination: test3
+    function:
+      definition: source1;source2
+
+
+server:
+  port: 8083
+```
+
+消费者：
+
+```java
+@SpringBootApplication
+public class ConsumerApplication {
+
+    public static void main(String[] args) {
+        SpringApplication.run(ConsumerApplication.class, args);
+    }
+
+    @Bean
+    public Consumer<Date> sink1() {
+        return System.out::println;
+    }
+
+    @Bean
+    public Consumer<String> sink2() {
+        return System.out::println;
+    }
+}
+```
+
+配置文件：
+
+```yaml
+spring:
+  rabbitmq:
+    host: 192.168.133.128
+    username: dev-user
+    password: devpassword
+
+  cloud:
+    stream:
+      bindings:
+        sink1-in-0:
+          destination: test2
+        sink2-in-0:
+          destination: test3
+    function:
+      definition: sink1;sink2
+
+server:
+  port: 8081
+```
+
+### 常用配置
+
+```yaml
+spring:
+  cloud:
+    stream:
+#      有多少个消费者实例
+#      instance-count: 1
+#      当前消费者实例的索引
+#      instance-index: 0
+#      注意topic是stream的属性
+#      dynamic-destinations
+#      spring.cloud.stream.default.<producer|consumer>.<property>=<value>
+      bindings:
+        input:
+#          topic
+          destination: test
+          group: test
+          content-type: application/json
+          consumer:
+#            自动启动消费者，默认true
+            auto-startup: true
+#            消费者并发数，默认1
+            concurrency: 1
+#            需要开启消费分区，默认false，与instance-count、instance-index联动
+#            partitioned: false
+#            重试次数（包括第一次），设置为1禁用重试，默认值3
+            max-attempts: 1
+#            负数表示使用 spring.cloud.stream.instanceCount,大于等于0表示使用该值
+            instance-count: -1
+            instance-index: -1
+#            未在retryable-exceptions的异常是否可以重试
+            default-retryable: true
+#            retryable-exceptions 例如 spring.cloud.stream.bindings.input.consumer.retryable-exceptions.java.lang.IllegalStateException=false
+        output:
+#           topic
+           destination: test
+           content-type: application/json
+           producer:
+             auto-startup: true
+#             partition-count
+#              以下两个属性互斥，功能一样，需要partitionCount>1
+#              partition-key-expression
+#              partition-key-extractor-name 实现PartitionKeyExtractorStrategy
+#              以下两个属性互斥，功能一样，需要partitionCount>1,若都为空默认使用hashCode(key) % partitionCount
+#              partition-selector-expression
+#              partition-selector-name 实现PartitionSelectorStrategy
+      kafka:
+        binder:
+          brokers:
+            - 1.12.236.101:9001
+            - 1.12.236.101:9002
+            - 1.12.236.101:9003
+#          all,-1 等所有brokers收到结果 1 leader收到结果 0 不管有么有收到结果 默认：1
+          required-acks: 1
+#          以下两个属性会导致 Metadata update failed
+#          auto-create-topics: false
+#          consumer-properties:
+#            allow.auto.create.topics: false
+        bindings:
+#          通道名,默认输入通道名,Sink.java
+          input:
+#            spring.cloud.stream.kafka.default.consumer.<property>=<value> 可以为所用通道设置值
+            consumer:
+#              自动分配partition,不需要instance-count和instance-index,默认true,设置为false可以启用下面三个属性
+              auto-rebalance-enabled: true
+#              是否每一条数据都提交偏移量,与上个属性配合使用,默认false,表示处理完consumer.poll()一批数据后再提交，轮询返回的记录数由max.poll.records
+              ack-each-record: false
+#              自动提交偏移量，默认true,设置为false需要使用org.springframework.kafka.support.Acknowledgment在程序中手动提交
+              auto-commit-offset: true
+#              是否将消费者的偏移量重置为startOffset提供的值。如果提供了KafkaRebalanceListener，则必须为 false；
+              reset-offsets: false
+#              start-offset 可以设置earliest 和 latest,如果group设置，则将设置为earliest。否则，它被设置latest
+#              设置为true时如果发生异常会将导致错误的消息发送到error.<destination>.<group>的topic,可以设置dlq-name 或者 DlqDestinationResolver的bean修改
+              enable-dlq: false
+#              dlq-partitions  error.<destination>.<group>分区数量.当 enable-dlq=true时生效，默认分区数量和原分区一样。当大于1，需要配置DlqPartitionFunction.
+#              触发事件的时间间隔，可以使用ApplicationListener<ListenerContainerIdleEvent>来处理
+              idle-event-interval: 30000
+#              destination-is-pattern topic使用正则表达式匹配
+#              poll超时时间,默认5秒
+              poll-timeout: 5000
+#          通道名,默认输出通道名,Source.java
+          output:
+#            spring.cloud.stream.kafka.default.producer.<property>=<value> 可以为所用通道设置值
+            producer:
+#              生产者发送缓冲区大小,单位字节.
+              buffer-size: 16384
+#              异步发送，默认false
+              sync: false
+#              send-timeout-expression 使用同步发送时超时时间，单位毫秒，可使用SpEL表达式，例如 headers['mySendTimeout'],默认为空，会一直阻塞
+#              生产者在发送消息之前等待多长时间以允许在同一批次中累积更多消息，即延迟为代价增加吞吐量，默认值为0
+              batch-timeout: 0
+#              message-key-expression 针对用于填充生成的 Kafka 消息的键的传出消息计算的 SpEL 表达式,例如 headers['myKey']。默认为空
+#              configuration.compression.type     none, gzip, snappy,lz4,zstd
+#              关闭生产者等待的超时时间，默认30s
+              close-timeout: 30
+```
+
+partition 通过 ChannelInterceptor 实现，PartitioningInterceptor 。
 
 ## SpringCloudBus + kafka
 

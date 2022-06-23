@@ -1206,6 +1206,10 @@ management:
 ```
 # 消息驱动
 
+消息生态总共分为3部分内容：
+1. spring-messaging：定义消息编程模型的基础模块，内部定义 Message、MessageChannel、MessageHandler。
+2. Spring Integration：在spring-messaging基础上抽象更多消息概念：MessageDispatcher（消息分发器）、Transformer（消息转化器）、Aggregator（消息聚合器）。
+3. Spring Cloud Stream：在 Spring Integration 基础上抽象了 Binder、Binding 等概念。
 
 # 消息总线
 
@@ -1216,6 +1220,21 @@ management:
 2. 消息转化为其他的表现方式。
 3. 执行消息的拒绝、分解，并将结果发送到它们的目的地，然后重新组合响应返回给消息用户。
 4. 使用发布-订阅模式来提供内容或基于主题的消息路由。
+
+## Message
+
+```java
+public interface Message<T> {
+
+	T getPayload();
+
+	MessageHeaders getHeaders();
+
+}
+```
+
+Message 的两个方法，分别用于获取消息体和消息头，
+
 
 ## SpringCloudBus + kafka
 
@@ -1267,3 +1286,9 @@ SpringCloudBus默认提供的远程事件：
 2. AckRemoteApplicationEvent：远程事件发送成功响应。
 3. RefreshRemoteApplicationEvent：配置刷新远程事件。
 4. UnknownRemoteApplicationEvent：未知远程事件，当没有使用  @RemoteApplicationEventScan 时，会被识别为 UnknownRemoteApplicationEvent 。
+
+发布流程：
+1. 服务A通过 ApplicationEventPublisher 发布 RemoteApplicationEvent 事件。
+2. 服务A中 RemoteApplicationEventListener 监听到 RemoteApplicationEvent，判断由自己发出并且不是AckRemoteApplicationEvent的消息， 通过SpringCloudStream的 springCloudBusOutput 通道发布到 消息队列上。
+3. 服务B 消费消息队列， 通过SpringCloudStream的 springCloudBusInput 通道获取到  RemoteApplicationEvent。
+4. 服务B 通过 ApplicationEventPublisher 发布 RemoteApplicationEvent 事件，在服务内传播。

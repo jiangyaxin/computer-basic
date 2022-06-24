@@ -1,3 +1,19 @@
+# 微服务
+
+优点：
+1. 复杂度可控：一个服务只需要关注一个特定的领域。
+2. 技术选型更灵活：每个微服务结合业务特性选择技术栈。
+3. 可扩展性更强：可以根据每个微服务的性能要求和业务特点来进行灵活扩展。
+4. 独立部署：发布更高效。
+5. 容错性：当一个服务发生故障，可以使故障隔离在单服务中。
+
+问题：
+1. 故障排查难，一个请求可能会经过多个不同的微服务的多次交互。
+2. 服务监控：微服务数量变多。
+3. 复杂性增大：分布式系统中网络延迟和故障不可避免。
+4. 服务依赖：服务依赖关系更复杂。
+5. 运维成本：如何快速部署和统一管理众多的服务。
+
 # 服务治理
 
 主要实现各微服务实例的自动化注册与发现。
@@ -310,11 +326,79 @@ eureka:
 | eureka.instance.status-page-url-path                 | 该服务实例的状态检查地址，相对地址                                  | /actuator/info          |
 | eureka.instance.health-check-url-path                | 该服务实例的健康检查地址，相对地址                                  | /actuator/health        |
 
+## nacos
+
+### 原理
+
+
+
+### 使用
+
+#### 服务端部署
+
+1. 从 https://github.com/alibaba/nacos/releases 下载
+
+单机模式：
+1. 可配置 Mysql 数据库，先执行 nacos-mysql.sql。
+2. 再修改 conf/application.properties
+
+```properties
+spring.datasource.platform=mysql
+
+db.num=1
+db.url.0=jdbc:mysql://11.162.196.16:3306/nacos_devtest?characterEncoding=utf8&connectTimeout=1000&socketTimeout=3000&autoReconnect=true
+db.user=nacos_devtest
+db.password=youdontknow
+```
+3. 执行  sh startup.sh -m standalone 。
+
+集群模式:
+
+1. 配置 conf/cluster.conf , 需要 3个 或 3个以上节点。
+2. 再修改 conf/application.properties
+
+```properties
+spring.datasource.platform=mysql
+
+db.num=1
+db.url.0=jdbc:mysql://11.162.196.16:3306/nacos_devtest?characterEncoding=utf8&connectTimeout=1000&socketTimeout=3000&autoReconnect=true
+db.user=nacos_devtest
+db.password=youdontknow
+```
+
+3. 执行 sh startup.sh。
+4. 集群使用 nginx 做负载均衡。
+
+#### 客户端
+
+1. 添加依赖
+
+```xml
+<dependency>
+    <groupId>com.alibaba.cloud</groupId>
+    <artifactId>spring-cloud-starter-alibaba-nacos-discovery</artifactId>
+</dependency>
+```
+
+2. 配置文件
+
+```yaml
+spring:
+  cloud:
+    nacos:
+      server-addr: xxxxx
+```
+
+3. 使用 @EnableDiscoveryClient 进行服务注册与发现。
+
 # 服务调用
 
 Ribbon：Netflix开源的基于HTTP和TCP等协议负载均衡组件，需要手动代码调用服务端。
+
 Feign：内置Ribbon，用来做客户端负载均衡，去调用服务注册中心的服务，不支持Spring MVC的注解，它有一套自己的注解，已不推荐使用。
+
 OpenFeign：在Feign的基础上支持了Spring MVC的注解，如@RequesMapping等等，可以使用@FeignClient解析SpringMVC的@RequestMapping注解下的接口，并通过动态代理的方式产生实现类，实现类中做负载均衡并调用其他服务。
+
 loadbalancer：用于替代Ribbon，负责负载均衡。
 
 ## OpenFeign

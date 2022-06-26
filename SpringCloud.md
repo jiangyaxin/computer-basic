@@ -328,10 +328,6 @@ eureka:
 
 ## nacos
 
-### 原理
-
-
-
 ### 使用
 
 #### 服务端部署
@@ -375,6 +371,11 @@ db.password=youdontknow
 
 ```xml
 <dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-bootstrap</artifactId>
+</dependency>
+
+<dependency>
     <groupId>com.alibaba.cloud</groupId>
     <artifactId>spring-cloud-starter-alibaba-nacos-discovery</artifactId>
 </dependency>
@@ -390,6 +391,78 @@ spring:
 ```
 
 3. 使用 @EnableDiscoveryClient 进行服务注册与发现。
+
+### 配置
+
+nacos 配置管理将服务划分为 Namespace + Group + Data ID， Data ID 由 ${prefix}-${spring.profiles.active}.${file-extension} 构成：
+
+* prefix 默认为 spring.application.name 的值，也可以通过配置项 spring.cloud.nacos.config.prefix来配置。
+* spring.profiles.active 即为当前环境对应的 profile，当 spring.profiles.active 为空时，dataId 的拼接格式变成 ${prefix}.${file-extension}
+* file-exetension 为配置内容的数据格式，可以通过配置项 spring.cloud.nacos.config.file-extension 来配置，默认使用 properties。
+
+实际使用中可Namespace 区分不同的租户，比如深圳环境、佛山环境，使用 Group 区分不同的开发者，也可用来在同一个Namespace分区不同的Group，例如在深圳环境下部署了两套系统。
+
+### 原理
+
+#### 服务注册
+
+SpringCloud 抽象：在 AutoServiceRegistrationAutoConfiguration 中注入 AutoServiceRegistration。
+
+1.  AutoServiceRegistration 的子类 AbstractAutoServiceRegistration 会监听 WebServerInitializedEvent 事件，服务启动后会调用 ServiceRegistry.register(Registration) 向注册中心注册。
+2.  只需继承 AbstractAutoServiceRegistration ，实现 ServiceRegistry 、Registration 即可完成启动时注册。
+
+
+nacos 实现：
+1.  NacosAutoServiceRegistration 继承 AbstractAutoServiceRegistration，由 NacosServiceRegistryAutoConfiguration 负责配置。
+2.  NacosServiceRegistry ，实现 ServiceRegistry 负责客户端注册，nacos 负责注册由 NamingService 负责，NamingService 中 NamingProxy 负责使用 HttpClient 与服务端通信，完成注册等功能，BeatReactor 负责维持心跳，重连等功能，HostReactor 会定时查询服务信息，缓存服务信息。
+3.  NacosRegistration 实现 Registration 定义客户端元数据。
+
+![302](assets/302.png)
+
+客户端每隔 5 秒会发送一次心跳，服务端每隔15秒没收到心跳视为服务不健康，并通知所有消费者更新服务列表，30秒没收到心跳则剔除服务。
+
+这几个数值可通过 spring.cloud.nacos.discovery.metadata 设置,常量定义在 PreservedMetadataKeys ，如下：
+
+* preserved.heart.beat.interval: 5000 #该实例在客户端上报心跳的间隔时间。（单位:毫秒）
+* preserved.heart.beat.timeout: 15000 #该实例在不发送心跳后，从健康到不健康的时间。（单位:毫秒）
+* preserved.ip.delete.timeout: 30000 #该实例在不发送心跳后，被nacos下掉该实例的时间。（单位:毫秒）
+
+#### 服务发现
+
+SpringCloud 抽象了 DiscoveryClient 的接口，NacosDiscoveryClient 实现该接口，并在 NacosDiscoveryClientConfiguration 配置。
+
+NacosDiscoveryClient  使用 NacosServiceDiscovery 中的 NamingService 获取服务列表，NamingService 的服务列表由 HostReactor 负责维护，HostReactor 每个10秒会请求服务列表缓存起来，当服务端感知服务变化时也会推送给 HostReactor 。
+
+LoadBalancerClient 通过 ReactiveLoadBalancer 从 ServiceInstanceListSupplier 获取 服务，ServiceInstanceListSupplier 通过 NacosDiscoveryClient 获取 服务列表。
+
+OpenFeign 调用 LoadBalancerClient 完成远程访问。
+
+![304](assets/304.png)
+
+
+#### Raft
+
+RAFT算法有三种基本的状态：follower、candidate、leader。
+
+* 处于follower状态的server不会发起任何的request，只是被动的响应leader和candidate。
+
+* 处于leader状态的server会主动的发送心跳包给各个follower，并且接收client所有的request。
+
+* candidate是一种过渡状态，只有整个cluster在进行新的选举的时候，才会出现此种状态的server。
+
+Raft系统在任意时刻最多只有一个Leader，正常工作期间只有Leader和Followers。
+
+Follower只响应其他服务器的请求。如果Follower超时没有收到Leader的消息，它会成为一个Candidate并且开始一次Leader选举。收到大多数服务器投票的Candidate会成为新的Leader。Leader在宕机之前会一直保持Leader的状态。
+
+Raft 使用心跳（heartbeat）触发Leader选举。当服务器启动时，初始化为Follower。Leader向所有Followers周期性发送heartbeat。如果Follower在选举超时时间内没有收到Leader的heartbeat，就会等待一段随机的时间后发起一次Leader选举。
+
+Follower将其当前term加一然后转换为Candidate。它首先给自己投票并且给集群中的其他服务器发送 RequestVote RPC,每次选举只能投一票,结果有以下三种情况：
+
+* 赢得了多数的选票，成功选举为Leader；
+* 收到了Leader的消息，表示有其它服务器已经抢先当选了Leader；
+* 没有服务器赢得多数的选票，Leader选举失败，等待选举时间超时后发起下一次选举。
+
+![303](assets/303.png)
 
 # 服务调用
 
@@ -704,6 +777,93 @@ org.springframework.cloud.openfeign.loadbalancer.FeignLoadBalancerAutoConfigurat
 
 ## Dubbo
 
+Dubbo 将一个接口作为一个服务。
+
+## 使用
+
+1. 引入依赖：存在循环依赖，社区已不进行维护，还是用feign持久。
+
+```xml
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter</artifactId>
+</dependency>
+
+<dependency>
+    <groupId>com.alibaba.cloud</groupId>
+    <artifactId>spring-cloud-starter-dubbo</artifactId>
+</dependency>
+```
+
+2. 配置：
+
+```yaml
+dubbo:
+  protocol:
+    name: dubbo
+    port: 20880
+  registry:
+    address: spring-cloud://localhost # 挂载到 SpringCloud 注册中心。
+```
+
+3. 使用 @DubboComponentScan 开启注册。
+4. 使用 @DubboService 注册服务提供者实现类。
+5. 使用 @DubboReference 注入服务消费者。
+
+
+
+Dubbo 的容错模式: 通过 @DubboService(cluster = "failfast") 配置。
+
+1. FailoverCluster：失败自动切换，当服务调用失败后，会切换到集群 的其他机器重试，默认重试次数为 2 次，常用于 读操作，写操作可能会造成重复数据，通过 retries = 2 来配置
+2. FailfastCluster：快速失败，当服务调用失败后，立即报错，只会调用一次，常用于幂等的写操作。
+3. FailsafeCluster：出现异常直接忽略。
+4. FailbackCluster：服务调用失败时，后台记录并定时重发，适用于消息通知操作，保证请求一定成功。
+5. ForkingCluster：并行调用多个服务，只要其中一个成功就返回，通过 fork = 2 设置最大并行数。
+6. BroadcastCluster：广播调用所有的服务提供者，任意一个服务报错则表示调用失败，常用于通知所有的服务提供者更新缓存或本地资源信息。
+
+Dubbo 的负载均衡算法：默认策略时 random , 可通过 Dubbo 的 SPI 机制来扩展，示例：@Service(cluster = "failfast",loadBalance = "roundrobin")
+
+1. Random LoadBalance：随机算法，可以针对性能较好的服务器设置较大的权重值。
+2. RoundRobin LoadBalance：轮询，按照权重设置轮询比例。
+3. LeastActive LoadBalance：最少活跃调用，处理较慢的节点会收到较少的请求。
+4. ConsistentHash LoadBalance：相同的参数总是发送给同一个服务请求者。
+
+Dubbo 的服务降级：分为故障降级、限流降级，通过 @DubboReference(mock="xx.xxxService") 配置
+
+Dubbo 的主机绑定规则：
+
+1. 环境变量 DUBBO_IP_TO_BIND 。
+2. dubbo.protocol.host 配置 。
+3. LocalHost.getHostAddress 获取本机Ip。
+4. 如果配置了注册中心，连接注册中心后会通过 socket.getLocalAddress().getHostAddress() 获取网卡IP地址。
+
+## Zookeeper 注册中心
+
+![307](assets/307.png)
+
+1. Dubbo 服务启动时，向 Zookeeper 服务器 注册 service 节点，并且在 /providers 节点下注册 url 节点，这个节点时临时节点。
+2. 当消费者启动时，会向 service 节点下 /consumers 注册自己的url节点，并且会 对 /providers 注册子节点监听，这样当服务方发生变化时，消费方能够动态感知。
+3. 服务调用时， 获取  /providers 下所有子节点，通过负载均衡算法计算出一个地址进行远程访问。
+
+## 原理
+
+### SPI 机制
+
+JDK 扩展机制：通过插拔的方式加载，例如 java.sql.Driver 接口并没有实现，而是由不同的数据库厂商来实现。
+
+示例：
+
+1. 使用 MyDriver 实现 Driver。
+2. 在 resources/META-INF/services 目录创建 xxxx.xxxx.xxxx.Driver 接口全路径文件，文件内容为 xxxx.xxxx.xxxx.MyDriver 实现类全路径。
+3. 使用 ServiceLoader.load(Driver.class) 加载。
+
+dubbo 自定义扩展点：
+
+1. 接口使用 @SPI 注解。
+2. 可以在 resources/META-INF/dubbo、resources/META-INF/dubbo/internal、resources/META-INF/services 创建 xxxx.xxxx.xxxx.Driver 接口全路径文件。
+3. 文件内容使用 key=value 形式，value 为 实现类全路径。
+4. 使用 `ExtensionLoader<Driver> extensionLoader = ExtensionLoader.getExtensionLoader(Driver.class);`、`extensionLoader.getExtension("key")` 获取
+
 ## LoadBalancer
 
 openfeign 默认使用 负载均衡配置。
@@ -948,6 +1108,134 @@ public class BlockingLoadBalancerClient implements LoadBalancerClient {
 
 ## Sentinel
 
+## 使用
+
+Sentinel 分为 客户端 和 控制台。
+
+控制台：
+
+1. 从 https://github.com/alibaba/Sentinel/releases 下载jar包。
+2. `java -Dserver.port=30024 -Dcsp.sentinel.dashboard.server=localhost:30024 -Dproject.name=sentinel-dashboard -jar sentinel-dashboard.jar`
+
+* -Dserver.port ：指定控制台的访问端口，默认 8080 ,如果端口冲突可以设置。
+* -Dcsp.sentinel.dashboard.server ：将 自己的限流数据暴露到平台。
+* -Dcsp.sentinel.config.file：配置 properties 文件，csp.sentinel.log.dir = ${user.home}/logs/csp/
+
+日志含义：示例： 1656209955000|2022-06-26 10:19:15|/sentinel|1|0|1|0|40|0|0|1
+
+时间戳|时间|资源|请过的请求|阻止的请求|成功执行完成的请求|用户自定义的异常|平均响应时长|优先通过的请求|并发量|资源类型
+
+3. 通过 http://localhost:30024/ 访问，用户名 = 密码 = sentinel
+
+客户端：
+
+1. 添加依赖
+
+```xml
+<dependency>
+    <groupId>com.alibaba.cloud</groupId>
+    <artifactId>spring-cloud-starter-alibaba-sentinel</artifactId>
+</dependency>
+```
+
+2. 配置
+
+```yaml
+spring:
+  cloud:
+    sentinel:
+      transport:
+        dashboard: localhost:30024
+```
+
+当 服务被访问后会在 dashboard显示，可通过 spring.cloud.sentinel.eager 来改变这种状态。
+
+3. 定义资源，有以下几种方式：
+
+* 所有的Controller RequestMapping 都会默认配置。
+* 对于特定的方法可以使用 @SentinelResource 来定义。
+* 通过 SphU.entry() SphO.entry() 来进行硬编码定义。
+
+```java
+try(Entry entry = SphU.entry("xxxxx")){
+
+}(BlockException e){
+  限流逻辑
+}
+
+if(SphO.entry("xxxxx")){
+  try{
+
+  }finally{
+    Sph0.exit();
+  }
+} else {
+  限流逻辑
+}
+```
+
+4. 定义规则，有以下几种方式：
+
+1. 使用编码的方式：
+
+```java
+// 流控规则
+private void initFlowQpsRule() {
+    List<FlowRule> rules = new ArrayList<>();
+    FlowRule rule = new FlowRule(resourceName);
+    rule.setCount(20);
+    rule.setGrade(RuleConstant.FLOW_GRADE_QPS);
+    rule.setLimitApp("default");
+    rules.add(rule);
+    FlowRuleManager.loadRules(rules);
+}
+// 降级规则
+private void initDegradeRule() {
+    List<DegradeRule> rules = new ArrayList<>();
+    DegradeRule rule = new DegradeRule();
+    rule.setResource(KEY);
+    rule.setCount(10);
+    rule.setGrade(RuleConstant.DEGRADE_GRADE_RT);
+    rule.setTimeWindow(10);
+    rules.add(rule);
+    DegradeRuleManager.loadRules(rules);
+}
+// 系统规则
+private void initSystemRule() {
+    List<SystemRule> rules = new ArrayList<>();
+    SystemRule rule = new SystemRule();
+    rule.setHighestSystemLoad(10);
+    rules.add(rule);
+    SystemRuleManager.loadRules(rules);
+}
+```
+
+流控规则：
+
+![308](assets/308.png)
+
+Grade：
+* 并发线程数：包含业务线程不被耗尽
+* QPS：现在每秒查询数。
+
+controlBehavior：
+* 直接拒绝：默认流控方式，超出阀值后抛出异常。
+* 冷启动：当空闲切换到繁忙时，匀速增大处理请求的最大值。
+* 匀速排队：漏桶限流算法，当qps = 2 时，每 500ms 通过一个请求。
+* 冷启动+匀速排队。
+
+strategy：
+* 调用方限流：通过 limitApp 限制， default 不区分调用者。
+
+熔断规则：
+
+![309](assets/309.png)
+
+2. 使用 dashboard 配置。
+
+
+可以同过 feign.sentinel.enabled=true 对 feign 开启限流。
+
 # 配置管理
 
 解决问题：
@@ -1096,6 +1384,62 @@ spring:
 
 ## nacos
 
+### 使用
+
+1. 引入依赖：
+
+```xml
+<!-- 高版本需要添加 -->
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-bootstrap</artifactId>
+</dependency>
+
+<dependency>
+    <groupId>com.alibaba.cloud</groupId>
+    <artifactId>spring-cloud-starter-alibaba-nacos-config</artifactId>
+</dependency>
+```
+
+2. 配置：
+
+```yaml
+spring:
+  cloud:
+    nacos:
+      server-addr: xxxxx
+      config:
+        file-extension: yaml
+```
+
+3. 在 nacos 添加 xxxxx.yaml。
+
+除此之外还可以进行扩展配置：
+
+> spring.cloud.nacos.config.ext-config[n].data-id </br>
+> spring.cloud.nacos.config.ext-config[n].group </br>
+> spring.cloud.nacos.config.ext-config[n].refresh </br>
+
+这里 data-id 需要带文件的扩展名,refresh 表示是否需要动态刷新，n 的值越大优先级越高。
+
+### 原理
+
+动态监听Pull & Push:
+
+* push模式：服务端需要维持与客户端的长连接，如果客户端的数量较多，服务端需要消耗大量的内存资源来保存每个连接，并且为了检测连接有效性，还需要心跳机制来维持每个连接的状态。
+* pull模式：客户端需要定时从服务端拉取数据，存在数据延时，并且在服务端配置长期不更新的情况下，客户端的定时任务会做一些无效的Pull。
+
+Nacos 使用的是 Pull 模式，但不是简单的 Pull，而是建立一种长轮询机制，一次长连接的会话超时时间默认是30s。
+
+![305](assets/305.png)
+
+客户端发起Pull请求后，如果服务端发现配置没有变更，会将请求保持一段时间，直到配置发生变更才会返回，或者等到定时任务结束也会返回结果，所以有两种方式触发结果的返回：
+
+1. 在等待29.5s 后触发自动检查机制，不管配置有没有发生变化，都会返回，29.5s 就是长连接的保存时间。
+2. 在29.5s内配置发生变化，触发监听机制，将变更的数据返回。
+
+nacos 配置文件的获取由 NacosPropertySourceLocator 完成。
+
 # 网关
 
 功能：
@@ -1163,6 +1507,10 @@ Object run();
 2. 注入到 Spring 容器。
 
 ## SpringCloudGateWay
+
+# 分布式事务
+
+# 分布式锁
 
 # 链路跟踪
 

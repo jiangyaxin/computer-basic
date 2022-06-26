@@ -1510,7 +1510,209 @@ Object run();
 
 # 分布式事务
 
-# 分布式锁
+事务模型：
+
+* AP：应用程序。
+* RM：资源管理器，例如数据库。
+* TM：事务管理器，事务协调者，比如Spring 提供的 TransactionManager。
+
+1. 配置TM，把多个RM注册到TM。
+2. AP从TM管理的RM中获取连接。
+3. AP向TM发起全局事务，生成全局事务XID，XID 会通知各个RM。
+4. AP通过连接进行操作，AP每次操作将XID传递个RM。
+5. AP结束全局事务，TM通知各RM全局事务结束。
+
+事务的常见解决方案：
+
+1. TCC ：两阶段提交思想。
+
+第一阶段：
+* Try：主要用于数据的校验或资源的预留。
+第二阶段：对第一阶段操作的确认或者回滚。
+* Confirm：确认真正执行的任务，只操作Try阶段预留的资源。
+* Cancel：取消执行，释放Try阶段预留的资源。
+
+当TCC事务协调器没有收到 Cancel 或者 Confirm 请求时，TCC事务协调器会记录分布式事务的操作日志，根据操作日志进行重试，最终达到数据的一致性，所以TCC暴露的接口需要满足幂等性。
+
+TCC事务进一步减少了锁的占用时间，只需要 Try 阶段持有锁即可，可以自行控制锁的粒度。
+
+三种 TCC 变种实现：
+* 通用型TCC，从业务服务需要提供try、confirm、cancel三个接口，改造压力较大，但锁的粒度可以控制，有效减小了竞争，适用于方便改造，可以改造的业务，并且主业务的决策收到从业务影响。
+* 补偿性TCC，从业务服务只需要提供Do和Compensate两个接口，Do 接口直接执行真正的完整业务逻辑，Compensate 操作用于业务补偿，抵消或部分抵消正向业务操作的业务结果，Compensate操作需满足幂等性,适用于外部对接，难以推动改造的业务。
+* 异步确保型TCC，主业务服务的直接从业务服务是可靠消息服务，而真正的从业务服务则通过消息服务解耦，作为消息服务的消费端，异步地执行，适用于从业务不影响主业务决策，可以存在延时，比如邮件通知系统等。
+
+2. 基于可靠消息的最终一致性方案：在这种场景中数据一致性并不要求实时性。
+
+![310](assets/310.png)
+
+* 生产者发送一个事务消息到消息队列服务，消息队列服务只记录这条消息的数据，此时消费者无法消费这条消息。
+* 生产者执行具体的业务逻辑，完成本地事务的操作。
+* 接着生产者根据本地事务的执行结果发送一条确认消息给消息队列服务，如果本地事务成功，发送Commit消息，表示消费者可以消费该条消息，否则消息队列服务删除掉该条消息。
+* 如果生产者在执行本地事务的过程中一直未给消息队列服务发送确认，那么消息队列服务定时回查生产者执行结果，根据回查结果来决定消息是否应该被消费。
+* 消息队列服务上的消息被确认后，消费者可以消费这条消息，消息消费完成后发送确认标识给消息队列服务器，标识消息投递成功，如果消费者没有签收该消息，由于消息队列可靠性投递机制，消息队列会重复投递。
+
+3. 最大努力通知型：适用于数据一致性要求不高的场景，常用于提供给第三方的API，例如支付结果通知。
+
+* 第三方异步调用服务接口。
+* 服务处理完成后调用第三方接口通知，如果第三方未返回成功，则以衰减重试机制通知比如 1min、3min、5min，直到达到最大次数。
+* 如果达到最大次数还是没有收到成功，则提供接口给第三方主动查询。
+
+## Seata
+
+### 使用
+
+注意服务端和客户端需要一致。
+
+服务端：
+
+1. 从 https://github.com/seata/seata/releases 下载
+2. sh seata-server.sh
+
+默认使用文件模式单机启动，如需持久化可通过 https://github.com/seata/seata/blob/v1.5.1/script/server/db  执行数据库。
+
+上传nacos 配置文件 可在 https://github.com/seata/seata/tree/v1.5.1/script/config-center/config.txt 获取。
+
+注意,客户端会根据 service.vgroup_mapping.${txServiceGroup} = default 获取值 default ，再通过 service.default.grouplist 获取服务地址， 所以客户端 seata.tx-service-group 需要与 service.vgroup_mapping.<值> 里的值匹配。
+
+客户端：
+
+1. 添加依赖
+
+```xml
+<dependency>
+    <groupId>com.alibaba.cloud</groupId>
+    <artifactId>spring-cloud-starter-alibaba-seata</artifactId>
+</dependency>
+```
+
+2. 执行 https://github.com/seata/seata/tree/v1.5.1/script/client/at/db 创建 undo_log 表
+
+```java
+@GetMapping(value = "testCommit")
+@GlobalTransactional
+public Object testCommit(@RequestParam(name = "id",defaultValue = "1") Integer id,
+    @RequestParam(name = "sum", defaultValue = "1") Integer sum) {
+    Boolean ok = productService.reduceStock(id, sum);
+    if (ok) {
+        LocalDateTime now = LocalDateTime.now();
+        Orders orders = new Orders();
+        orders.setCreateTime(now);
+        orders.setProductId(id);
+        orders.setReplaceTime(now);
+        orders.setSum(sum);
+        orderService.save(orders);
+        return "ok";
+    } else {
+        return "fail";
+    }
+}
+
+/**
+ * 定义两阶段提交 name = 该tcc的bean名称,全局唯一 commitMethod = commit 为二阶段确认方法 rollbackMethod = rollback 为二阶段取消方法
+ * useTCCFence=true 为开启防悬挂
+ * BusinessActionContextParameter注解 传递参数到二阶段中
+ *
+ * @param params  -入参
+ * @return String
+ */
+@TwoPhaseBusinessAction(name = "beanName", commitMethod = "commit", rollbackMethod = "rollback", useTCCFence = true)
+public void insert(@BusinessActionContextParameter(paramName = "params") Map<String, String> params) {
+    logger.info("此处可以预留资源,或者利用tcc的特点,与AT混用,二阶段时利用一阶段在此处存放的消息,通过二阶段发出,比如redis,mq等操作");
+}
+
+/**
+ * 确认方法、可以另命名，但要保证与commitMethod一致 context可以传递try方法的参数
+ *
+ * @param context 上下文
+ * @return boolean
+ */
+public void commit(BusinessActionContext context) {
+    logger.info("预留资源真正处理,或者发出mq消息和redis入库");
+}
+
+/**
+ * 二阶段取消方法
+ *
+ * @param context 上下文
+ * @return boolean
+ */
+public void rollback(BusinessActionContext context) {
+    logger.info("预留资源释放,或清除一阶段准备让二阶段提交时发出的消息缓存");
+}
+```
+
+### AT模式
+
+使用 UNDO_LOG 记录的数据镜像进行补偿。
+
+分为三个模块：
+* TM： 事务管理器，集成在客户端。
+* RM：资源管理器，集成在客户端。
+* TC：事务中心，作为服务端单独部署。
+
+![311](assets/311.png)
+
+1. TM向TC注册全局事务，并生成全局唯一XID。
+2. RM向TC注册分支事务，并将其纳入该XID对应的全局事务范围。
+3. RM向TC汇报资源的准备状态。
+4. TC 汇总所有事务参与者的执行状态，决定分布式事务回滚还是提交。
+5. TC 通知所有RM 提交/回滚 事务。
+
+分为 2 阶段：
+
+1. 第一阶段：
+    ![313](assets/313.png)
+    * 记录数据快照。
+    * 事务提交前注册分支。
+    * 提交本地事务。
+2. 第二阶段：和XA不一样的地方在于本地事务已经提交，第二阶段不需要提交事务。
+    ![314](assets/314.png)
+    * 收到TC提交请求后立即返回，通过异步队列删除 UNDO_LOG 日志，完成提交。
+    ![315](assets/315.png)
+    * 收到TC提交回滚请求后，查询 UNDO_LOG 进行回滚。
+写隔离：
+
+* 一阶段本地事务提交前，需要确保先拿到 全局锁 。
+* 拿不到 全局锁 ，不能提交本地事务。
+* 拿 全局锁 的尝试被限制在一定范围内，超出范围将放弃，并回滚本地事务，释放本地锁。
+
+例如：两个全局事务 tx1 和 tx2，分别对 a 表的 m 字段进行更新操作，m 的初始值 1000。
+
+1. tx1 先开始，开启本地事务，拿到本地锁，更新操作 m = 1000 - 100 = 900。本地事务提交前，先拿到该记录的 全局锁 ，本地提交释放本地锁。 tx2 后开始，开启本地事务，拿到本地锁，更新操作 m = 900 - 100 = 800。本地事务提交前，尝试拿该记录的 全局锁 ，tx1 全局提交前，该记录的全局锁被 tx1 持有，tx2 需要重试等待 全局锁 。
+2. tx1 二阶段全局提交，释放 全局锁 。tx2 拿到 全局锁 提交本地事务。
+3. 如果 tx1 的二阶段全局回滚，则 tx1 需要重新获取该数据的本地锁，进行反向补偿的更新操作，实现分支的回滚。此时，如果 tx2 仍在等待该数据的 全局锁，同时持有本地锁，则 tx1 的分支回滚会失败。分支的回滚会一直重试，直到 tx2 的 全局锁 等锁超时，放弃 全局锁 并回滚本地事务释放本地锁，tx1 的分支回滚最终成功。因为整个过程 全局锁 在 tx1 结束前一直是被 tx1 持有的，所以不会发生 脏写 的问题。
+
+读隔离：
+
+在数据库本地事务隔离级别 读已提交（Read Committed） 或以上的基础上，Seata（AT 模式）的默认全局隔离级别是 读未提交（Read Uncommitted）,在特定场景下，必需要求全局的 读已提交 ，目前 Seata 的方式是通过 SELECT FOR UPDATE 语句的代理。
+
+SELECT FOR UPDATE 语句的执行会申请 全局锁 ，如果 全局锁 被其他事务持有，则释放本地锁（回滚 SELECT FOR UPDATE 语句的本地执行）并重试。这个过程中，查询是被 block 住的，直到 全局锁 拿到，即读取的相关数据是 已提交 的，才返回。
+
+### Saga模式
+
+主要解决没有两阶段提交的情况下，如果解决分布式事务的问题，针对一些不好改造的老服务。
+
+将一个业务流程中的长事务拆分成多个本地短事务，业务流程中的每个参与者都提交真实的本地短事务，当其中一个参与者事务执行失败，通过补偿机制补偿前面已经成功的参与者。
+
+![312](assets/312.png)
+
+两种补偿方式：
+
+1. 向后补偿，逐步撤销前面每一步操作。
+2. 向前补偿，对失败的事务进行重试，适用于事务必须要成功的场景。
+
+两种实现方式：
+
+1. 事件编排式：服务直接通过事件沟通，前一个服务执行完成事件通知后一个服务执行，后一个服务执行失败通过事件通知前一个服务回滚。
+2. 命令协同式：存在一个协调器，由协调器通知服务执行，服务执行成功或失败回复协调器，协调器决定由谁执行还是回滚。
+
+优势：
+
+* 一阶段直接提交事务，没有锁等待，性能较高。
+* 短事务可异步执行。
+* 补偿机制实现简单。
+
+劣势： Saga不提供原子性和隔离性，有些环境下不可使用，比如用户购买商品赠送优惠券，如果用户已经把优惠券使用，优惠券就不能回滚。
 
 # 链路跟踪
 

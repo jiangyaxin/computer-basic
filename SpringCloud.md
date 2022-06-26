@@ -1447,6 +1447,7 @@ nacos 配置文件的获取由 NacosPropertySourceLocator 完成。
 2. 网关服务可以做用户身份认证和权限认证。
 3. 可以实现监控功能，实时日志输出。
 4. 可以实现流量监控，对高流量服务进行降级。
+5. 灰度发布，将要发布的功能先开放给一小部分用户使用。
 
 ## Zuul
 
@@ -1508,6 +1509,265 @@ Object run();
 
 ## SpringCloudGateWay
 
+## 使用
+
+1. 添加依赖
+
+```xml
+# 如果有 spring-boot-starter-web 需要移除，gateway 使用 webflux 。
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-gateway</artifactId>
+</dependency>
+```
+
+2. 添加配置
+
+```yaml
+spring:
+  cloud:
+    gateway:
+      discovery:
+        locator:
+          # 开启从注册中心动态创建路由功能
+          enabled: true
+           # 是否将服务id转换为小写
+          lower-case-service-id: false
+      routes:
+        - id: timingRouter
+          uri: lb://provider-name
+          predicates:
+            - Path=/xxx/**
+          filters:
+            # 跳过一个前缀
+            - StripPrefix=1
+```
+
+除此之外还可以使用代码进行配置：
+
+```java
+@Bean
+public RouteLocator customRouteLocator(RouteLocatorBuilder builder) {
+  return builder.routes()
+          .route("userRouter", r -> r.path("/user-service/**")
+                                      .filters(f ->				f.addResponseHeader("X-CustomerHeader", "kite"))
+                                      .uri("lb://consul-user")		)
+          .route("orderRouter", r -> r.path("/order-service/**")
+                                      .filters(f -> f.stripPrefix(1))
+                                      .uri("lb://consul-order")		)
+          .build();
+}
+```
+
+多个 Predicate 可以通过 and 逻辑进行组合，内置提供很多 RoutePredicateFactory。
+
+| 规则    | 实例                                                                                                  | 说明                                                      | 工厂                         |
+| ------- | ----------------------------------------------------------------------------------------------------- | --------------------------------------------------------- | ---------------------------- |
+| Path    | - Path=/gate/,/rule/                                                                                  | 路径匹配gate、rule开头                                    | PathRoutePredicateFactory    |
+| Before  | - Before=2017-01-20T17:42:47.789-07:00[America/Denver]                                                | 在某个时间之前                                            | BeforeRoutePredicateFactory  |
+| After   | - After=2017-01-20T17:42:47.789-07:00[America/Denver]                                                 | 在某个时间之后                                            | AfterRoutePredicateFactory   |
+| Between | - Between=2017-01-20T17:42:47.789-07:00[America/Denver],2017-01-21T17:42:47.789-07:00[America/Denver] | 在某个时间段之间                                          | BetweenRoutePredicateFactory |
+| Cookie  | - Cookie=chocolate, ch.p                                                                              | cookie 包含 name 为 chocolate ， 值正则匹配 ch.p 才会转发 | CookieRoutePredicateFactory  |
+| Header  | - Header=X-Request-Id, \d+                                                                            | 请求头携带X-Request-Id，并且值正则匹配\d+                 | HeaderRoutePredicateFactory  |
+| Host    | - Host=www.hd123.com                                                                                  | 主机名匹配 www.hd123.com                                  | HostRoutePredicateFactory    |
+| Method  | - Method=GET                                                                                          | 匹配GET方法                                               | MethodRoutePredicateFactory  |
+
+Filter：
+
+| 过滤规则            | 实例                                  | 说明                                |
+| ------------------- | ------------------------------------- | ----------------------------------- |
+| AddRequestParameter | - AddRequestParameter = foo,bar       | 请求增加 foo = bar 参数             |
+| AddResponseHeader   | -AddResponseHeader=X-Response-Foo,bar | 响应添加 X-Response-Foo=bar 头      |
+| PrefixPath          | - PrefixPath=/app                     | 路径前加前缀                        |
+| RewritePath         | - RewritePath=/test, /app/test        | 改写路径，将 /test 转发到 /app/test |
+| SetPath             | - SetPath=/app/{path}                 | 设置模板，{path}表示原请求路径      |
+| RedirectTo          | - RedirectTo=302, https://acme.org    | 重定向，包含 返回码和地址           |
+| StripPrefix         | - StripPrefix=2                       | 请求/name/blue/red会转发到/red      |
+
+可使用 Default-filters 对所有的请求设置过滤器：
+
+```yaml
+spring:
+  cloud:
+    gateway:
+      default-filters:
+      - AddResponseHeader=X-Response-Default-Red, Default-Blue
+      - PrefixPath=/httpbin
+```
+
+限流Filter：令牌桶算法，需要 redis 配置，底层调用 ReactiveRedisTemplate ,由 RequestRateLimiterGatewayFilterFactory 实现，是分布式的。
+
+```xml
+<dependency>
+   <groupId>org.springframework.boot</groupId>
+   <artifactId>spring-boot-starter-data-redis-reactive</artifactId>
+</dependency>
+```
+
+```yaml
+filters:
+  - name: RequestRateLimiter
+    args:
+      # 每秒放入令牌的个数
+      redis-rate-limiter.replenishRate: 10
+      # 令牌桶的容量
+      redis-rate-limiter.burstCapacity: 20
+```
+
+RequestRateLimiter 会根据 KeyResolver 解析出key ，然后根据key统计进行限流，默认情况下当 key 为空会归到同一组。
+
+可以使用 redis-rate-limiter.denyEmptyKey = true 禁用空key，默认情况会返回 403 状态码。
+
+使用 redis-rate-limiter.keyResolver = '#{@BeanName}' 引用自定义Bean，默认实现为 PrincipalNameKeyResolver 。可以通过实现 keyResolver 来完成限制同一IP的作用。
+
+重试Filter：默认重试次数为 3 次，由 RetryGatewayFilterFactory 实现。
+
+```yaml
+filters:
+  - name: Retry
+    args:
+      # 重试次数
+      retries: 3
+      # 对指定状态码重试
+      status: 503
+      # 哪些方法类型进行重试，默认GET
+      methods: GET
+      # 错误 5 开头进行重试，默认 SERVER_ERROR(5)
+      series: SERVER_ERROR(5)
+```
+
+GlobalFilter：
+* LoadBalancerClientFilter：如果 uri 配置的是 lb:// 会使用该过滤器。
+* ForwardRoutingFilter：如果 uri 配置有 forward:// 会使用该过滤器，示例 uri: forward:///b 注意三个斜杠
+
+熔断降级：
+
+```yaml
+filters:
+  - StripPrefix=1
+  - name: Hystrix
+    args:
+      name: fallbackCmd
+      fallbackUri: forward:/fallback
+
+hystrix:
+  command:
+    default:
+      execution:
+        isolation:
+          strategy: SEMAPHORE
+          thread:
+            timeoutInMilliseconds: 3000
+```
+
+采用 SEMAPHORE 策略，超时时间 3s，如果下游服务不可达调用本地 /fallback 处理
+
+跨域配置：
+
+```yaml
+spring:
+  cloud:
+    gateway:
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowed-origins: "*"
+            allowed-headers: "*"
+            allow-credentials: true
+            allowed-methods:
+              - GET
+              - POST
+              - DELETE
+              - PUT
+              - OPTION
+```
+
+配置示例: [Gateway-config-sample](Gateway-config-sample.yaml)
+
+自定义Filter：通过继承 AbstractGatewayFilterFactory 实现，类名必须以 GatewayFilterFactory 结果，过滤器名字为 类名 除了 GatewayFilterFactory 之外的前缀。
+
+```java
+public class xxxxFilterFactory extends AbstractGatewayFilterFactory<xxxxFilterFactory.Config> {
+
+    @Override
+    public GatewayFilter apply(Config config) {
+        return (exchange, chain) -> {
+            // 调用前
+            return chain.filter(exchange).then(
+                // 调用后
+            );
+        };
+    }
+    public static class Config {}
+}
+```
+
+自定义GlobalFilter：实现 GlobalFilter 即可，所有请求都会经过，如果没有指定order，默认order = 0 ，值越小优先级越高。
+
+nacos 动态路由配置：[NacosDynamicRouteService](NacosDynamicRouteService.java)
+
+配置静态资源：
+
+```java
+// 例如     '[/jwh/**]': file:/opt/res/jwh/img/
+public RouterFunction<ServerResponse> staticResourceLocator(ResourceLoader resourceLoader, Map<String, String> staticResources) {
+    if (staticResources.isEmpty()) {
+      return null;
+    }
+    RouterFunctions.Builder builder = RouterFunctions.route();
+    staticResources.forEach((key, value) -> {
+        if (log.isDebugEnabled()) {
+            log.debug("添加静态资源配置: [{}] -> [{}]", key, value);
+        }
+        builder.add(RouterFunctions.resources(key, resourceLoader.getResource(value)));
+    });
+    return builder.build();
+}
+```
+
+## 原理
+
+基本概念：
+* Route：路由，网关的基本组件，由ID、目标URI、Predicate集合、Filter集合组成。
+* Predicate：谓语，提供断言的功能，可以匹配HTTP请求，如果Predicate的聚合判断为true，则意味着该请求会被当前Router进行转发,入参是 ServerWebExchange。
+* Filter：过滤器，为请求提供前置或者后置的过滤。
+
+![310](assets/310.png)
+
+Gateway 基于Netty实现，当客户端发送一个请求到达网关时，网关会根据一系列Predicate的匹配结果来决定访问哪个Route路由，然后根据过滤器链进行请求的处理，过滤器链可以在请求发送前后执行。
+
+![311](assets/311.png)
+
+寻找路由规则的核心类为 RoutePredicateHandlerMapping，通过遍历找出所有的路由：
+
+```java
+return this.routeLocator.getRoutes()
+      .filter(route -> {
+         ...
+         return route.getPredicate().test(exchange);
+      })
+```
+
+过滤器链的核心类是 FilteringWebHandler，将 GlobalFilter 和 GatewayFilter，组装成 DefaultGatewayFilterChain，排序后并调用。
+
+```java
+public Mono<Void> handle(ServerWebExchange exchange) {
+  Route route = exchange.getRequiredAttribute(GATEWAY_ROUTE_ATTR);
+  List<GatewayFilter> gatewayFilters = route.getFilters();
+
+  List<GatewayFilter> combined = new ArrayList<>(this.globalFilters);
+  combined.addAll(gatewayFilters);
+  // TODO: needed or cached?
+  AnnotationAwareOrderComparator.sort(combined);
+
+  if (logger.isDebugEnabled()) {
+    logger.debug("Sorted gatewayFilterFactories: " + combined);
+  }
+
+  return new DefaultGatewayFilterChain(combined).filter(exchange);
+}
+```
+
 # 分布式事务
 
 事务模型：
@@ -1543,7 +1803,7 @@ TCC事务进一步减少了锁的占用时间，只需要 Try 阶段持有锁即
 
 2. 基于可靠消息的最终一致性方案：在这种场景中数据一致性并不要求实时性。
 
-![310](assets/310.png)
+![316](assets/316.png)
 
 * 生产者发送一个事务消息到消息队列服务，消息队列服务只记录这条消息的数据，此时消费者无法消费这条消息。
 * 生产者执行具体的业务逻辑，完成本地事务的操作。
@@ -1650,7 +1910,7 @@ public void rollback(BusinessActionContext context) {
 * RM：资源管理器，集成在客户端。
 * TC：事务中心，作为服务端单独部署。
 
-![311](assets/311.png)
+![317](assets/317.png)
 
 1. TM向TC注册全局事务，并生成全局唯一XID。
 2. RM向TC注册分支事务，并将其纳入该XID对应的全局事务范围。

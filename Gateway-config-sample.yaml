@@ -1,0 +1,148 @@
+server:
+  port: 9999
+
+spring:
+  application:
+    name: springcloud-gateway
+  profiles:
+    active: dev
+  cloud:
+    nacos:
+      discovery:
+        server-addr: ${NACOS_SERVER:cdh1:8848}
+      config:
+        server-addr: ${NACOS_SERVER:cdh1:8848}
+        prefix: springcloud-gateway
+        group: DEFAULT_GROUP
+        file-extension: yml
+        ext-config:
+          - data-id: crazymaker-db-dev.yml
+            group: DEFAULT_GROUP
+            refresh: true
+          - data-id: crazymaker-redis-dev.yml
+            group: DEFAULT_GROUP
+            refresh: true
+          - data-id: crazymaker-common-dev.yml
+            group: DEFAULT_GROUP
+            refresh: true
+          - data-id: some.properties
+            group: DEFAULT_GROUP
+            refresh: true
+    gateway:
+      enabled: true
+      discovery:
+        locator:
+          enabled: true  #开启从注册中心动态创建路由的功能，利用微服务名进行路由
+          lower-case-service-id: true
+          filters:
+            - args[name]: serviceId
+              name: Hystrix
+          predicates:
+            - args[pattern]: '"''/''+serviceId+''/**''"'
+              name: Path
+      routes:
+        - id: blog
+          uri: https://blog.csdn.net/
+          predicates:
+            - Path=/csdn
+        - id: blog1
+          uri: https://blog.csdn.net/
+          predicates:
+            - Path=/blog1/**
+          filters:
+            - RewritePath=/blog1/(?<segment>.*), /$\{segment}
+        # 代理前  http://192.168.68.1:9999/blog1/crazymakercircle/article/details/80208650
+        #  代理后  https://blog.csdn.net/crazymakercircle/article/details/80208650
+        - id: service_provider_demo_route
+          uri: lb://service-provider-demo
+          predicates:
+            - Path=/provider/**
+        - id: service_provider_demo_route_filter
+          uri: lb://service-provider-demo
+          predicates:
+            - Path=/filter/**
+          filters:
+            - RewritePath=/filter/(?<segment>.*), /provider/$\{segment}
+            - UserIdCheck
+        - id: service_consumer_demo_route
+          uri: lb://service-consumer-demo
+          predicates:
+            - Path=/consumer/**
+        - id: sentinel_demo_provider_route
+          uri: lb://sentinel-demo-provider
+          predicates:
+            - Path=/sentinel-demo/**
+        - id: uaa-provider_route
+          uri: lb://uaa-provider
+          predicates:
+            - Path=/uaa-provider/**
+    sentinel:
+      transport:
+        dashboard: cdh1:8849 #配置Sentinel dashboard地址
+        port: 8719   #这里配置的是本地端口
+      eager: true
+    inetutils:
+      timeout-seconds: 10
+      preferred-networks: ${SCAFFOLD_PREFERRED_NETWORKS:192.168.68.}
+      prefer-ip-address: true  #访问路径可以显示IP地址
+
+
+ribbon:
+  eager-load:
+    enabled: true # 开启Ribbon的饥饿加载模式，启动时创建 RibbonClient
+  MaxAutoRetries: 1 # 同一台实例的最大重试次数，但是不包括首次调用，默认为1次
+  MaxAutoRetriesNextServer: 2  # 重试负载均衡其他实例的最大重试次数，不包括首次调用，默认为0次
+  OkToRetryOnAllOperations: true  # 是否对所有操作都重试，默认false
+  ServerListRefreshInterval: 2000 # 从注册中心刷新服务器列表信息的时间间隔，默认为2000毫秒，即2秒
+  retryableStatusCodes: 400,401,403,404,500,502,504
+  NFLoadBalancerRuleClassName: com.netflix.loadbalancer.RetryRule #配置规则 重试
+  ConnectTimeout: 3000  #连接建立的超时时长，默认1秒
+  ReadTimeout: 3000 #处理请求的超时时间，默认为1秒
+  MaxTotalConnections: 1000  # 最大连接数
+  MaxConnectionsPerHost: 1000  # 每个host最大连接数
+  restclient:
+    enabled: true
+
+
+hystrix:
+  threadpool:
+    default:
+      coreSize: 10 # 线程池核心线程数
+      maximumSize: 20  # 线程池最大线程数
+      allowMaximumSizeToDivergeFromCoreSize: true   # 线程池最大线程数是否有效
+      keepAliveTimeMinutes: 10  # 设置可空闲时间，单位分钟
+    demo-provider:
+      coreSize: 20   # 线程池核心线程数
+      maximumSize: 100   # 线程池最大线程数
+      allowMaximumSizeToDivergeFromCoreSize: true   # 线程池最大线程数是否有效
+      keepAliveTimeMinutes: 20  # 设置可空闲时间，单位分钟
+  propagate:
+    request-attribute:
+      enabled: true
+  command:
+    default:  #全局默认配置
+      execution:  #线程隔离相关配置
+        timeout:
+          enabled: true   #是否给方法执行设置超时时间，默认为true。一般我们不要改。
+        isolation:
+          strategy: THREAD    #配置请求隔离的方式，这里是默认的线程池方式。还有一种信号量的方式semaphore，使用比较少。
+          thread:
+            timeoutInMilliseconds: 100000  #方式执行的超时时间，默认为1000毫秒，在实际场景中需要根据情况设置
+            interruptOnTimeout: true   #发生超时时是否中断方法的执行，默认值为true。不要改。
+            interruptOnCancel: false  #是否在方法执行被取消时中断方法，默认值为false。没有实际意义，默认就好！
+      circuitBreaker:   #熔断器相关配置
+        enabled: true   #是否启动熔断器，默认为true，false表示不要引入 Hystrix。
+        requestVolumeThreshold: 20     #启用熔断器功能窗口时间内的最小请求数，假设我们设置的窗口时间为10秒，
+        sleepWindowInMilliseconds: 5000    #此配置的作用是指定熔断器打开后多长时间内允许一次请求尝试执行，官方默认配置为5秒。
+        errorThresholdPercentage: 50   #窗口时间内超过50%的请求失败后就会打开熔断器将后续请求快速失败掉,默认配置为50
+      metrics:
+        rollingStats:
+          timeInMilliseconds: 10000
+          numBuckets: 10
+
+# 暴露监控端点
+management:
+  endpoints:
+    web:
+      exposure:
+        include: '*'

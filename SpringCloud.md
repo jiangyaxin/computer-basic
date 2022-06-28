@@ -773,7 +773,280 @@ org.springframework.cloud.openfeign.loadbalancer.FeignLoadBalancerAutoConfigurat
 | feign.circuitbreaker.enabled               | false                                         | 如果为true，则将使用Hystrix断路器包装OpenFeign客户端。</br> 2020版本后，之前为 feign.hystrix.enabled=true |
 | feign.okhttp.enabled                       | false                                         | 启用Feign使用OK HTTP Client。                                                                             |
 
-## gRPC
+## Grpc
+
+### 使用
+
+1. 添加依赖
+
+```xml
+<dependency>
+    <groupId>io.github.lognet</groupId>
+    <artifactId>grpc-spring-boot-starter</artifactId>
+</dependency>
+```
+
+2. 添加编译插件
+
+```xml
+<extensions>
+    <extension>
+        <groupId>kr.motd.maven</groupId>
+        <artifactId>os-maven-plugin</artifactId>
+        <version>1.7.0</version>
+    </extension>
+</extensions>
+<plugins>
+    <plugin>
+        <groupId>org.xolstice.maven.plugins</groupId>
+        <artifactId>protobuf-maven-plugin</artifactId>
+        <version>0.6.1</version>
+        <configuration>
+            <protocArtifact>com.google.protobuf:protoc:3.5.1-1:exe:${os.detected.classifier}</protocArtifact>
+            <pluginId>grpc-java</pluginId>
+            <pluginArtifact>io.grpc:protoc-gen-grpc-java:1.16.1:exe:${os.detected.classifier}</pluginArtifact>
+        </configuration>
+        <executions>
+            <execution>
+                <goals>
+                    <goal>compile</goal>
+                    <goal>compile-custom</goal>
+                </goals>
+            </execution>
+        </executions>
+    </plugin>
+</plugins>
+```
+
+3. 编写 .proto 文件。
+4. 编译。
+5. 编写服务端：继承 xxxxImplBase,例如：
+
+```java
+// 启动服务
+@GrpcService
+public class GrpcServerService extends OrderQueryGrpc.OrderQueryImplBase {
+
+    @Override
+    public void listOrders(Buyer request, StreamObserver<Order> responseObserver) {
+        for (Order order : mockOrders()) {
+            // 发送数据给客户端，可以多次发送
+            responseObserver.onNext(order);
+        }
+        // 关闭流终结客户端调用
+        responseObserver.onCompleted();
+        // 返回异常
+        responseObserver.onError(new StatusException(Status.NOT_FOUND));
+    }
+}
+```
+
+不使用 @GrpcService ,手动编码方式：
+
+```java
+Server server = ServerBuilder.forPort(50051)
+                        .addService(new xxxxService())
+                        .addService(new xxxxService())
+                        .build()
+                        .start();
+
+Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+  if(server != null){
+    server.shutdown();
+  }
+}));
+
+server.awaitTermination();
+```
+
+### 原理
+
+优势：
+1. 基于HTTP2，使用 protobuf 协议，数据量量更小，能够进行高效的通信。
+2. 具有简单且定义良好的服务接口，先定义接口再实现细节。
+3. 支持多语言。
+4. 支持全双工。
+5. 具备认证、加密、负载均衡等商业特效。
+6. 经过大量实战测试。
+
+### HTTP2
+
+HTTP1.x 队头阻塞：在持久连接上，客户端联系发送多条请求，服务端只能按请求顺序响应，由于HTTP请求和响应并没有序号标识，，无法将乱序的响应与请求关联起来，如果有一个响应返回延迟，那么其后续的响应都会被延迟。
+
+TCP 队头阻塞：一个TCP分片丢失，导致其后续分片不按序到达接收端的时候，后续分节将被接收端一直保持直到丢失的第一个分节被发送端重传并到达接收端为止，保证应用进程能够按照发送端的发送顺序接收数据。
+
+优势：
+
+1. 使用二进制分帧传输，分为 Headers 帧 和 Data帧，来自不同数据流的帧可以交错发送，每一个都有StreamID作为标识，可以根据stream id将frame再归属到各自不同的request里面，解决HTTP1.x 队头阻塞问题，请求之间互不影响，响应之间互不干扰。
+
+  ![341](assets/341.png)
+
+2. 多路复用，使用一个连接并行发送多个请求和响应，减少每次请求都经历的三次握手和TCP慢启动。
+3. 头部使用HPACK压缩算法，减少需要传输的header大小，http1.X不支持首部压缩。
+4. 服务端推送，服务器可以对一个客户端请求发送多个响应，服务器向客户端推送资源无需客户端明确地请求。
+
+瓶颈：所有的压力集中在底层一个TCP连接之上，TCP很可能就是下一个性能瓶颈，比如TCP分组的队首阻塞问题，单个TCP packet丢失导致整个连接阻塞，无法逃避，此时所有消息都会受到影响。
+
+HPACK编码：对传输的 Headers 建立映射表，包括静态表和动态表，静态表包含常用 HTTP 标头字段，动态表最初为空，将根据在特定连接内交换的值进行更新。
+
+  ![342](assets/342.png)
+
+相同的 Header 只需要发送索引值，新的 Header 会重新加入 Dynamic Table。
+
+### Protobuf
+
+proto3 语法：
+
+1. 定义消息类型：
+
+```protobuf
+// 声明版本号
+syntax = "proto3";
+
+message SearchRequest {
+  repeated string query = 1;
+  int32 page_number = 2;
+  int32 result_per_page = 3;
+  reserved 15, 9 to 11;
+  reserved "foo", "bar";
+
+  enum Corpus {
+    UNIVERSAL = 0;
+    WEB = 1;
+    IMAGES = 2;
+    LOCAL = 3;
+    NEWS = 4;
+    PRODUCTS = 5;
+    VIDEO = 6;
+  }
+  Corpus corpus = 4;
+
+  oneof test_oneof {
+    string name = 4;
+    SubMessage sub_message = 9;
+  }
+
+
+map<string, Project> projects = 3;
+}
+```
+
+![335](assets/335.png)
+
+* tag：标识符，[1,15]之内的标识号在编码的时候会占用一个字节。[16,2047]之内的标识号则占用2个字节，所以应该为那些频繁出现的消息元素保留 [1,15] 之内的标识号。
+* repeated：表示该字段可以任意重复多次，默认情况使用 packed 编码。
+* reserved：保留字段，以后还有可能使用。
+* 默认值：
+  - 对于string，默认是一个空string
+  - 对于bytes，默认是一个空的bytes
+  - 对于bool，默认是false
+  - 对于数值类型，默认是0
+  - 对于枚举，默认是第一个定义的枚举值，必须为0
+  - 对于可重复域的默认值是空列表
+* oneof：表示最多一个字段被设置，最后一个被设置的字段有值，不支持 repeated。
+* map：顺序不确定，可以使用以下方式代替：
+
+```protobuf
+message MapFieldEntry {
+  key_type key = 1;
+  value_type value = 2;
+}
+repeated MapFieldEntry map_field = N;
+```
+
+2. 导入其他 .proto 文件。
+
+```protobuf
+import "myproject/other_protos.proto";
+import public "new.proto";
+```
+
+import public 依赖性会通过任意导入包含import public声明的proto文件传递。如果移动一个.proto文件到一个新的位置， 可以不直接移动.proto文件， 只需放入一个伪 .proto 文件在老的位置， 然后使用import public转向新的位置。
+
+3. 更新消息类型
+
+* 不要更改任何已有的字段的数值标识。
+* int32, uint32, int64, uint64,和bool是全部兼容。
+* sint32和sint64是互相兼容的，但是它们与其他整数类型不兼容。
+* string和bytes是兼容的——只要bytes是有效的UTF-8编码。
+* fixed32与sfixed32是兼容的，fixed64与sfixed64是兼容的。
+* 枚举类型与int32，uint32，int64和uint64相兼容。
+
+4. 包名，防止命名冲突。
+
+```protobuf
+package foo.bar;
+message Open { ... }
+```
+
+5. 定义服务
+
+```protobuf
+service SearchService {
+  rpc Search (SearchRequest) returns (SearchResponse);
+}
+```
+
+6. 选项
+
+```protobuf
+option java_package = "com.example.foo";
+
+option java_outer_classname = "Ponycopter";
+```
+
+编译器编译： `protoc --proto_path=IMPORT_PATH ---java_out=DST_DIR path/to/file.proto`
+
+#### 编码规则
+
+Protobuf消息由字段（field）构成，每个字段有其规则（rule）、数据类型（type）、字段名（name）、tag，以及选项（option）。
+
+![336](assets/336.png)
+
+序列化时，消息字段会按照tag顺序，以key+val的格式，编码成二进制数据。可以划分为6个部分：MSB flag、tag、编码后数据类型（wire type）、长度（length）、字段值（value）、以及填充（padding），6部分不是顺序排列。
+
+每个字节最高位是 MSB flag ，1表示还会有更多字节出现，0表示用不到1个字节。
+
+key 由 数据类型 和 长度 组成，key = tag << 3 | wire_type，wire_type 有 Varint（0）、64-bit（1）、Length-delimited（2）和32-bit（5）几种，例如：
+
+![337](assets/337.png)
+其中 灰色是MSB，黄色是tag，这里的tag值为16，蓝色是wire_type，绿色是value。
+
+数据类型编码方法：
+
+![338](assets/338.png)
+
+varint编码：tag、length、int32、int64等数据类型都是用Varint编码。
+
+* 123456 用二进制表示为1 11100010 01000000，
+* 每次从低向高取 7位 变成111 1000100 1000000
+* 大端序转为小端序，即交换字节顺序变成1000000 1000100 111
+* 然后加上最高有效位(即：最后一个字节高位补0，其余各字节高位补1)变成11000000 11000100 00000111
+* 最后再转成 10进制，所以经过 varint 编码后 123456 占用三个字节分别为192 196 7。
+
+varint是变长编码，不能表示负数，当数字较少时，varint较为划算，当数字较大时，varint会较为浪费，例如int32 大于2^(4*7) - 1的数，由于MSB位，需要5个字节才能表示。
+
+对于较大数字可以使用 64-bit（1）、32-bit（5） 两种定长编码类型。使用64-bit编码的数据类型包括fixed64、sfixed64和double，使用32-bit编码的数据类型包括fixed32、sfixed32和float。
+
+Zigzag 编码: sint32 这种类型包含负数，采用 zigzag 编码，将所有整数映射成无符号整数，然后再采用 varint 编码方式编码。
+
+```java
+Zigzag(n) = (n << 1) ^ (n >> 31), n 为 sint32 时
+
+Zigzag(n) = (n << 1) ^ (n >> 63), n 为 sint64 时
+```
+
+Length-delimited编码：会将数据的length也编码进最终数据，使用Length-delimited编码格式的数据类型包括string、bytes和自定义消息。
+
+![339](assets/339.png)
+其中 灰色是MSB，黄色是tag，蓝色是wire_type，红色是length，绿色是value。
+
+对于repeated字段默认使用 packed 选项，编码时多个val 共用一个 key，使用 Length-delimited 编码。
+
+![340](assets/340.png)
+
+`#2` 表示第一条数据，`#3` 表示第二条数据，`#4` 表示第三条数据。
+
 
 ## Dubbo
 

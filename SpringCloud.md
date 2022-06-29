@@ -859,6 +859,236 @@ Runtime.getRuntime().addShutdownHook(new Thread(() -> {
 server.awaitTermination();
 ```
 
+6. 编写客户端。
+
+```java
+ManagedChannel channel = ManagedChannelBuilder.forAddress("ip",port).usePlaintext().build();
+
+xxxxGrpc.xxxxBlockingStub stub = xxxxGrpc.newBlockingStub(channel);
+
+stub.xxxx(xxxx);
+
+channel.shutdown().awaitTermination(5,TimeUnit.SECONDS);
+```
+
+* usePlaintext()：表示使用明文传输。
+* BlockingStub：会一直等待，直到接收服务器的响应为止。
+* NonBlockingStub：不会等待服务器的响应，会注册一个观察者（observer）来接收响应。
+
+通信模式：
+
+| 服务类型       | 特点                                                                     |
+| -------------- | ------------------------------------------------------------------------ |
+| 一元 RPC       | 一般的rpc调用，传入一个请求对象，返回一个返回对象                        |
+| 服务端流式 RPC | 传入一个请求对象，服务端可以返回多个结果对象                             |
+| 客户端流式 RPC | 客户端传入多个请求对象，服务端返回一个结果对象                           |
+| 双向流式 RPC   | 结合客户端流式RPC和服务端流式RPC，可以传入多个请求对象，返回多个结果对象 |
+
+一元模式：客户端发起一次请求，服务端响应一个数据，每一次都是发起一个独立的tcp连接，走一次三次握手和四次挥手。
+
+* 客户端发送消息后会添加一个 EOS 标记，标记请求消息结束，客户端进入半关状态，客户端不能发送消息，但是可以监听服务端。
+* 服务端生成响应后，会发送带有状态详情的trailer头信息后，通信就会关闭。
+
+```protobuf
+rpc simpleHello(Person) returns (Result) {}
+```
+
+客户端流式 RPC ：客户端传入多个请求对象，服务端返回一个响应结果，例如 物联网终端向服务器报送数据。
+
+* 客户端发送多条消息后才会发送 EOS。
+
+```protobuf
+rpc clientStreamHello(stream Person) returns (Result) {}
+```
+
+服务端流式 RPC ： 客户端发出一个请求，但不会立即得到一个响应，而是在服务端与客户端之间建立一个单向的流，服务端可以随时向流中写入多个响应消息，最后主动关闭流，而客户端需要监听这个流，不断获取响应直到流关闭。
+
+* 服务端发送多条消息后才会发送 trailer。
+
+场景： 客户端向服务端发送一个股票代码，服务端就把该股票的实时数据源源不断的返回给客户端。
+
+```protobuf
+rpc serverStreamHello(Person) returns (stream Result) {}
+```
+
+双向流式 RPC ：可以传入多个对象，返回多个响应对象，例如：聊天应用
+
+* 客户端发送多条消息后才会发送 EOS。
+* * 服务端发送多条消息后才会发送 trailer。
+
+```protobuf
+rpc biStreamHello(stream Person) returns (stream Result) {}
+```
+
+stub 类型：
+
+```java
+// 异步的Stub，支持所有的通信模式。
+public static xxxxStub newStub(io.grpc.Channel channel);
+// 阻塞的 Stub 支持 一元调用 和 服务端流式 RPC。
+public static xxxxStub newBlockingStub(io.grpc.Channel channel);
+// Furture 风格 的 Stub，支持 一元调用。
+public static xxxxStub newFutureStub(io.grpc.Channel channel);
+```
+
+实例：
+
+1. 客户端流式：
+
+```protobuf
+syntax = "proto3";
+
+package client_streaming;
+
+option java_multiple_files = true;
+option java_package = "com.tomato.wangzh.grpc.common";
+
+message UploadFileRequest {
+    oneof data {
+        FileInfo file_info = 1;
+        bytes file_data = 2;
+    }
+}
+
+message UploadFileResponse {
+    string file_id = 1;
+    string size = 2;
+}
+
+message FileInfo {
+    string file_id = 1;
+    string file_type = 2;
+}
+
+service UploadFileService {
+    // stream 代表 客户端流
+    rpc uploadFile(stream UploadFileRequest) returns (UploadFileResponse) {}
+}
+```
+
+```java
+ManagedChannel channel = ManagedChannelBuilder.forAddress("ip",port).usePlaintext().build();
+
+xxxxGrpc.xxxxStub stub = xxxxGrpc.newStub(channel);
+
+CountDownLatch  countDownLatch  =  new  CountDownLatch(1);
+// 读取文件数据
+InputStream in = GrpcUploadClient.class.getResourceAsStream("/file/1.jpg");
+
+StreamObserver<UploadFileRequest> requestObserver  = stub.withDeadlineAfter(5,TimeUnit.SECONDS)
+                  .uploadFile(new  StreamObserver<UploadFileResponse>() {
+                      @Override
+                      public void onNext(UploadFileResponse value) {
+                        // 获取服务端响应的结果
+                        logger.log(Level.INFO,  MessageFormat.format("响应的文件id:  {0}",  value.getFileId()));
+                        logger.log(Level.INFO,  MessageFormat.format("响应的文件大小:  {0}",  value.getSize()));
+                      }
+
+                      @Override
+                      public void onError(Throwable t) {
+                        logger.log(Level.SEVERE,  MessageFormat.format("接受数据异常:  {0}", t));
+                        countDownLatch.countDown();
+                      }
+
+                      @Override
+                      public void onCompleted() {
+                        logger.log(Level.INFO,  "上传完成");
+                        countDownLatch.countDown();
+                      }
+              });
+
+// 构建文件信息
+FileInfo  fileInfo  =  FileInfo.newBuilder().setFileType("jpg").setFileId(UUID.randomUUID().toString()).build();
+// 根据流程图，先发送文件信息
+UploadFileRequest  request  =  UploadFileRequest.newBuilder().setFileInfo(fileInfo).build();
+// 发送文件信息
+requestObserver.onNext(request);
+
+// 构建数组
+byte[]  bytes  =  new  byte[1024];
+while(true) {
+  int count = in.read(bytes);
+  // 如果数据读完，那么就跳出循环
+  if (count <= 0) {
+    break;
+  }
+
+  // 如果传送结束或者发生异常，则结束整个方法
+  if (countDownLatch.getCount() == 0) {
+    return;
+  }
+
+  request = UploadFileRequest.newBuilder().setFileData(ByteString.copyFrom(bytes)).build();
+  requestObserver.onNext(request);
+  logger.info(MessageFormat.format("send  data  size  :  {0}",  count)  );
+}
+// 执行该方法代表传送完成
+requestObserver.onCompleted();
+
+// 如果两秒之内没有传送完成，则发生异常
+if  (countDownLatch.await(1,  TimeUnit.MINUTES))  {
+logger.info("Within one minute, the data was not transmitted");
+}
+```
+
+```java
+public class GrpcUploadService extends UploadFileServiceGrpc.UploadFileServiceImplBase {
+  private  static  final  Logger  logger  =  Logger.getLogger(GrpcUploadService.class.getName());
+
+  @Override
+  public StreamObserver<UploadFileRequest> uploadFile(StreamObserver<UploadFileResponse> responseObserver) throw FileNotFoundException {
+    return new StreamObserver<UploadFileRequest>() {
+      /**
+        *	获取客户端发送过来的数据
+        *	@param value
+        */
+      long  size  =  0;
+      //构建文件输出流
+
+      Integer  id  =  new  Random().nextInt(100);
+      FileOutputStream out = new FileOutputStream(id + ".jpg");
+  }
+
+
+  public void onNext(UploadFileRequest value) {
+      try {
+        // 1.获取发送过来的流类型
+        UploadFileRequest.DataCase  dataCase  =  value.getDataCase();
+        // 如果是文件信息则对文件信息处理
+        if  (Objects.equals(dataCase,  UploadFileRequest.DataCase.FILE_INFO))  {
+          String fileId = value.getFileInfo().getFileId();
+          String fileType = value.getFileInfo().getFileType();
+        } else if (Objects.equals(dataCase,  UploadFileRequest.DataCase.FILE_DATA)){
+          size += value.getFileData().size();
+          out.write(value.getFileData().toByteArray());
+        }
+      } catch (IOException e) { e.printStackTrace();
+          responseObserver.onError(Status.INTERNAL.withDescription("server  write  error");
+      }
+  }
+
+  @Override
+  public void onError(Throwable t) {
+    logger.log(Level.SEVERE,MessageFormat.format("client  send  data  error:  {0}",  t)
+  }
+
+  @Override
+  public void onCompleted() {
+    try {
+      // 传输完成，则响应客户端一个信息
+      out.flush();
+      out.close();
+      UploadFileResponse response = UploadFileResponse.newBuilder().setFileId(id.toString()).setSize(size+"").build();
+      responseObserver.onNext(response);
+      responseObserver.onCompleted();
+    } catch (IOException e) {
+        e.printStackTrace();
+        responseObserver.onError(Status.DATA_LOSS.withDescription(e.getMessage()).asRuntimeException());
+    }
+  }
+}; } }
+```
+
 ### 原理
 
 优势：
@@ -931,8 +1161,6 @@ map<string, Project> projects = 3;
 }
 ```
 
-![335](assets/335.png)
-
 * tag：标识符，[1,15]之内的标识号在编码的时候会占用一个字节。[16,2047]之内的标识号则占用2个字节，所以应该为那些频繁出现的消息元素保留 [1,15] 之内的标识号。
 * repeated：表示该字段可以任意重复多次，默认情况使用 packed 编码。
 * reserved：保留字段，以后还有可能使用。
@@ -953,6 +1181,12 @@ message MapFieldEntry {
 }
 repeated MapFieldEntry map_field = N;
 ```
+
+![335](assets/335.png)
+
+* int32、int64：有符合整数，负数效率较低。
+* uint32、uint64：无符合整数。
+* sint32、sint64：有符号整数，负数效率较高。
 
 2. 导入其他 .proto 文件。
 
@@ -1016,7 +1250,7 @@ key 由 数据类型 和 长度 组成，key = tag << 3 | wire_type，wire_type 
 
 ![338](assets/338.png)
 
-varint编码：tag、length、int32、int64等数据类型都是用Varint编码。
+varint编码：tag、length、int32、int64等数据类型都是用Varint编码，使用小端字节序。
 
 * 123456 用二进制表示为1 11100010 01000000，
 * 每次从低向高取 7位 变成111 1000100 1000000
@@ -1036,7 +1270,7 @@ Zigzag(n) = (n << 1) ^ (n >> 31), n 为 sint32 时
 Zigzag(n) = (n << 1) ^ (n >> 63), n 为 sint64 时
 ```
 
-Length-delimited编码：会将数据的length也编码进最终数据，使用Length-delimited编码格式的数据类型包括string、bytes和自定义消息。
+Length-delimited编码：会将数据的length也编码进最终数据，使用Length-delimited编码格式的数据类型包括string、bytes和自定义消息，value使用大端字节序。
 
 ![339](assets/339.png)
 其中 灰色是MSB，黄色是tag，蓝色是wire_type，红色是length，绿色是value。

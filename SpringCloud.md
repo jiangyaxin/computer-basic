@@ -933,7 +933,7 @@ public static xxxxStub newFutureStub(io.grpc.Channel channel);
 
 实例：
 
-1. 客户端流式：
+1. 客户端流式：withDeadlineAfter 当超出该时间，客户端会关闭，服务端也会停止调用，和timeout不一样，timeout 服务器会继续执行，只是返回不到客户端。
 
 ```protobuf
 syntax = "proto3";
@@ -974,7 +974,6 @@ xxxxGrpc.xxxxStub stub = xxxxGrpc.newStub(channel);
 CountDownLatch  countDownLatch  =  new  CountDownLatch(1);
 // 读取文件数据
 InputStream in = GrpcUploadClient.class.getResourceAsStream("/file/1.jpg");
-
 StreamObserver<UploadFileRequest> requestObserver  = stub.withDeadlineAfter(5,TimeUnit.SECONDS)
                   .uploadFile(new  StreamObserver<UploadFileResponse>() {
                       @Override
@@ -1087,6 +1086,244 @@ public class GrpcUploadService extends UploadFileServiceGrpc.UploadFileServiceIm
     }
   }
 }; } }
+```
+
+2. 服务端流式
+
+```protobuf
+syntax  =  "proto3";
+package server_streaing;
+
+option java_multiple_files = true;
+option java_package  =  "com.tomato.wangzh.grpc.common";
+// 定义请求的消息
+message Request {
+  uint32 number = 1;
+}
+
+// 定义响应的消息
+message Response {
+  uint32 result = 1;
+}
+
+// 定义请求
+service ServerStreamingService {
+  rpc getResult(Request) returns (stream Response);
+}
+```
+
+```java
+public class NumberService extends ServerStreamingServiceGrpc.ServerStreamingServiceImplBase {
+  @Override
+  public void getResult(Request request, StreamObserver<Response> responseObserver) {
+    int number = request.getNumber();
+    it(Context.current().isCancelled()){
+      responseObserver.onError(Status.CANCELLED.withDescription("xxxx")).asRuntimeException());
+      return;
+    }
+    for(int i=1; i<=100; i++){
+      if(i % number == 0){
+        Reponse response = Reponse.newBuilder().setResult(i).build();
+        responseObserver.onNext(response);
+      }
+    }
+    responseObserver.onCompleted();
+  }
+}
+
+```
+
+```java
+ManagedChannel channel = ManagedChannelBuilder.forAddress("ip",port).usePlaintext().build();
+
+xxxxGrpc.xxxxStub stub = xxxxGrpc.newStub(channel);
+
+stub.getResult(Request.newBuilder().setNumber(5).build(),new StreamObserver<Reponse>() {
+  @Override
+  public void onNext(Response response) {
+    logger.info(MessageFormat.format("服务端发送过来的数字:{0}"  ,  response.getResult()));
+  }
+
+  @Override
+  public void onError(Throwable throwable) {
+    logger.log(Level.WARNING,MessageFormat.format("数据发送错误:{0}",throwable.getMessage()));
+  }
+
+  @Override
+  public void onCompleted() {
+    logger.info("数据传送完成");
+  }
+});
+```
+
+3. 双向流式：
+
+```protobuf
+syntax = "proto3";
+
+package bidirectional_streaming;
+
+// 代表生成java文件在哪个包底下
+option java_package = "com.tomato.wangzh.grpc.common";
+
+// 代表生成多个文件
+option java_multiple_files = true;
+
+// 定义请求消息
+message ProductRequest {
+  string id = 1;
+}
+
+// 定义响应消息
+message ProductResponse {
+  Product product = 1;
+}
+
+// 定义响应消息内容
+message Product {
+  string id = 1;
+  string name = 2;
+  double price = 3;
+}
+
+service ProductService {
+  rpc getProductById(stream ProductRequest) returns(stream ProductResponse) {}
+}
+```
+
+```java
+public class ProductService extends ProductServiceGrpc.ProductServiceImplBase {
+    @Override
+  public StreamObserver<ProductRequest> getProductById(StreamObserver<ProductResponse> responseObserver) {
+     return new StreamObserver<ProductRequest>() {
+            @Override
+            public void onNext(ProductRequest productRequest) {
+              // 接收客户端消息
+              logger.info(MessageFormat.format("接受客户端的数据:{0}",productRequest.getId()));
+
+              // 处理客户端取消连接问题
+              if (Context.ROOT.isCancelled()) {
+                  responseObserver.onError(Status.CANCELLED.withDescription("客户端取消了链接").asRuntimeException());
+                  responseObserver.onCompleted();
+                  return;
+              }
+
+              responseObserver.onNext(productResponse);
+            }
+
+            @Override
+            public void onError(Throwable throwable) {
+              logger.log(Level.WARNING,"接受数据发生了异常");
+              responseObserver.onError(Status.CANCELLED.withDescription(MessageFormat.format("接受数据发生了异常:{0}",throwable.getMessage())).asRuntimeException());
+              responseObserver.onCompleted();
+            }
+
+            @Override
+            public void onCompleted() {
+              // 数据接受完成，即响应完成
+              responseObserver.onCompleted();
+            }
+    };
+  }
+}
+```
+
+```java
+ManagedChannel channel = ManagedChannelBuilder.forAddress("ip",port).usePlaintext().build();
+
+xxxxGrpc.xxxxStub stub = xxxxGrpc.newStub(channel);
+
+StreamObserver<ProductRequest> requestObserver = stub.getProductById(new StreamObserver<ProductResponse>() {
+  @Override
+  public void onNext(Response response) {
+    logger.info(MessageFormat.format("服务端发送过来的数字:{0}"  ,  response.getResult()));
+  }
+
+  @Override
+  public void onError(Throwable throwable) {
+    logger.log(Level.WARNING,MessageFormat.format("数据发送错误:{0}",throwable.getMessage()));
+  }
+
+  @Override
+  public void onCompleted() {
+    logger.info("数据传送完成");
+  }
+});
+
+ids.forEach(id - > {
+  requestObserver.onNext(ProductRequest);
+})
+
+requestObserver.onCompleted();
+```
+
+拦截器：
+
+客户端：ClientInterceptor
+
+```java
+@Slf4j
+public class CustomClientInterceptor implements ClientInterceptor {
+    @Override
+    public <ReqT, RespT> ClientCall<ReqT, RespT> interceptCall(MethodDescriptor<ReqT, RespT> method, CallOptions callOptions, Channel next) {
+        return new CustomForwardingClientCall<>(next.newCall(method, callOptions));
+    }
+}
+
+@Slf4j
+class CustomCallListener<RespT> extends ForwardingClientCallListener.SimpleForwardingClientCallListener<RespT> {
+
+    protected CustomCallListener(ClientCall.Listener<RespT> delegate) {
+        super(delegate);
+    }
+}
+
+@Slf4j
+class CustomForwardingClientCall<ReqT, RespT> extends ClientInterceptors.CheckedForwardingClientCall<ReqT, RespT> {
+
+    protected CustomForwardingClientCall(ClientCall<ReqT, RespT> delegate) {
+        super(delegate);
+    }
+
+    @Override
+    protected void checkedStart(Listener<RespT> responseListener, Metadata headers) throws Exception {
+        CustomCallListener<RespT> listener = new CustomCallListener<>(responseListener);
+        delegate().start(listener, headers);
+    }
+}
+```
+
+服务端：ServerInterceptor
+
+```
+@Slf4j
+public class CustomServerInterceptor implements ServerInterceptor {
+    @Override
+    public <ReqT, RespT> ServerCall.Listener<ReqT> interceptCall(ServerCall<ReqT, RespT> serverCall, Metadata metadata, ServerCallHandler<ReqT, RespT> serverCallHandler) {
+
+        CustomServerCall<ReqT, RespT> customServerCall = new CustomServerCall<>(call);
+        ServerCall.Listener<ReqT> listener = next.startCall(customServerCall, headers);
+        return new CustomServerCallListener<>(listener);
+        return new CustomServerCallListener<>(listener);
+    }
+}
+
+@Slf4j
+class CustomServerCallListener<ReqT> extends ForwardingServerCallListener.SimpleForwardingServerCallListener<ReqT> {
+
+    protected CustomServerCallListener(ServerCall.Listener<ReqT> delegate) {
+        super(delegate);
+    }
+}
+
+
+@Slf4j
+class CustomServerCall<ReqT, RespT> extends ForwardingServerCall.SimpleForwardingServerCall<ReqT, RespT> {
+
+    protected CustomServerCall(ServerCall<ReqT, RespT> delegate) {
+        super(delegate);
+    }
+}
 ```
 
 ### 原理

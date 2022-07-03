@@ -115,7 +115,7 @@ SELECT @<var1>;
 DECLARE <var> <type>;
 
 # 储存过程中IF语句
-IF <expression> THEN 
+IF <expression> THEN
    <sql>
 ELSEIF <expression> THEN
    <sql>
@@ -185,7 +185,7 @@ SELECT * from INNODB_TABLESTATS；
 SELECT * from PROCESSLIST；
 ```
 
-### CTE
+### CTE(Common Table Expression)
 
 MYSQL8 以后使用：
 
@@ -194,7 +194,7 @@ MYSQL8 以后使用：
 # 如果不写 (<column1>,<column2>,<column3>),默认使用 <sql> 返回所有字段
 WITH <cte>(<column1>,<column2>,<column3>) AS (
     <sql>
-) 
+)
 SELECT * FROM <cte>;
 
 # 递归CTE，必须以 WITH RECURSIVE 开头，分为 seed 查询 和 recursive 查询，由 UNION [ALL] 或 UNION DISTINCT 分隔
@@ -205,7 +205,7 @@ WITH RECURSIVE <cte>(<column1>,<column2>,<column3>) AS (
     UNION [ALL|DISTINCT]
     # 引用 <cte> 产生递归，直到迭代不会产生新行
     SELECT <column1>,<column2>,<column3> FROM <cte> ......
-) 
+)
 SELECT * FROM <cte>;
 ```
 
@@ -243,7 +243,7 @@ mysql> SELECT
 
 ```bash
 # FRAME 子句,位于ORDER BY子句之后
-# ROWS 使用行号进行取范围，RANGE使用当前行中 分组字段 的值来进行取返回，比如 分组字段为r1，当前行r1的值为9，行号为1，并且 between 1 preceding and 1 following,则取 r1的值 在 [9-1,9+1] 的行。 
+# ROWS 使用行号进行取范围，RANGE使用当前行中 分组字段 的值来进行取返回，比如 分组字段为r1，当前行r1的值为9，行号为1，并且 between 1 preceding and 1 following,则取 r1的值 在 [9-1,9+1] 的行。
 [ROWS|RANGE] BETWEEN <边界> AND <边界>
 # 或 默认包含了当前行作为另一个边界
 [ROWS|RANGE] <边界>
@@ -994,12 +994,12 @@ CREATE TABLE `t_c` (
 
 ```sql
 -- 增加分区
-alter table my_user add partition (partition p3 values less than (4000)); 
-alter table my_user add partition (partition p3 values in (40)); 
+alter table my_user add partition (partition p3 values less than (4000));
+alter table my_user add partition (partition p3 values in (40));
 -- 删除表分区，并删除数据
 alter table my_user drop partition p30;
 -- 删除表的所有分区，不会丢失数据
-alter table my_user remove partitioning; 
+alter table my_user remove partitioning;
 -- 通过此语句来显示扫描哪些分区，及他们是如何使用的
 explain partitions select 语句
 --重新定义range分区表，不会丢失数据

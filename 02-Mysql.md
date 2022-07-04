@@ -474,7 +474,7 @@ innodb_log_file_size: redo log大小，用于数据库崩溃时重放已提交�
 
 ##### 慢查询日志
 
-使用 `SET @@GLOBAL。slow_query_log=1`开启,通过 `SET @@.GLOBAL.long_query_time = <num单位秒>`来定义慢查询，slow_query_log_file 属性可以定义日志路径，默认在数据目录下名为 `<host_name>-slow.log`，默认情况未使用索引的查询不会被记录，若开启 log_queries_not_using_indexes,则可以使未使用索引的查询被记录。
+使用 `SET @@GLOBAL.slow_query_log=1`开启,通过 `SET @@GLOBAL.long_query_time = <num单位秒>`来定义慢查询，slow_query_log_file 属性可以定义日志路径，默认在数据目录下名为 `<host_name>-slow.log`，默认情况未使用索引的查询不会被记录，若开启 log_queries_not_using_indexes,则可以使未使用索引的查询被记录。
 
 查询慢查询日志 `SELECT * FROM mysql.slow_log`。
 

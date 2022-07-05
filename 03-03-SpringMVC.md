@@ -3,7 +3,7 @@
 扩展点：
 * 实现 javax.servlet.Filter 接口。
 * 实现 HandlerInterceptor 接口。
-* 实现 HandlerMethodArgumentResolver 接口，方便扩展请求参数。
+* 实现 HandlerMethodArgumentResolver 接口，方便扩展请求参数处理。
 * 继承 AbstractHttpMessageConverter 转换参数。
 * @ControllerAdvice 定义异常处理。
 * 实现 HandlerMethodReturnValueHandler ，统一处理返回值。

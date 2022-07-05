@@ -56,7 +56,7 @@ spring.factories 中 security 的相关配置为：
 ### SecurityAutoConfiguration
 
 Import 3个类：
-* SpringBootWebSecurityConfiguration：当 WebSecurityConfigurerAdapterr 不存在时 生成默认的 WebSecurityConfigurerAdapter。
+* SpringBootWebSecurityConfiguration：当 WebSecurityConfigurerAdapter 不存在时 生成默认的 WebSecurityConfigurerAdapter。
 * WebSecurityEnablerConfiguration 负责开启 @EnableWebSecurity。
 
 #### @EnableWebSecurity

@@ -41,17 +41,17 @@
 ### 入口
 
 spring.factories 中 security 的相关配置为：
-org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration：自动配置Security，使用@EnableWebSecurity注解。
-org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration：配置 UserDetailsService，默认使用 InMemoryUserDetailsManager。
-org.springframework.boot.autoconfigure.security.servlet.SecurityFilterAutoConfiguration：晚于 SecurityAutoConfiguration， 配置 DelegatingFilterProxyRegistrationBean，负责生成Filter的代理类。
-org.springframework.boot.autoconfigure.security.reactive.ReactiveSecurityAutoConfiguration
-org.springframework.boot.autoconfigure.security.reactive.ReactiveUserDetailsServiceAutoConfiguration
-org.springframework.boot.autoconfigure.security.rsocket.RSocketSecurityAutoConfiguration
-org.springframework.boot.autoconfigure.security.saml2.Saml2RelyingPartyAutoConfiguration
-org.springframework.boot.autoconfigure.security.oauth2.client.servlet.OAuth2ClientAutoConfiguration
-org.springframework.boot.autoconfigure.security.oauth2.client.reactive.ReactiveOAuth2ClientAutoConfiguration
-org.springframework.boot.autoconfigure.security.oauth2.resource.servlet.OAuth2ResourceServerAutoConfiguration
-org.springframework.boot.autoconfigure.security.oauth2.resource.reactive.ReactiveOAuth2ResourceServerAutoConfiguration
+* org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration：自动配置Security，使用@EnableWebSecurity注解。
+* org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration：配置 UserDetailsService，默认使用 InMemoryUserDetailsManager。
+* org.springframework.boot.autoconfigure.security.servlet.SecurityFilterAutoConfiguration：晚于 SecurityAutoConfiguration， 配置 DelegatingFilterProxyRegistrationBean，负责生成Filter的代理类。
+* org.springframework.boot.autoconfigure.security.reactive.ReactiveSecurityAutoConfiguration
+* org.springframework.boot.autoconfigure.security.reactive.ReactiveUserDetailsServiceAutoConfiguration
+* org.springframework.boot.autoconfigure.security.rsocket.RSocketSecurityAutoConfiguration
+* org.springframework.boot.autoconfigure.security.saml2.Saml2RelyingPartyAutoConfiguration
+* org.springframework.boot.autoconfigure.security.oauth2.client.servlet.OAuth2ClientAutoConfiguration
+* org.springframework.boot.autoconfigure.security.oauth2.client.reactive.ReactiveOAuth2ClientAutoConfiguration
+* org.springframework.boot.autoconfigure.security.oauth2.resource.servlet.OAuth2ResourceServerAutoConfiguration
+* org.springframework.boot.autoconfigure.security.oauth2.resource.reactive.ReactiveOAuth2ResourceServerAutoConfiguration
 
 ### SecurityAutoConfiguration
 

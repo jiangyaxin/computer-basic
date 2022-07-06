@@ -1310,6 +1310,8 @@ public interface AccessDecisionVoter<S> {
 - `AffirmativeBased`：如果有一票同意，则允许访问；如果没有同意票，只要有一票反对，则禁止访问；如果全部弃权，通过`allowIfAllAbstainDecisions`去判断，默认是`false`，即禁止访问。
 - `UnanimousBased`：如果有一票反对，则禁止访问；如果没有反对票，只要有一票同意，则允许访问；如果全部弃权，通过`allowIfAllAbstainDecisions`去判断，默认是`false`，即禁止访问。
 
+默认的决策器是 AffirmativeBased 。
+
 可以自定义实现AccessDecisionManager 来计算投票，例如特定`AccessDecisionVoter `具有额外的权重，或者某个`AccessDecisionVoter`具有一票否决权。
 
 #### RoleVoter

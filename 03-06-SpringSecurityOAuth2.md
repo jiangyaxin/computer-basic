@@ -924,6 +924,7 @@ https://accounts.google.com/o/oauth2/v2/auth?response_type=code&client_id=137558
 ```
 
 即授权码模式的第一步。
+
 3. OAuth2AuthorizationRequest 包含一个 32 位的随机state值， 将 OAuth2AuthorizationRequest 缓存在 HttpSessionOAuth2AuthorizationRequestRepository的map中，key 为 state，value 为 OAuth2AuthorizationRequest，state 会发送给 认证服务器，认证服务器认证完成之后会发送回来。
 4. 使用 DefaultRedirectStrategy 将 OAuth2AuthorizationRequest 中重定向地址设置到 HttpServletResponse 中，然后返回给浏览器，将浏览器重定向到认证中心登陆页面。
 

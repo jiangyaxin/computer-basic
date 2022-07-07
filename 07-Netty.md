@@ -1250,11 +1250,11 @@ ServerBootStrap中option()设置 SeverSocketChannel,childOption() 设置 SocketC
 ### ByteBuf
 
 优点：
-​- 支持池化。
-- 支持引用计数。
-- 读写使用不同索引，不同使用 flip 转换。
-- 容量按需增长。
-- 复合缓冲区实现多个ByteBuf合并时，不用拷贝。
+​1. 支持池化。
+2. 支持引用计数。
+3. 读写使用不同索引，不同使用 flip 转换。
+4. 容量按需增长。
+5. 复合缓冲区实现多个ByteBuf合并时，不用拷贝。
 
 类型：
 1. 内存类型：堆内存和直接内存，例如 PooledHeapByteBuf、PooledDirectByteBuf。

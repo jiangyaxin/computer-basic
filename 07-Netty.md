@@ -1539,11 +1539,12 @@ channel.writeAndFlush(region).addListener(
 
 通过 EmbeddedChannel 测试 Pipeline 的出站、入站。
 
-| 操作 | 	说明 |
-| writeInbound | 		将入站消息写到EmbeddedChannel中。如果可以通过readInbound方法从EmbeddedChannel中读取数据，则返回true |
-| readInbound | 		从EmbeddedChannel中读取入站消息。任何返回东西都经过整个ChannelPipeline。如果没有任何可供读取的，则返回null |
-| writeOutbound | 		将出站消息写到EmbeddedChannel中，如果现在可以通过readOutbound从EmbeddedChannel中读取到东西，则返回true |
-| readOutbound | 		从EmbeddedChannel中读取出站消息。任何返回东西都经过整个ChannelPipeline。如果没有任何可供读取的，则返回null |
+| 操作          | 说明                                                                                                       |
+| ------------- | ---------------------------------------------------------------------------------------------------------- |
+| writeInbound  | 将入站消息写到EmbeddedChannel中。如果可以通过readInbound方法从EmbeddedChannel中读取数据，则返回true        |
+| readInbound   | 从EmbeddedChannel中读取入站消息。任何返回东西都经过整个ChannelPipeline。如果没有任何可供读取的，则返回null |
+| writeOutbound | 将出站消息写到EmbeddedChannel中，如果现在可以通过readOutbound从EmbeddedChannel中读取到东西，则返回true     |
+| readOutbound  | 从EmbeddedChannel中读取出站消息。任何返回东西都经过整个ChannelPipeline。如果没有任何可供读取的，则返回null |
 
 ```java
 EmbeddedChannel channel = new EmbeddedChannel(new FixedLengthFrameDecoder(3));

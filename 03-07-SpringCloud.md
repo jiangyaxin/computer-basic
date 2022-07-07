@@ -914,7 +914,7 @@ rpc serverStreamHello(Person) returns (stream Result) {}
 双向流式 RPC ：可以传入多个对象，返回多个响应对象，例如：聊天应用
 
 * 客户端发送多条消息后才会发送 EOS。
-* * 服务端发送多条消息后才会发送 trailer。
+* 服务端发送多条消息后才会发送 trailer。
 
 ```protobuf
 rpc biStreamHello(stream Person) returns (stream Result) {}
@@ -1338,7 +1338,7 @@ class CustomServerCall<ReqT, RespT> extends ForwardingServerCall.SimpleForwardin
 
 ### HTTP2
 
-HTTP1.x 队头阻塞：在持久连接上，客户端联系发送多条请求，服务端只能按请求顺序响应，由于HTTP请求和响应并没有序号标识，，无法将乱序的响应与请求关联起来，如果有一个响应返回延迟，那么其后续的响应都会被延迟。
+HTTP1.x 队头阻塞：在持久连接上，客户端连续发送多条请求，服务端只能按请求顺序响应，由于HTTP请求和响应并没有序号标识，无法将乱序的响应与请求关联起来，如果有一个响应返回延迟，那么其后续的响应都会被延迟。
 
 TCP 队头阻塞：一个TCP分片丢失，导致其后续分片不按序到达接收端的时候，后续分节将被接收端一直保持直到丢失的第一个分节被发送端重传并到达接收端为止，保证应用进程能够按照发送端的发送顺序接收数据。
 
@@ -1421,8 +1421,8 @@ repeated MapFieldEntry map_field = N;
 
 ![335](assets/335.png)
 
-* int32、int64：有符合整数，负数效率较低。
-* uint32、uint64：无符合整数。
+* int32、int64：有符号整数，负数效率较低。
+* uint32、uint64：无符号整数。
 * sint32、sint64：有符号整数，负数效率较高。
 
 2. 导入其他 .proto 文件。
@@ -2213,7 +2213,7 @@ nacos 配置文件的获取由 NacosPropertySourceLocator 完成。
 
 ```yaml
 zuul.routes.xxxx.path=/xxxx/**
-zuul.routes.api-a.serviceId=xxxx
+zuul.routes.xxxx.serviceId=xxxx
 
 # 本地跳转
 zuul.routes.xxxx.path=/xxxx/**
@@ -2532,6 +2532,7 @@ public Mono<Void> handle(ServerWebExchange exchange) {
 
 第一阶段：
 * Try：主要用于数据的校验或资源的预留。
+
 第二阶段：对第一阶段操作的确认或者回滚。
 * Confirm：确认真正执行的任务，只操作Try阶段预留的资源。
 * Cancel：取消执行，释放Try阶段预留的资源。
@@ -2674,6 +2675,7 @@ public void rollback(BusinessActionContext context) {
     * 收到TC提交请求后立即返回，通过异步队列删除 UNDO_LOG 日志，完成提交。
     ![315](assets/315.png)
     * 收到TC提交回滚请求后，查询 UNDO_LOG 进行回滚。
+    
 写隔离：
 
 * 一阶段本地事务提交前，需要确保先拿到 全局锁 。

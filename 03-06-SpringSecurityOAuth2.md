@@ -2008,7 +2008,7 @@ public class RegisteredClient implements Serializable {
 
 ##### OAuth2Authorization
 
-用于保存一个oauth2认证结果，包含 授权码、accessToekn、refreshToken。
+用于保存一个oauth2认证结果，包含 授权码、accessToken、refreshToken。
 
 ```java
 public class OAuth2Authorization implements Serializable {

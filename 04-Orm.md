@@ -434,21 +434,22 @@ mybatis.mapper-locations=classpath*:com/open/**/dao/*.xml
 
   常用 OGNL ：
 
-  e1 or e2
-  e1 and e2
-  e1 == e2,e1 eq e2
-  e1 != e2,e1 neq e2
-  e1 lt e2
-  e1 lte e2
-  e1 in e2
-  e1 not in e2
-  e1 + e2,e1 * e2,e1/e2,e1 - e2,e1%e2
-  !e,not e
-  e.method(args)：调用对象方法
-  e.property：对象属性值
-  e1\[ e2 \]：按索引取值，List,数组和Map
-  @class@method(args)：调用类的静态方法
-  @class@field：调用类的静态字段值
+  > e1 or e2 </br>
+  > e1 and e2 </br>
+  > e1 == e2,e1 eq e2 </br>
+  > e1 != e2,e1 neq e2 </br>
+  > e1 lt e2 </br>
+  > e1 lte e2 </br>
+  > e1 in e2 </br>
+  > e1 not in e2 </br>
+  > e1 + e2,e1 * e2,e1/e2,e1 - e2,e1%e2 </br>
+  > !e,not e </br>
+  > e.method(args)：调用对象方法 </br>
+  > e.property：对象属性值 </br>
+  > e1\[ e2 \]：按索引取值，List,数组和Map </br>
+  > @class@method(args)：调用类的静态方法 </br>
+  > @class@field：调用类的静态字段值 </br>
+  
 - choose、when、otherwise：相当于switch
 
   ```xml

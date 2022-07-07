@@ -1250,7 +1250,6 @@ ServerBootStrap中option()设置 SeverSocketChannel,childOption() 设置 SocketC
 ### ByteBuf
 
 优点：
-
 ​- 支持池化。
 - 支持引用计数。
 - 读写使用不同索引，不同使用 flip 转换。

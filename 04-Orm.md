@@ -699,6 +699,7 @@ ${value}：会直接替换，value值可以是 OGNL 表达式。
      </resultMap>
      ```
 5. discriminator：类似于switch语句
+
    子标签：case ，如果不能匹配任何一个 case，只会使用 discriminator 以外的映射，discriminator 的结果映射将被忽略。
    属性：
 
@@ -706,7 +707,7 @@ ${value}：会直接替换，value值可以是 OGNL 表达式。
    - column：switch的字段，例如：
 
      ```xml
-     resultMap id="vehicleResult" type="Vehicle">
+     <resultMap id="vehicleResult" type="Vehicle">
        <id property="id" column="id" />
        <result property="vin" column="vin"/>
        <result property="year" column="year"/>
@@ -943,8 +944,9 @@ Mapper 接口，对应的关系如下：
 12. Mybatis 是否支持延迟加载？如果支持，它的实现原理是什么？
 
     Mybatis 仅支持 association 关联对象和 collection 关联集合对象的延迟加载。association 指的就是 **一对一** ，collection 指的就是 **一对多查询** ,在 Mybatis 配置文件中，可以配置 `<setting name="lazyLoadingEnabled" value="true" />` 来启用延迟加载的功能。默认情况下，延迟加载的功能是关闭的。
+
     原理:
-    使用 CGLIB 或 Javassist( 默认 ) 创建目标对象的代理对象。当调用代理对象的延迟加载属性的 getting 方法时，进入拦截器方法。比如调用 `a.getB().getName()` 方法，进入拦截器的 `invoke(...)` 方法，发现 `a.getB()` 需要延迟加载时，那么就会单独发送事先保存好的查询关联 B 对象的 SQL ，把 B 查询上来，然后调用 `a.setB(b)` 方法，于是 `a` 对象 `b` 属性就有值了，接着完成 `a.getB().getName()` 方法的调用。
+    使用 CGLIB 或 Javassist( 默认 ) 创建目标对象的代理对象。当调用代理对象的延迟加载属性的 get 方法时，进入拦截器方法。比如调用 `a.getB().getName()` 方法，进入拦截器的 `invoke(...)` 方法，发现 `a.getB()` 需要延迟加载时，那么就会单独发送事先保存好的查询关联 B 对象的 SQL ，把 B 查询上来，然后调用 `a.setB(b)` 方法，于是 `a` 对象 `b` 属性就有值了，接着完成 `a.getB().getName()` 方法的调用。
 13. 一对多，多对多查询。
 14. 插件的原理。
 15. JDBC 编程有哪些不足之处，MyBatis是如何解决这些问题的？
@@ -982,7 +984,9 @@ Mapper 接口，对应的关系如下：
     User findByEmailAddress(EmailAddress emailAddress);
   }
   ```
-- 通过方法名自定义方法：继承 Repository 或者它的子类，一般我们使用 JpaRepository，然后定义 findBy... 、countBy... 等开头的方法即可使用：![image.png](./assets/90.png)
+- 通过方法名自定义方法：继承 Repository 或者它的子类，一般我们使用 JpaRepository，然后定义 findBy... 、countBy... 等开头的方法即可使用：
+
+![image.png](./assets/90.png)
 
 
   | Keyword                | Sample                                                        | JPQL snippet                                                        |
@@ -1025,7 +1029,7 @@ Mapper 接口，对应的关系如下：
 
 #### 属性表达式
 
-findby后可以使用实体的直接属性，如果直接属性也是实体，可以通过嵌套使用,嵌套使用时实际生产的SQL为 LEFT OUT JOIN，例如：假设 `Person`的 `Address`有一个 `ZipCode`属性，这时候使用 `List<Person> findByAddressZipCode(ZipCode zipCode);`，解析算法首先将整个部分 `AddressZipCode`解释为属性，如果算法成功，它将使用该属性。如果不是，该算法将驼峰部分从右侧拆分为头部和尾部，并尝试找到相应的属性——如示例中 `AddressZip`和 `Code`，如果算法找到具有该头部的属性，它将获取尾部并继续从那里向下构建树，以刚才描述的方式将尾部拆分。如果第一个分割不匹配，算法将分割点向左移动 `Address`,`ZipCode`)并继续。更好的方式是使用_来消除歧义，如 `List<Person> findByAddress_ZipCode(ZipCode zipCode);`，_ 是 JPA 的关键字。
+findby后可以使用实体的直接属性，如果直接属性也是实体，可以通过嵌套使用,嵌套使用时实际生产的SQL为 LEFT OUT JOIN，例如：假设 `Person`的 `Address`有一个 `ZipCode`属性，这时候使用 `List<Person> findByAddressZipCode(ZipCode zipCode);`，解析算法首先将整个部分 `AddressZipCode`解释为属性，如果算法成功，它将使用该属性。如果不是，该算法将驼峰部分从右侧拆分为头部和尾部，并尝试找到相应的属性——如示例中 `AddressZip`和 `Code`，如果算法找到具有该头部的属性，它将获取尾部并继续从那里向下构建树，以刚才描述的方式将尾部拆分。如果第一个分割不匹配，算法将分割点向左移动 `Address`,`ZipCode`并继续。更好的方式是使用`_`来消除歧义，如 `List<Person> findByAddress_ZipCode(ZipCode zipCode);`，_ 是 JPA 的关键字。
 
 #### 处理查询结果
 
@@ -1229,7 +1233,7 @@ public @interface Query {
     String countQuery() default "";
 
     /**
-         * 根据那个字段来count
+     * 根据那个字段来count
      */
     String countProjection() default "";
 
@@ -1260,9 +1264,9 @@ List<User> findContainingEscaped(String namePart);
 List<User> findByLastnameWithSpelExpression(@Param("lastname") String lastname);
 ```
 
-原生SQL 不支持 Sort 参数。，原生SQL 需要分页可使用 ?#{#pageable} 传参数：
+原生SQL 不支持 Sort 参数，原生SQL 需要分页可使用 ?#{#pageable} 传参数：
 
-```
+```java
 @Query(value = "SELECT * FROM USERS WHERE LASTNAME = ?1 ORDER BY ?#{#pageable}",
     countQuery = "SELECT count(*) FROM USERS WHERE LASTNAME = ?1",
     nativeQuery = true)
@@ -1296,7 +1300,7 @@ public interface ConcreteRepository extends MappedTypeRepository<ConcreteType> {
 
 ##### @Modify
 
-@Modify 和 @Query 可以完成 Update 和 DELETE 操作，必须要非可读事务，即加上 @Transactional。
+@Modify 和 @Query 可以完成 Update 和 DELETE 操作，必须要非只读事务，即加上 @Transactional。
 
 由于@Query 跟 find 和 save 系列方法是两套不同的体系，@Query 引起的数据库变更 EntityManager 并不能发现，可以配置下面两个属性来更新EntityManager
 
@@ -1304,7 +1308,7 @@ public interface ConcreteRepository extends MappedTypeRepository<ConcreteType> {
 public @interface Modifying {
 
     /**
-         * 在执行UPDATE 和 DELETE 之前刷新entityManager中的数据到数据库，避免 clearAutomatically 属性 将缓存清除导致 数据没有刷新到数据库。
+     * 在执行UPDATE 和 DELETE 之前刷新entityManager中的数据到数据库，避免 clearAutomatically 属性 将缓存清除导致 数据没有刷新到数据库。
      */
     boolean flushAutomatically() default false;
 
@@ -1382,7 +1386,7 @@ public interface Specification<T> extends Serializable {
 
 ### EntityManager
 
-可以使用 @PersistenceContext 方式注入到 EntityManager，这样 EntityManager 由容器管理，不同的线程会创建不同的 EntityManager ，线程安全，多个 EntityManager 指向同一个 PersistenceContext。
+可以使用 @PersistenceContext 方式注入 EntityManager，这样 EntityManager 由容器管理，不同的线程会创建不同的 EntityManager ，线程安全，多个 EntityManager 指向同一个 PersistenceContext。
 
 也可以使用 @PersistenceUnit 注入到 EntityManagerFactory，可用在非spring环境，需要自己管理连接、事务等。
 

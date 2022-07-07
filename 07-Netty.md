@@ -26,7 +26,7 @@
 
   * 支持一个进程打开的 socket描述符 不受限制。
   * IO效率不会随fd 数目增加而线性下降。
-  * eppol 使用 mmap 加速内核和用户空间的消息传递：内核需要报 fd 消息通知到用户空间。
+  * epoll 使用 mmap 加速内核和用户空间的消息传递：内核需要把 fd 消息通知到用户空间。
 
   ![235](assets/235.png)
 
@@ -210,7 +210,8 @@ srcChannel.transferFrom(fromChannel, 0, Integer.MAX_VALUE);
 lock/tryLock：
 * 被JVM持有，进程级别，不可用于多线程安全控制同步工具。如果统一进程内，线程1获取了文件锁FileLock（共享或者独占），线程2再来请求获取该文件的文件锁，则会抛出OverlappingFileLockException 。
 * 一个程序获取到FileLock后，是否会阻止另一个程序访问相同文件具重叠内容的部分取决于操作系统的实现，具有不确定性。FileLock的实现依赖于底层操作系统实现的本地文件锁设施。
-* ![239](assets/239.png)
+
+![239](assets/239.png)
 
 ### SocketChannel & ServerSocketChannel & DatagramChannel
 
@@ -348,8 +349,8 @@ public abstract byte get();
 
 区别：
 * HeapByteBuffer 基于数组实现，内存分配在堆内。
-* DirectByteBuffer 通过 Unsafe#allocateMemory +  Unsafe#allocateMemory 分配堆外内存，引用对象在堆内，在 GC 时会回收掉不可达的  DirectByteBuffer ，并回收堆外内存，但由于 DirectByteBuffer 存在时间一般较长，所以大部分都会晋升到老年代，那么只能等到 Major GC 时才能回收，可通过 -XX:MaxDirectMemorySize 限制大小。
-* MappedByteBuffer 是 DirectByteBuffer 的父类，DirectByteBuffer由两种类型，一直是由DirectByteBuffer实现，一种由 MappedByteBuffer 实现，都是分配在堆外，不同的是 MappedByteBuffer 实现的堆外内存使用mmap技术映射了内核内存，这时内核内存和用户堆外内存共享，操作堆外内存等于直接操作内核内存，避免了数据的复制，FileChannel#transferTo 就是使用的这种内存。
+* DirectByteBuffer 通过 Unsafe#allocateMemory +  Unsafe#setMemory 分配堆外内存，引用对象在堆内，在 GC 时会回收掉不可达的  DirectByteBuffer ，并回收堆外内存，但由于 DirectByteBuffer 存在时间一般较长，所以大部分都会晋升到老年代，那么只能等到 Major GC 时才能回收，可通过 -XX:MaxDirectMemorySize 限制大小。
+* MappedByteBuffer 是 DirectByteBuffer 的父类，DirectByteBuffer有两种类型，一直是由DirectByteBuffer实现，一种由 MappedByteBuffer 实现，都是分配在堆外，不同的是 MappedByteBuffer 实现的堆外内存使用mmap技术映射了内核内存，这时内核内存和用户堆外内存共享，操作堆外内存等于直接操作内核内存，避免了数据的复制，FileChannel#transferTo 就是使用的这种内存。
 * MappedByteBuffer 由 FileChannel#map 创建，DirectByteBuffer & HeapByteBuffer 通过 ByteBuffer 创建。
 
 FileChannel、SocketChannel等在通过 IOUtil 进行 非DirectBuffer IO读写操作时，底层会使用一个临时的 IOVecWrapper 来和系统进行真正的IO交互，IOVecWrapper 本质上也是一个 堆外直接内存，使用完后这个临时的 IOVecWrapper 会被缓存到ThreadLocal，当直接使用 IOUtil 操作非DirectBuffer 的线程数较多或者 IO 操作的数据量较大时，会导致临时的DirectByteBuffer 占用大量堆外内存造成内存泄露。可通过 -Djdk.nio.maxCachedBufferSize 限制，超过这个限制 不会被缓存到 ThreadLocal。
@@ -908,7 +909,7 @@ public void read() {
 
 * 一个 EventLoopGroup 包含一个或多个 EventLoop ，即 EventLoopGroup : EventLoop = 1 : n 。
 * 一个 EventLoop 在它的生命周期内，只能与一个 Thread 绑定，即 EventLoop : Thread = 1 : 1 。
-* 所有有 EventLoop 处理的 I/O 事件都将在它专有的 Thread 上被处理，从而保证线程安全，即 Thread : EventLoop = 1 : 1。
+* 所有由 EventLoop 处理的 I/O 事件都将在它专有的 Thread 上被处理，从而保证线程安全，即 Thread : EventLoop = 1 : 1。
 * 一个 Channel 在它的生命周期内只能注册到一个 EventLoop 上，即 Channel : EventLoop = n : 1 。
 * 一个 EventLoop 可被分配至一个或多个 Channel ，即 EventLoop : Channel = 1 : n 。
 
@@ -1167,7 +1168,7 @@ ChannelInboundHandler：处理入站操作。
 * ChannelInactive：当Channel与远程节点断开，不再处于活动状态时调用此方法
 * ChannelReadComplete：当Channel的某一个读操作完成时调用此方法
 * ChannelRead：当Channel有数据可读时调用此方法
-* ChannelWritabilityChanged：当Channel的可写状态发生改变时调用此方法，可以调用Channel的isWritable方法检测Channel的可写性，还可以通过ChannelConfig来配置write操作相关的属性
+* ChannelWritabilityChanged：当Channel的可写状态发生改变时调用此方法，可以调用Channel的isWritable方法检测Channel的可写性，还可以通过ChannelConfig来配置write操作相关的属性。例如 对方 Socket 接收很慢，ChannelOutboundBuffer 就会积累很多的数据，一旦超过默认的高水位阈值，Channel的可写状态将会改变，同时调用该方法。
 * userEventTriggered：当ChannelInboundHandler的fireUserEventTriggered方法被调用时才调用此方法。
 
 ChannelOutboundHandler：处理出站操作。
@@ -1250,11 +1251,11 @@ ServerBootStrap中option()设置 SeverSocketChannel,childOption() 设置 SocketC
 
 优点：
 
-​1. 支持池化。
-2. 支持引用计数。
-3. 读写使用不同索引，不同使用 flip 转换。
-4. 容量按需增长。
-5. 复合缓冲区实现多个ByteBuf合并时，不用拷贝。
+​- 支持池化。
+- 支持引用计数。
+- 读写使用不同索引，不同使用 flip 转换。
+- 容量按需增长。
+- 复合缓冲区实现多个ByteBuf合并时，不用拷贝。
 
 类型：
 1. 内存类型：堆内存和直接内存，例如 PooledHeapByteBuf、PooledDirectByteBuf。

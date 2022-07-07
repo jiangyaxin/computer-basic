@@ -275,7 +275,7 @@
 
 ##### JobThread
 
-XxlJobSimpleExecutor 或 XxlJobSimpleExecutorXxlJobSimpleExecutor 扫描 @XxlJob 的方法生成 IJobHandler类型 的Bean，然后给每个任务 bean 默认生成一个 JobThread。
+XxlJobSimpleExecutor 或 XxlJobSpringExecutor 扫描 @XxlJob 的方法生成 IJobHandler类型 的Bean，然后给每个任务 bean 默认生成一个 JobThread。
 
 JobThread中存在一个触发任务队列`LinkedBlockingQueue<TriggerParam>`,线程会循环从中获取任务出来执行，如果 3 * 30 秒没有任务则关闭该线程释放资源，等下次接收到调度中心请求时，由 EmbedServer 创建。
 

@@ -261,7 +261,7 @@
 
 ### 执行器
 
-即 xxl-job-core 中 XxlJobExecutor，存在两个子类 XxlJobSimpleExecutor、XxlJobSimpleExecutorXxlJobSimpleExecutor，分别用于无框架和spring框架初始化。
+即 xxl-job-core 中 XxlJobExecutor，存在两个子类 XxlJobSimpleExecutor、XxlJobSpringExecutor，分别用于无框架和spring框架初始化。
 
 #### 核心组件
 

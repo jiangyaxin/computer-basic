@@ -1236,7 +1236,7 @@ Redis 2.8.9后zSet加入了一个非常有用的方法**zrangeByLex**，我们�
 
 **zrangeByLex**还支持分页查询，语法类似limit start, offset。
 
-##### 局限:
+##### 局限
 
 Redis毕竟只是key-value存储，所以有很多局限性。
 

@@ -2259,5 +2259,3 @@ redis配置：
 ![image.png](./assets/57.png)
 
 ![image.png](./assets/58.png)
-
-1

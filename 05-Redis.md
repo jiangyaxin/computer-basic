@@ -604,7 +604,7 @@ client-output-buffer-limit pubsub 32mb 8mb 60
 防范的方法：
 
 1. 限制不同客户端缓冲区。
-2. 适当增大slave的输出缓冲区，如果master节点写入较大，slave客户端的输入缓冲区可能会比较大，一旦slave被kill，会造成复制重连。
+2. 适当增大master节点的slave的输出缓冲区，如果master节点写入较大，slave客户端的输出缓冲区可能会比较大，一旦slave被kill，会造成重连和复制。
 3. 限制让输出缓冲区增大的命令，如moniter。
 4. 通过info clients，找到最大的输入缓冲区 client_longest_output_list ，超过限制就报警，然后再使用执行client list，收集obl、oll、omem，找到异常客户端。
 

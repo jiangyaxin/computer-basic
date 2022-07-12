@@ -366,13 +366,13 @@ KafkaProducer 线程安全，但 KafkaConsumer 非线程安全，一个消费者
 
 #### 分配分区
 
-当消费者加入群组时，它会向群组协调器发送一个JoinGroup请求，第一个加入群组的消费者将会成为消费者协调器的leader，他负责给每个消费者分配分区，他使用一个实现PartitionAssignor接口的类来决定哪些分区该被分配给那个消费者，分配完成后，消费者leader负责把分配情况发送给群组协调器，群组协调器再把这些信息发送给所有消费者，每个消费者只能看到自己的分配信息，只有leader知道群组里所有消费者的分配信息。
+当消费者加入群组时，它会向群组协调器(存在于服务端)发送一个JoinGroup请求，第一个加入群组的消费者将会成为消费者协调器的leader，他负责给每个消费者分配分区，他使用一个实现PartitionAssignor接口的类来决定哪些分区该被分配给那个消费者，分配完成后，消费者leader负责把分配情况发送给群组协调器，群组协调器再把这些信息发送给所有消费者，每个消费者只能看到自己的分配信息，只有leader知道群组里所有消费者的分配信息。
 
 通过 partition.assignment.stragetegy 来设置消费者与订阅主题之间的分区分配策略，默认情况下采用 RangeAssignor 策略。
 
 RangeAssignor 会将消费组内所有订阅这个主题的消费者按照名词的字典序排序，然后为每个消费者划分固定的分区范围，如果不够平均分配，那么字典序靠前的消费者会被多分配一个分区。
 
-RoundRobinAssignor 会将 消费组内所有的消费者以及消费者订阅的所有主题的分区按照字典序排序，然后通过轮询方式逐个将分区依次分配给每个消费者。例如消费组C0-C2订阅3个主题的 t0p0、t1p0、t1p1、t2p0、t2p1、t2p2，最后的分配结果为：C0：t0p0  |  C1：t1p0  |  C2：t1p1、t2p0、t2p1、t2p2
+RoundRobinAssignor 会将 消费组内所有的消费者以及消费者订阅的所有主题的分区按照字典序排序，然后通过轮询方式逐个将分区依次分配给每个消费者。例如消费组C0-C2订阅3个主题的 t0p0、t1p0、t1p1、t2p0、t2p1、t2p2，C0订阅t0，C1订阅t0、t1，C2订阅t0、t1、t2，最后的分配结果为：C0：t0p0  |  C1：t1p0  |  C2：t1p1、t2p0、t2p1、t2p2
 
 StickyAssignor 有两个原则：分区的分配要尽可能均匀；分区的分配尽可能与上次分配保持相同，当两者发生冲突时，以前面的原则为准。该策略会减少不必要的分区移动，即剥离之前的消费者，转而分配给另一个消费者。
 
@@ -402,7 +402,7 @@ StickyAssignor 有两个原则：分区的分配要尽可能均匀；分区的�
 
 再均衡的阶段：
 
-1. FIND_COORDINATOR：消费者需要确定它所对应的组协调器的broker，如果已经创建连接，则进行第二阶段，否则向 leastLoadedNode 发送 FindCoordinatorRequest请求，请求中包含 groupId，每个groupId在 __consumer_offsets 中都可以找到一个分区记录它的偏移量信息，计算规则为Utils.abs(groupId.hashCode) % groupMetadataTopicPartitionCount,groupMetadataTopicPartitionCount对应 __consumer_offsets 分区的个数，可由 offsets.topic.num.partitions 配置，默认50，找到该分区后，该分区leader副本 所在broker即为 组协调器的位置，这个broker节点 扮演 组协调器、保存分区分配方案、保存组内消费者偏移量 的角色。
+1. FIND_COORDINATOR：消费者需要确定它所对应的组协调器的broker，如果已经创建连接，则进行第二阶段，否则向 leastLoadedNode 发送 FindCoordinatorRequest请求，请求中包含 groupId，每个groupId在 __consumer_offsets 中都可以找到一个分区记录它的偏移量信息，计算规则为`Utils.abs(groupId.hashCode) % groupMetadataTopicPartitionCount`,groupMetadataTopicPartitionCount 等于 __consumer_offsets 分区的个数，可由 offsets.topic.num.partitions 配置，默认50，找到该分区后，该分区leader副本 所在broker即为 组协调器的位置，这个broker节点 扮演 组协调器、保存分区分配方案、保存组内消费者偏移量 的角色。
 2. JOIN_GROUP：消费者向组协调器发起 JoinGroupRequest 请求，请求中包含自己支持的分区分配策略，即 partition.assignment.strategy ，然后等待组协调器响应，组协调器首先会选出消费者leader，第一个加入消费组的消费者即为消费者leader，并且为消费者选举分配策略，然后返回响应给客户端。
    选举分区分配策略：
    * 收集各个消费者支持的所有分配策略，组成候选集。
@@ -446,7 +446,8 @@ comsumer.subscribe(Collections.singletonList("xxxx"));
 
 ```yaml
 fetch.min.bytes
-# 默认1B，消费者从服务器获取记录的最小字节数，broker 收到消费者的数据请求时，如果可用的数据量小于 fetch.min.bytes 指定大小，会等到有足够的可用数据时才会返回，这样可以减低CPU负载。
+# 默认1B，消费者从服务器获取记录的最小字节数，broker 收到消费者的数据请求时，
+# 如果可用的数据量小于 fetch.min.bytes 指定大小，会等到有足够的可用数据时才会返回，这样可以减低CPU负载。
 fetch.max.bytes
 # 默认50MB，该值并不是绝对的最大值，如果在第一个非空分区中拉取的第一个消息大于该值，那么该消息将仍然返回。
 fetch.max.wait.ms
@@ -461,7 +462,11 @@ session.timeout.ms
 # 消费者在被认为死亡之前可以与服务器断开连接的时间，默认10秒，如果消费者没有在该时间内发送心跳给群组协调器，则被认为死亡。
 # heartbeat.interval.ms 指定 poll() 方法向协调器发送心跳的频率，需要比该值小，一般是该值得三分之一，默认3s。
 auto.offset.reset
-# 消费者在读取一个没有偏移量的分区或者偏移量无效的分区(消费者长时间失效，offset超过7天，该值由 offsets.retention.minutes 决定)时该如何处理，默认是latest，即消费者从它启动之后的最新记录开始读取数据。另一个值是 earliest，从起始位置读取分区记录。设置为none,不会进行重置，抛出OffsetOutOfRangeException异常，可以避免重置问题，但增加分区时需要人工区设置offset并消费。
+# 消费者在读取一个没有偏移量的分区或者偏移量无效的分区时该如何处理。
+# 消费者长时间失效，offset超过7天，该值由 offsets.retention.minutes 决定。
+# 默认是latest，即消费者从它启动之后的最新记录开始读取数据。
+# 另一个值是 earliest，从起始位置读取分区记录。
+# 设置为none,不会进行重置，抛出OffsetOutOfRangeException异常，可以避免重置问题，但增加分区时需要人工区设置offset并消费。
 enable.auto.commit
 # 默认值为 true，消费者自动提交偏移量，可以通过 auto.commit.interval.ms来控制提交的频率，默认5秒。为了避免重复数据和数据丢失，可以设为false，自己控制何时提交偏移量。
 partition.assignment.strategy
@@ -571,7 +576,7 @@ broker的大部分工作时处理客户端、分区副本、控制器发送给�
 
 broker会安装请求到达的顺序来处理它们，同时保存的消息也是有序的，也就具有了消息队列的特性。
 
-broker会在它监听的端口运行一个Acceptor线程，这个线程会创建一个连接并把它交给Processor线程区处理，Processor的线程数量时可配置的，网络线程负责从客户端获取请求消息把它们放进请求队列，IO线程会负责处理它们，然后从响应队列获取响应消息，把它发送给客户端。
+broker会在它监听的端口运行一个Acceptor线程，这个线程会创建一个连接并把它交给Processor线程去处理，Processor的线程数量时可配置的，网络线程负责从客户端获取请求消息把它们放进请求队列，IO线程会负责处理它们，然后从响应队列获取响应消息，把它发送给客户端。
 
 请求类型：
 
@@ -783,9 +788,9 @@ kafka 的跨数据中心复制工具(MirrorMaker)会无限制重试 retries = MA
 4. 在处理再均衡时，一般要在分区被撤销之前提交偏移量，在分配到新分区时清理之前的状态。
 5. 消费者重试，需要考虑 重试时间间隔、最大重试次数、是否会漏掉消息，可以采取以下方案：
 
-方案一：遇到可重试错误时，提交最后一个处理成功的偏移量，然后把还没处理好的消息保存起来，然后调用消费者pause方法，在保持轮询的同时尝试重新处理，如果重试成功，或者重试次数达到上限时，记录错误记录，然后调用resume方法继续从轮询中获取新消息。
+  方案一：遇到可重试错误时，提交最后一个处理成功的偏移量，然后把还没处理好的消息保存起来，然后调用消费者pause方法，在保持轮询的同时尝试重新处理，如果重试成功，或者重试次数达到上限时，记录错误记录，然后调用resume方法继续从轮询中获取新消息。
 
-方案二：遇到可重试错误时，把错误写入一个独立的主题，然后继续。一个独立的消费者群组负责从该主题读取错误消息，并进行重试，或者使用其中的一个消费者同时从该主题上读取错误消息并进行重试。
+  方案二：遇到可重试错误时，把错误写入一个独立的主题，然后继续。一个独立的消费者群组负责从该主题读取错误消息，并进行重试，或者使用其中的一个消费者同时从该主题上读取错误消息并进行重试。
 
 6. 消费者的状态维护：例如需要在多次轮询中聚合计算，可以将计算结果写入到“结果”主题，当消费者重新启动时可以继续计算，但由于Kafka没有事务支持，可能在写入结果之后来不及提交偏移量就崩溃，导致计算失败。可以使用KafkaStream来进行聚合计算。
 7. 轮询间长时间数据处理：当处理数据时间长时可以使用多线程并行处理，然后pause消费者，持续轮询，保持心跳发送，当工作线程处理完成，再resume继续获取消息，这样和broker一直会有心跳，不会发生再均衡。

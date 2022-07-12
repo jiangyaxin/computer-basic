@@ -247,20 +247,21 @@ acks
 buffer.memory
 # 设置生产者内存缓冲区的大小，发送出去的消息都是先进入到客户端本地的内存缓冲里，
 # 然后把很多消息收集成一个一个的Batch，再发送到Broker上去的，该值如果太小，消息快速的写入内存缓冲里，
-# Sender线程来不及发送到broker，缓冲很快被写满，然后再调用send(0要么被阻塞，要么抛出异常，
+# Sender线程来不及发送到broker，缓冲很快被写满，然后再调用send()要么被阻塞，要么抛出异常，
 # 这取决于 max.block.ms 参数，表示抛出异常前可以阻塞一段时间。
 max.block.ms
 # 生产者阻塞的时间。
 max.request.size
-# 生产者发送请求的大小，既可以是单个消息的最大值，也是一个批次的最大值，另
-# 外broker对接受消息最大值也有限制( message.max.bytes)。
+# 生产者发送请求的大小，既可以是单个消息的最大值，也是一个批次的最大值，
+# 另外broker对接受消息最大值也有限制( message.max.bytes)。
 batch.size
 # 一个批次可以使用的内存大小，按照字节数计算，但并不一定会等批次被填满才发送，还取决于 linger.ms 。
 # 如果要发送大文件需要同时提高 buffer.memory、batch.size、max.request.size、以及broker的 message.max.bytes 配置的大小。
 receive.buffer.bytes 和 send.buffer.bytes
 # TCP socket 接受和发送数据包的缓冲区大小，如果设为 -1，则使用操作系统的默认值。
 linger.ms
-# 生产者在发送批次之前等待的时间，默认情况下，只要有可用线程，生产者就会把消息发送，如果把该值设置大于0，可以让生产者发送批次前等一会儿。
+# 生产者在发送批次之前等待的时间，默认情况下，只要有可用线程，生产者就会把消息发送，
+# 如果把该值设置大于0，可以让生产者发送批次前等一会儿。
 retries
 # 收到可重试错误时可重试的次数，重试的时间间隔可以通过 retry.backoff.ms 设置。
 max.in.flight.requests.per.connection

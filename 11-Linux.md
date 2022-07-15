@@ -1196,16 +1196,16 @@ function：
 
 语法：printf '格式' 内容
 
-`printf '%x' 15` ： 10进制转16进制。
-`printf '%d' 0xf` ： 16进制转10进制。
-`printf '\x45'` ：16进制ASCII码 转 字符。
-`printf '%d' "'E"` ：字符 转 10进制ASCII码。
+`printf '%x' 15` ： 10进制转16进制。<br>
+`printf '%d' 0xf` ： 16进制转10进制。<br>
+`printf '\x45'` ：16进制ASCII码 转 字符。<br>
+`printf '%d' "'E"` ：字符 转 10进制ASCII码。<br>
 
 ![161](assets/161.png)
 
 ## awk
 
-语法：awk '条件类型1{动作1} 条件类型2{动作2} ...' filename
+语法：`awk '条件类型1{动作1} 条件类型2{动作2} ...' filename`
 
 其中 {} 包裹表示动作。默认分隔符是空格，将每个字段提取放在 $1、$2 等变量，整行放在 $0 。
 
@@ -1217,8 +1217,8 @@ function：
 
 示例：
 
-`last -n 5 | awk '{print $1 "\t" $3}'`
-`last -n 5 | awk '{print $1 "\t lines: " NR "\t columns: " NF}'`
+`last -n 5 | awk '{print $1 "\t" $3}'`<br>
+`last -n 5 | awk '{print $1 "\t lines: " NR "\t columns: " NF}'`<br>
 `cat /etc/passwd | awk 'BEGIN {FS=":"} $3 < 10 {print $1 "\t " $3}'`：将默认分隔符替换成:，BEGIN 表示从第一行开始。
 
 ## shell脚本

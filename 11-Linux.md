@@ -1219,7 +1219,7 @@ function：
 
 `last -n 5 | awk '{print $1 "\t" $3}'`<br>
 `last -n 5 | awk '{print $1 "\t lines: " NR "\t columns: " NF}'`<br>
-`cat /etc/passwd | awk 'BEGIN {FS=":"} $3 < 10 {print $1 "\t " $3}'`：将默认分隔符替换成:，BEGIN 表示从第一行开始。
+`cat /etc/passwd | awk 'BEGIN {FS=":"} $3 < 10 {print $1 "\t " $3}'`：将默认分隔符替换成:，BEGIN 表示从第一行开始，第三列小于10。
 
 ## shell脚本
 

@@ -2669,8 +2669,7 @@ public void rollback(BusinessActionContext context) {
     ![313](assets/313.png)
     * 记录数据快照。
     * 事务提交前注册分支。
-    * 提交本地事务。
-2. 第二阶段：和XA不一样的地方在于本地事务已经提交，第二阶段不需要提交事务。
+2. 第二阶段：
     ![314](assets/314.png)
     * 收到TC提交请求后立即返回，通过异步队列删除 UNDO_LOG 日志，完成提交。
     ![315](assets/315.png)

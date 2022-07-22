@@ -2655,8 +2655,6 @@ public void rollback(BusinessActionContext context) {
 * RM：资源管理器，集成在客户端。
 * TC：事务中心，作为服务端单独部署。
 
-![316](assets/316.png)
-
 1. TM向TC注册全局事务，并生成全局唯一XID。
 2. RM向TC注册分支事务，并将其纳入该XID对应的全局事务范围。
 3. RM向TC汇报资源的准备状态。
@@ -2669,7 +2667,8 @@ public void rollback(BusinessActionContext context) {
     ![313](assets/313.png)
     * 记录数据快照。
     * 事务提交前注册分支。
-2. 第二阶段：
+    * 提交本地事务。
+2. 第二阶段：和XA不一样的地方在于本地事务已经提交，第二阶段不需要提交事务。
     ![314](assets/314.png)
     * 收到TC提交请求后立即返回，通过异步队列删除 UNDO_LOG 日志，完成提交。
     ![315](assets/315.png)

@@ -1225,7 +1225,10 @@ SELECT ... LOCK IN SHARE MODE (S锁)
 案例：
 
 1. Insert 唯一键冲突，造成 Next-key。
-   ![image.png](./assets/80.jpg)![image.png](./assets/81.jpg)
+
+   ![image.png](./assets/80.jpg)
+   ![image.png](./assets/81.jpg)
+
 2. 先 Update 再 Insert，Gap 和 Gap 之间不冲突，但 Gap 阻止 Insert Intention。
    ![image.png](./assets/82.jpg)
    表中无数据。

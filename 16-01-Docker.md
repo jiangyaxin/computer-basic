@@ -245,6 +245,7 @@ docker inspect <container-id>
 ```
 
 ## 示例
+
 ```Shell
 #!/bin/bash
 ############################################
@@ -395,20 +396,4 @@ runc 是 OCI 规范的具体实现，它的作用是 创建容器，是独立的
 
 containerd 负责管理容器的生命周期，start|stop|pause|rm。
 
-## K8S
-
-名词：
-
-* Pod：若干相关容器的组合，Pod包含的容器运行在同一台宿主机上，这些容器使用相同的网络命名空间、IP地址、端口、共享一块储存卷空间，互相能通过 localhost 来发现和通信，是 k8s 的最小调度单位。
-* ReplicationController：用来管理Pod副本，确保任何时候都保证有指定数量的Pod副本在运行。
-* Service：真实应用服务的抽象，定义Pod的逻辑集合和访问Pod集合的策略，Service将代理Pod，对外表现为一个单一访问接口。
-* Label：用于区分 Pod、Service、ReplicationController 的标签，一个 label 对应一个对象，一个对象可以有多个label。
-* Node：K8S 的基本操作单一，用来分配给Pod进行绑定，Pod最终运行在Node上。
-
-### 架构
-
-使用主从分布式架构，将数据储存在Etcd，Master作为控制节点，有这些组件组成：
-
-* API server：提供给外部用户访问。
-* Scheduler：负责集群的资源调度，为新建的Pod分配机器。
-* Node：运行节点，用于运行管理业务的容器：Pod创建|Pod代理|运行Docker。
+## DockerCompose

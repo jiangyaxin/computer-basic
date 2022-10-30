@@ -327,7 +327,6 @@ PurgeThread 和 PageCleanerThread 是后面加入的，分担 MasterThread 的�
    在LRU列表中页被修改后被称为脏页(dirty page),即缓冲池中的页和磁盘上的页的数据产生了不一致。除了LRU列表，还有Flush列表，用来管理将页刷新回磁盘，该列表在写redolog时添加，脏页同时存在于LRU列表和FLUSH列表中，可通过 `SELECT TABLE_NAME,SPACE,PAGE_NUMBER,PAGE_TYPE FROM information_schema.INNODB_BUFFER_PAGE_LRU where OLDEST_MODIFICATION > 0;`来查询脏页信息，TABLE_NAME为NULL表示属于系统表空间。
 
    ![image.png](./assets/69.png)
-
 2. 重做日志(redo log)缓冲：InnoDB会将redo log先放入这个缓冲区，然后再按一定的频率将其刷新到重做日志文件，一般情况会一秒刷新一次。该值可由 innodb_log_buffer_size 控制，默认8MB，需要保证每秒内产生的事务量在这个缓冲大小内。
 
    重做日志是物理日志，记录了在某个数据页上做了什么修改，是为了解决内存存在脏页时，发生宕机导致数据丢失，使用 Write Ahead Log 策略，即先写重做日志，再修改页。
@@ -1192,9 +1191,26 @@ SELECT ... LOCK IN SHARE MODE (S锁)
 
 不同操作的加锁机制：
 
+在RC隔离级别下：
+
+* Delete：
+  * 如果记录存在，where条件为主键且为精准查询，则记录上加 Record Lock，如果是范围查询，则在符合条件的记录上加 Record Lock。
+  * 如果记录存在，where条件为非主键唯一索引，则在符合条件的记录的 唯一索引 和 主键 上都加上 Record Lock。
+  * 如果记录存在，where条件为非主键非唯一索引，则在符合条件的 索引 和 主键 上都加上 Record Lock。
+  * 如果记录存在，where条件没有索引，则走主键索引，进行全表扫描，扫描过的记录都会加 Record Lock，发现不符合条件后会解锁，留下符合条件记录的锁。
+  * 如果记录不存在，需要 Next-Key Lock。
+* Update：和 Delete 表现一样。
+
+在RR隔离级别(MySQL默认隔离级别)下：
+
 * Insert：对范围加Insert Intention，对行对应的索引记录加一个 Record Lock，当发生唯一键冲突时，会在冲突键前后加上 Next-Key Lock。
-* Update：如果记录存在，需要 Record Lock，如果记录不存在，需要Record Lock + Gap Lock。
-* Delete：如果记录存在，需要 Record Lock，如果记录不存在，需要Record Lock + Gap Lock。
+* Delete：
+  * 如果记录存在，where条件为主键且为精准查询，则记录上加Record Lock，如果是范围查询，则在符合条件的记录上加 Next-key Lock。
+  * 如果记录存在，where条件为非主键唯一索引，如果是精准查询，则在记录的 唯一索引 和 主键 上都加上 Record Lock，如果是范围查询，则在所有符合条件的记录上加 Next-key Lock。
+  * 如果记录存在，where条件为非主键非唯一索引，则在符合条件的 索引 和 主键 上都加上 Next-Key Lock。
+  * 如果记录存在，where条件没有索引，则走主键索引，进行全表扫描，扫描过的记录都会加 Next-Key Lock，发现不符合条件后会解锁，留下符合条件记录的锁。
+  * 如果记录不存在，需要 Next-Key Lock。
+* Update：和 Delete 表现一样。
 * Select：正常情况不存在锁，除非使用 lock in share mode 或者 for update，在所有索引扫描范围的索引记录上加上 Next-key，如果是唯一索引，只需要在相应记录上加 Record Lock。
 
 在默认的 REPEATABLE READ 模式下，InnoDB 采用 Next-Key Lock 来解决不可重复读的问题，指在同一事物下，连续执行两次同样的SQL语句可能导致不同的结果，第二次的SQL语句可能返回之前不存在的行，这些行由其他事务新插入。
@@ -1222,13 +1238,18 @@ SELECT ... LOCK IN SHARE MODE (S锁)
 * 使用等值查询而不是范围查询查询数据，命中记录，避免间隙锁对并发的影响。
 * 更新、删除操作时先校验数据是否存在。
 
-案例：
+案例：[](https://)
 
 1. Insert 唯一键冲突，造成 Next-key。
-
    ![image.png](./assets/80.jpg)
-   ![image.png](./assets/81.jpg)
 
+   事务T1成功插入记录，并获得索引id=6上的排他记录锁(LOCK_X | LOCK_REC_NOT_GAP)。
+   紧接着事务T2、T3也开始插入记录，请求排他插入意向锁(LOCK_X | LOCK_GAP | LOCK_INSERT_INTENTION)；但由于发生重复唯一键冲突，各自请求的排他记录锁(LOCK_X | LOCK_REC_NOT_GAP)转成共享记录锁(LOCK_S | LOCK_REC_NOT_GAP)。
+
+   T1回滚释放索引id=6上的排他记录锁(LOCK_X | LOCK_REC_NOT_GAP)，T2和T3都要请求索引id=6上的排他记录锁(LOCK_X | LOCK_REC_NOT_GAP)。
+   由于X锁与S锁互斥，只有独占S锁的情况下才能获取X锁，T2和T3都等待对方释放S锁，死锁产生。
+
+   如果此场景下，只有两个事务T1与T2或者T1与T3，则不会引发如上死锁情况产生。
 2. 先 Update 再 Insert，Gap 和 Gap 之间不冲突，但 Gap 阻止 Insert Intention。
    ![image.png](./assets/82.jpg)
    表中无数据。

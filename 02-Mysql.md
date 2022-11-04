@@ -274,6 +274,19 @@ UNBOUNDED FOLLOWING #最后一行
 
 `NTILE(n)`：获取一定比例的数据。
 
+### 参数配置
+
+#### 连接
+
+* max_connections：最大连接数，max_used_connection/max_connections 理想值约等于85%。
+* back_log：等待连接队列的长度，达到 max_connections 后，新的请求被放入队列中。
+* wait_timeout：关闭连接之前所需要等待的秒数，太大会看到太多的 sleep 状态的连接，太小会导致关闭连接很快。
+
+#### 缓冲区
+
+* key_buffer_size：索引缓冲区的大小，决定索引的处理速度，只对 MAISAM 生效，该值是否合理，通过 key_reads/key_read_requests 来判断，至少 1:100，默认8M，4G内存可调为256M。
+* query_cache_size：查询结果缓冲区，对同样的select语句（区分大小写），将直接从缓冲区中读取结果。通过 `show ststus like 'Qcache%'` 可以知道query_cache_size的设置是否合理。
+
 ## 储存引擎
 
 1. InnoDB：支持事务、行锁、支持外键、使用MVCC来获得高并发性、实现了事务的4中隔离级别。
@@ -327,7 +340,8 @@ PurgeThread 和 PageCleanerThread 是后面加入的，分担 MasterThread 的�
    在LRU列表中页被修改后被称为脏页(dirty page),即缓冲池中的页和磁盘上的页的数据产生了不一致。除了LRU列表，还有Flush列表，用来管理将页刷新回磁盘，该列表在写redolog时添加，脏页同时存在于LRU列表和FLUSH列表中，可通过 `SELECT TABLE_NAME,SPACE,PAGE_NUMBER,PAGE_TYPE FROM information_schema.INNODB_BUFFER_PAGE_LRU where OLDEST_MODIFICATION > 0;`来查询脏页信息，TABLE_NAME为NULL表示属于系统表空间。
 
    ![image.png](./assets/69.png)
-2. 重做日志(redo log)缓冲：InnoDB会将redo log先放入这个缓冲区，然后再按一定的频率将其刷新到重做日志文件，一般情况会一秒刷新一次。该值可由 innodb_log_buffer_size 控制，默认8MB，需要保证每秒内产生的事务量在这个缓冲大小内。
+2.
+3. 重做日志(redo log)缓冲：InnoDB会将redo log先放入这个缓冲区，然后再按一定的频率将其刷新到重做日志文件，一般情况会一秒刷新一次。该值可由 innodb_log_buffer_size 控制，默认8MB，需要保证每秒内产生的事务量在这个缓冲大小内。
 
    重做日志是物理日志，记录了在某个数据页上做了什么修改，是为了解决内存存在脏页时，发生宕机导致数据丢失，使用 Write Ahead Log 策略，即先写重做日志，再修改页。
 
@@ -421,6 +435,279 @@ innodb_fast_shutdown：默认值为1。
 * 2 表示不完成 full purge 和 merge insert buffer，也不会将所有的脏页刷新回磁盘，但将日志写入日志文件。下次启动时，会使用日志进行恢复操作。
 
 在没有正常关闭数据库时，下次启动InnoDB会对表进行恢复操作，innodb_force_recovery 影响整个恢复状况，默认值为 0 ，表示当发生需要恢复时，进行恢复操作，不能进行有效恢复时，写入错误日志。
+
+#### INNODB STATUS 分析
+
+通过 `SHOW ENGINE INNODB STATUS;`查看储存引擎状态。
+
+##### BACKGROUND THREAD
+
+```properties
+BACKGROUND THREAD
+-----------------
+srv_master_thread loops: 3911776 srv_active, 0 srv_shutdown, 309625 srv_idle
+srv_master_thread log flush and writes: 4221384
+```
+
+srv_active 为每秒任务循环的次数，srv_idle 为每十秒任务循环的次数，低负载情况下 `刷盘次数(4221384) ≈ srv_active(3911776) + srv_idle(309625)`
+
+并且 `srv_active : srv_idle ≈ 10 ：1`。
+
+如果 srv_active 次数少，srv_idle 次数较多 证明负载较低，若 srv_active 次数较多，比例远大于 10:1 ，说明负载很高。
+
+##### SEMAPHORES
+
+当前等待线程数量，可以评估负载情况。
+
+```properties
+----------
+SEMAPHORES
+----------
+OS WAIT ARRAY INFO: reservation count 58961200
+OS WAIT ARRAY INFO: signal count 125268732
+RW-shared spins 0, rounds 115276716, OS waits 14655922
+RW-excl spins 0, rounds 987115172, OS waits 12384598
+RW-sx spins 40484350, rounds 419545112, OS waits 4476477
+Spin rounds per wait: 115276716.00 RW-shared, 987115172.00 RW-excl, 10.36 RW-sx
+```
+
+reservation count：表示InnoDB产生了多少次OS WAIT，signal count：表示进入OS WAIT的线程被唤醒次数。
+
+InnoDB试图获取一个被占用的锁时，会执行 spin wait ，也就是空转轮询，如果一直没有获取到锁才会进入到 os wait 。
+
+以通过`innodb_sync_spin_loops`参数来平衡spin wait和os wait。Mutex信息可通过`show engine innodb mutex`查看。
+
+##### LATEST DETECTED DEADLOCK
+
+```properties
+------------------------
+LATEST DETECTED DEADLOCK
+------------------------
+2021-08-18 14:04:16 0x7f29f2ef5700
+*** (1) TRANSACTION:
+TRANSACTION 14235673, ACTIVE 0 sec starting index read
+mysql tables in use 3, locked 3
+LOCK WAIT 3 lock struct(s), heap size 1136, 2 row lock(s), undo log entries 1
+MySQL thread id 10089425, OS thread handle 139823504013056, query id 157595766 10.75.34.61 dbroot updating
+update table1 set aaa='4',bbb='121',ccc='合格',ddd='0',eee='' where bd='6f174b50-8d32' and dw='1e0adeed-3f0d-450a' and tag =1
+*** (1) WAITING FOR THIS LOCK TO BE GRANTED:
+RECORD LOCKS space id 14096 page no 57 n bits 272 index bd_index of table `mydatabase`.`table1` trx id 14235673 lock_mode X locks rec but not gap waiting
+Record lock, heap no 114 PHYSICAL RECORD: n_fields 2; compact format; info bits 0
+ 0: len 30; hex 36663137346235302d386433322d343763362d613062622d633962333238; asc 6f174b50-8d32-47c6-a0bb-c9b328; (total 36 bytes);
+ 1: len 30; hex 30636538343031652d653061662d343733362d623031372d626464623663; asc 0ce8401e-e0af-4736-b017-bddb6c; (total 36 bytes);
+ 
+*** (2) TRANSACTION:
+TRANSACTION 14235674, ACTIVE 0 sec fetching rows
+mysql tables in use 3, locked 3
+9 lock struct(s), heap size 1136, 6 row lock(s), undo log entries 2
+MySQL thread id 10089424, OS thread handle 139818146158336, query id 157595768 10.75.34.61 dbroot updating
+update table1 set aaa='10',bbb='12',ccc='合格',ddd='0',eee='' where bd='6f174b50-8d32' and dw='ffb27cdc-ba40-4e16' and tag =1
+*** (2) HOLDS THE LOCK(S):
+RECORD LOCKS space id 14096 page no 57 n bits 272 index bd_index of table `mydatabase`.`table1` trx id 14235674 lock_mode X locks rec but not gap
+Record lock, heap no 114 PHYSICAL RECORD: n_fields 2; compact format; info bits 0
+ 0: len 30; hex 36663137346235302d386433322d343763362d613062622d633962333238; asc 6f174b50-8d32-47c6-a0bb-c9b328; (total 36 bytes);
+ 1: len 30; hex 30636538343031652d653061662d343733362d623031372d626464623663; asc 0ce8401e-e0af-4736-b017-bddb6c; (total 36 bytes);
+ 
+*** (2) WAITING FOR THIS LOCK TO BE GRANTED:
+RECORD LOCKS space id 14096 page no 57 n bits 272 index bd_index of table `mydatabase`.`table1` trx id 14235674 lock_mode X locks rec but not gap waiting
+Record lock, heap no 105 PHYSICAL RECORD: n_fields 2; compact format; info bits 0
+ 0: len 30; hex 36663137346235302d386433322d343763362d613062622d633962333238; asc 6f174b50-8d32-47c6-a0bb-c9b328; (total 36 bytes);
+ 1: len 30; hex 66396262333533362d356137342d343633352d386335632d323666356537; asc f9bb3536-5a74-4635-8c5c-26f5e7; (total 36 bytes);
+ 
+*** WE ROLL BACK TRANSACTION (1)
+```
+
+> RANSACTION 14235673, ACTIVE 0 sec starting index read
+
+事务14235673，ACTIVE 0 sec表示事务处于活跃状态0s，starting index read表示正在使用索引读取数据行
+
+> mysql tables in use 3, locked 3
+
+事务1正在使用3个表，且涉及锁的表有3个
+
+> LOCK WAIT 3 lock struct(s), heap size 1136, 2 row lock(s), undo log entries 1
+
+这行表示在等待3把锁，占用内存1136字节，涉及2行记录，事务已经锁定了几行数据。
+
+> MySQL thread id 10089425, OS thread handle 139823504013056, query id 157595766 10.75.34.61 dbroot updating
+
+该事务的线程ID信息，操作系统句柄信息，连接来源、用户等
+
+> update table1 set aaa='4',bbb='121',ccc='合格',ddd='0',eee='' where bd='6f174b50-8d32' and dw='1e0adeed-3f0d-450a' and tag =1
+
+正在等待行锁的sql
+
+> (1) WAITING FOR THIS LOCK TO BE GRANTED:
+> (2) HOLDS THE LOCK(S):
+
+正在等待的锁、目前保存的锁
+
+> RECORD LOCKS space id 14096 page no 57 n bits 272 index bd_index of table `mydatabase`.`table1` trx id 14235673 lock_mode X locks rec but not gap waiting
+
+等待的锁是一个record lock，空间id是14096，页编号为57，大概位置在页的272位处，锁发生在表mydatabase.table1的bd_index 索引上，是一个X锁，但是不是gap lock。 waiting表示正在等待锁
+
+> Record lock, heap no 114 PHYSICAL RECORD: n_fields 2; compact format; info bits 0
+
+这行表示record lock的heap no 位置（可以用来对照事务2控制住的锁）
+
+> WE ROLL BACK TRANSACTION (1)
+
+回滚了事务1
+
+锁的类型：
+
+* 记录锁（LOCK_REC_NOT_GAP）: `lock_mode X locks rec but not gap`
+* 间隙锁（LOCK_GAP）: `lock_mode X locks gap before rec`
+* Next-key 锁（LOCK_ORNIDARY）: `lock_mode X`
+* 插入意向锁（LOCK_INSERT_INTENTION）: `lock_mode X locks gap before rec insert intention`
+
+另外 如果在 supremum record 上加锁，`locks gap before rec` 会省略掉，间隙锁会显示成 `lock_mode X`，例如
+
+> RECORD LOCKS space id 0 page no 307 n bits 72 index PRIMARY of table test.test trx id 50F lock_mode X
+> Record lock, heap no 1 PHYSICAL RECORD: n_fields 1; compact format; info bits 0
+
+其中 heap no 1 表示这个记录是 supremum record
+
+##### FILE I/O
+
+```properties
+FILE I/O
+--------
+I/O thread 0 state: waiting for completed aio requests (insert buffer thread)
+I/O thread 1 state: waiting for completed aio requests (log thread)
+I/O thread 2 state: waiting for completed aio requests (read thread)
+I/O thread 3 state: waiting for completed aio requests (read thread)
+I/O thread 4 state: waiting for completed aio requests (read thread)
+I/O thread 5 state: waiting for completed aio requests (read thread)
+I/O thread 6 state: waiting for completed aio requests (write thread)
+I/O thread 7 state: waiting for completed aio requests (write thread)
+I/O thread 8 state: waiting for completed aio requests (write thread)
+I/O thread 9 state: waiting for completed aio requests (write thread)
+Pending normal aio reads: [0, 0, 0, 0] , aio writes: [0, 0, 0, 0] ,
+ ibuf aio reads:, log i/o's:
+Pending flushes (fsync) log: 0; buffer pool: 18446744073709551573
+6118141 OS file reads, 10992469 OS file writes, 5299662 OS fsyncs
+0.00 reads/s, 0 avg bytes/read, 3.82 writes/s, 3.07 fsyncs/s
+```
+
+Pending 待处理的 io 和 fsync 。
+
+OS file 显示调用系统 read、write、fsync 的次数。
+
+##### INSERT BUFFER AND ADAPTIVE HASH INDEX
+
+```properties
+-------------------------------------
+INSERT BUFFER AND ADAPTIVE HASH INDEX
+-------------------------------------
+Ibuf: size 1, free list len 749, seg size 751, 5362 merges
+merged operations:
+ insert 47106, delete mark 1409119, delete 138703
+discarded operations:
+ insert 0, delete mark 0, delete 0
+Hash table size 34679, node heap has 2 buffer(s)
+Hash table size 34679, node heap has 5 buffer(s)
+Hash table size 34679, node heap has 17 buffer(s)
+Hash table size 34679, node heap has 2 buffer(s)
+Hash table size 34679, node heap has 1 buffer(s)
+Hash table size 34679, node heap has 2 buffer(s)
+Hash table size 34679, node heap has 68 buffer(s)
+Hash table size 34679, node heap has 34 buffer(s)
+9.18 hash searches/s, 87.71 non-hash searches/s
+```
+
+Ibuf 合并页数量，free list 空闲列表长度，seg size 为insert buffer大小，merge 合并次数。
+
+merged operations：Change Buffer中每个操作次数，insert代表Insert Buffer，delete mark代表Delete Buffer，delete代表Purge Buffer。
+
+discarded operations：Change Buffer中无需合并的次数。
+
+hash searches/s：通过hash索引查询，即反复的等值查询。
+
+non-hash searches/s：不能通过hash索引查询
+
+##### LOG
+
+```properties
+---
+LOG
+---
+Log sequence number          13793197307
+Log buffer assigned up to    13793197307
+Log buffer completed up to   13793197307
+Log written up to            13793197307
+Log flushed up to            13793197307
+Added dirty pages up to      13793197307
+Pages flushed up to          13793195904
+Last checkpoint at           13793195904
+Log minimum file id is       4194
+Log maximum file id is       4211
+7769907 log i/o's done, 1.11 log i/o's/second
+```
+
+Log sequence number：最新产生的日志序列号
+Log flushed up to：已刷到磁盘的重做日志的日志号
+Pages flushed up to：已刷到磁盘的页的日志号
+Last checkpoint at: 最后一次检查点位置，数据和日志一致的状态
+
+##### BUFFER POOL AND MEMORY
+
+```properties
+----------------------
+BUFFER POOL AND MEMORY
+----------------------
+Total large memory allocated 0
+Dictionary memory allocated 4614936
+Buffer pool size   8192
+Free buffers       1024
+Database pages     7037
+Old database pages 2577
+Modified db pages  0
+Pending reads      0
+Pending writes: LRU 0, flush list 0, single page 0
+Pages made young 2525811, not young 85650354
+0.07 youngs/s, 0.00 non-youngs/s
+Pages read 6118237, created 283123, written 2468006
+0.00 reads/s, 0.00 creates/s, 1.82 writes/s
+Buffer pool hit rate 1000 / 1000, young-making rate 0 / 1000 not 0 / 1000
+Pages read ahead 0.00/s, evicted without access 0.00/s, Random read ahead 0.00/s
+LRU len: 7037, unzip_LRU len: 0
+I/O sum[69]:cur[8], unzip sum[0]:cur[0]
+```
+
+Total large memory：innodb 分配的总内存（字节）。
+Dictionary memory allocated：innodb数据字典 分配的总内存（字节）。
+Buffer pool size：buffer pool 总页数。
+Free buffers：空闲页数。
+Database pages37：非空闲页数。
+Old database pages：LRU列表中后 3/8 的列表，新读取的页会插入到 5/8 处。
+Modified db pages：脏页数量。
+Pending reads：挂起读的数量。
+
+Pages made young：显示LRU列表中old list移到new list的次数，not young：显示仍在old list的次数。
+
+Pages read,created,written：表示innodb被读取，创建，写入多少页及每秒的次数。
+
+Buffer pool hit rate：表示缓冲池命中率，如果低于95%需要具体排查。
+
+Pages read ahead：预读每秒页数，Random read ahead 随机预读的每秒页数。
+
+##### ROW OPERATIONS
+
+```properties
+--------------
+ROW OPERATIONS
+--------------
+0 queries inside InnoDB, 0 queries in queue
+0 read views open inside InnoDB
+Process ID=444943, Main thread ID=139899621590784, state: sleeping
+Number of rows inserted 172887566, updated 227534242, deleted 56676133, read 709667077
+8.77 inserts/s, 8.04 updates/s, 0.00 deletes/s, 10.92 reads/s
+```
+
+queries：表示innodb内核中有多少个线程，队列中有多少个线程。
+read views open inside InnoDB：表示有多少个read view 被打开，一个read view 包含事物开始点数据库内容的MVCC快照。
+Number of rows inserted、updated、deleted、read：表示多少行被插入，更新和删除，读取及每秒信息，可用于监控。
 
 ## 文件
 
@@ -1175,7 +1462,7 @@ SELECT ... LOCK IN SHARE MODE (S锁)
 
 
 | 事务B\事务A      | Gap | Insert Intention | Record | Next-Key |
-| ------------------ | ----- | ------------------ | -------- | ---------- |
+| ---------------- | --- | ---------------- | ------ | -------- |
 | Gap              | 是  | 是               | 是     | 是       |
 | Insert Intention | 否  | 是               | 是     | 否       |
 | Record           | 是  | 是               | 否     | 否       |
@@ -1238,7 +1525,7 @@ SELECT ... LOCK IN SHARE MODE (S锁)
 * 使用等值查询而不是范围查询查询数据，命中记录，避免间隙锁对并发的影响。
 * 更新、删除操作时先校验数据是否存在。
 
-案例：[](https://)
+案例：
 
 1. Insert 唯一键冲突，造成 Next-key。
    ![image.png](./assets/80.jpg)

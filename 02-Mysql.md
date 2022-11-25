@@ -709,6 +709,28 @@ queries：表示innodb内核中有多少个线程，队列中有多少个线程�
 read views open inside InnoDB：表示有多少个read view 被打开，一个read view 包含事物开始点数据库内容的MVCC快照。
 Number of rows inserted、updated、deleted、read：表示多少行被插入，更新和删除，读取及每秒信息，可用于监控。
 
+#### 系统参数
+
+```yml
+[mysqld]
+# Mysql服务的唯一编号,每个mysql服务Id需唯一,在主从同步时来标记服务的唯一身份
+server-id = 1
+# 启动mysql服务进程的用户
+user = mysql
+# ip绑定,0.0.0.0标识允许所有的远程访问,127.0.0.1只能本地访问,固定ip则只能接受改ip的远程访问。
+bind_address= 0.0.0.0
+# mysql安装根目录
+basedir = /usr/local/mysql-8.0.31
+# mysql数据文件所在位置
+datadir = /usr/local/mysql-8.0.31/data
+# 设置socket文件地址
+socket  = /tmp/mysql/mysql.sock
+# 设置服务端默认的字符集
+character-set-server = utf8mb4
+# ci和cs的区别,就是大小写敏感和不敏感 ci是case ignore，cs是case senstive
+collation_server = utf8mb4_general_ci
+```
+
 ## 文件
 
 ### 数据目录

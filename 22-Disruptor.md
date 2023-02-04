@@ -274,7 +274,7 @@ public final class MultiProducerSequencer extends AbstractSequencer
 
 负责控制消费者需要等依赖的序列号发布后才能消费，并且保证消费的顺序性。
 
-```
+```java
 final class ProcessingSequenceBarrier implements SequenceBarrier
 {
     private final WaitStrategy waitStrategy;

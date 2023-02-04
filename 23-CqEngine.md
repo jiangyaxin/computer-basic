@@ -1,5 +1,3 @@
-# 查询主流程
-
 ## 查询的类型
 
 * ComparativeQuery ：比较查询，主要的实现 Max、Min、LongestPrefix，其中 Max、Min的字段需要实现 Comparable。

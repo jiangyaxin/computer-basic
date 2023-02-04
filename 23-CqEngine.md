@@ -29,7 +29,7 @@
   queryOption.put(QueryLog.class,true);
   cars.retrieve(lessThan(Car.CAR_ID, 2)).forEach(System.out::println);
   ````
-* StandingQuery ：定义查询索引，可以针对 Query 建立索引，时间复杂度 O(1)，自定义程度最大，Query 最好设置为 常量，原因是索引命中使用默认Object的默认Equal方法，即比较内存地址，使用常量防止修改不能命中索引。
+* StandingQuery ：定义查询索引，可以针对 Query 建立索引，时间复杂度 O(1)，自定义程度最大，Query 最好设置为 常量，原因是索引命中默认使用Object的默认Equal方法，即比较内存地址，使用常量防止修改不能命中索引。
 
 ### 查询算法
 

@@ -1,3 +1,4 @@
+```java
 @Component
 @Slf4j
 public class NacosDynamicRouteService implements ApplicationEventPublisherAware {
@@ -61,3 +62,4 @@ public class NacosDynamicRouteService implements ApplicationEventPublisherAware 
   public void setApplicationEventPublisher(ApplicationEventPublisher applicationEventPublisher) {
     this.applicationEventPublisher = applicationEventPublisher;
   }
+```

@@ -287,6 +287,44 @@ UNBOUNDED FOLLOWING #最后一行
 * key_buffer_size：索引缓冲区的大小，决定索引的处理速度，只对 MAISAM 生效，该值是否合理，通过 key_reads/key_read_requests 来判断，至少 1:100，默认8M，4G内存可调为256M。
 * query_cache_size：查询结果缓冲区，对同样的select语句（区分大小写），将直接从缓冲区中读取结果。通过 `show ststus like 'Qcache%'` 可以知道query_cache_size的设置是否合理。
 
+### SQL执行顺序
+
+1. FROM
+2. ON
+3. JOIN
+4. WHERE
+5. GROUP BY(开始使用select中的别名，后面的语句中都可以使用)
+6. AVG,SUM....
+7. HAVING
+8. SELECT
+9. DISTINCT
+10. ORDER BY
+11. LIMIT
+
+### 分页查询
+
+变量为 batchSize 、tableName
+
+```sql
+SELECT 
+   id 
+FROM
+(
+   SELECT
+     @rownum := ((@rownum + 1)% #{batchSize}) AS rownum,
+     id
+   FROM
+     #{tableName} AS t1,
+     (SELECT @rownum := 0 ) t2
+  ORDER BY
+     t1.id ASC
+) t3
+where 
+t3.rownum = 1
+```
+
+### 
+
 ## 储存引擎
 
 1. InnoDB：支持事务、行锁、支持外键、使用MVCC来获得高并发性、实现了事务的4中隔离级别。
@@ -1738,6 +1776,7 @@ SELECT ... LOCK IN SHARE MODE (S锁)
 范围的划分如下：例如一个索引有10，11，13，20四个值，范围被分为 (负无穷,10]  (10,11]  (11,13]  (13,20]  (20,正无穷）
 
 当事务A上锁后，事务B能否在某个范围加锁：
+
 
 | 事务B\事务A      | Gap | Insert Intention | Record | Next-Key |
 | ---------------- | --- | ---------------- | ------ | -------- |

@@ -42,6 +42,24 @@ maximumPoolSize = ((core_count * 2)+ effective_spindle_count),effective_spindle_
 增大连接池大小可以缓解池锁问题，**但是扩大池之前是可以先检查一下应用层面能够调优，不要直接调整连接池大小**。
 pool size = Tn x (Cm - 1) + 1，T n是线程的最大数量，C m是单个线程持有的同时连接的最大数量，这是避免池锁的最低限度。
 
+## 监控指标
+
+1. 多少个线程在等待获取数据库连接？获取数据库连接需要的平均时长是多少？数据库连接池是否已经不能满足业务模块需求？如果存在获取数据库连接较慢，则可能说明配置的数据库连接数不足，或存在连接泄漏问题。
+2. 哪些线程正在执行 SQL 语句？执行的 SQL 语句是什么？数据库中是否存在系统瓶颈或已经产生锁？如果个别 SQL 语句执行速度明显比其它语句慢，则可能是数据库查询逻辑问题，或者已经存在了锁表的情况。
+3. 最经常被执行的 SQL 语句是在哪段源代码中被调用的？最耗时的 SQL 语句是在哪段源代码中被调用的？
+
+
+| HikariCP指标                        | 说明                     | 类型               | 备注                                                                          |
+| ----------------------------------- | ------------------------ | ------------------ | ----------------------------------------------------------------------------- |
+| hikaricp_connection_timeout_total   | 每分钟超时连接数         | Counter            |                                                                               |
+| hikaricp_pending_threads            | 当前排队获取连接的线程数 | GAUGE              | 关键指标，大于10则 报警<br />该指标持续飙高，说明DB连接池中基本已无空闲连接。 |
+| hikaricp_connection_acquired_nanos  | 连接获取的等待时间       | Summary	pool.Wait  | 关注极值                                                                      |
+| hikaricp_active_connections         | 当前正在使用的连接数     | GAUGE              | 长期保持在较大线程数时，可以考虑增大最大连接数。                              |
+| hikaricp_connection_creation_millis | 创建连接成功的耗时       | Summary            | 关注极值                                                                      |
+| hikaricp_idle_connections           | 当前空闲连接数           | GAUGE              | 长期保持在较大线程数时，可以考虑减小最大连接数。                              |
+| hikaricp_connection_usage_millis    | 连接被复用的间隔时长     | Summary	pool.Usage | 关注极值                                                                      |
+| hikaricp_connections                | 连接池的总共连接数       | GAUGE              |                                                                               |
+
 ## 核心组件
 
 ### HikariDataSource
@@ -115,6 +133,7 @@ public class HikariDataSource extends HikariConfig implements DataSource, Closea
 ## PoolBase
 
 HikariPool 的父类，提供与 Connection 相关的基础方法，主要以下几个方面：
+
 1. 初始化原生DataSource，可能是 DriverDataSource、JNDI、其他 dataSourceClassName（通过HikariConfig配置），可使用getUnwrappedDataSource()访问。
 2. 通过DataSource创建Connection，修饰符为private，外部不能访问。
 3. 判断Connection是否存活。
@@ -171,4 +190,178 @@ abstract class PoolBase
 
 ## HikariPool
 
-负责对连接资源(即PoolEntry)进行管理，
+负责对连接资源(即PoolEntry)进行管理，主要实现以下功能：
+
+1. 通过 `getConnection()` 提供借出 Connection 的功能。
+2. 通过 `recycle(final PoolEntry poolEntry)` 提供归还 Connection 的功能。
+3. 通过 `softEvictConnection(final PoolEntry poolEntry, final String reason, final boolean owner)` 将连接标记为删除，再其下次被获取且不使用时将其真正删除。
+4. 通过 `PoolEntryCreator` 提供异步创建PoolEntry的能力。
+5. 通过 `HouseKeeper` 每隔30秒监测一次空闲连接将其释放至 minIdle 或 使用 `PoolEntryCreator` 填充数量至 minIdle。
+6. 通过 `MaxLifetimeTask` 延迟 maxLifetime 使用 `softEvictConnection` 剔除 PoolEntry。
+7. 通过 `KeepaliveTask` 每隔 keepaliveTime 时间使用 `Connection#isValid` 监测一次连接是否存活，如果不存活则剔除。
+
+## ConcurrentBag
+
+ConcurrentBag 是连接资源的共享站，支撑连接池底层借出、归还功能。
+
+```java
+public class ConcurrentBag<T extends IConcurrentBagEntry> implements AutoCloseable {
+
+    private final CopyOnWriteArrayList<T> sharedList;
+    private final boolean weakThreadLocals;
+
+    private final ThreadLocal<List<Object>> threadList;
+    private final IBagStateListener listener;
+    private final AtomicInteger waiters;
+    private volatile boolean closed;
+
+    private final SynchronousQueue<T> handoffQueue;
+}
+```
+
+从私有属性可以看出它的功能：
+
+* CopyOnWriteArrayList : 负责存放 ConcurrentBag 的所有可出借的资源，也就是 HikariPool 所能提供的资源。
+* ThreadLocal<List<Object>> : 线程归还资源后会先保存在这里，如果同线程还需要使用则从此处借出，加速线程本地化资源访问，减少竞争。
+* SynchronousQueue<T> ：提供新增连接第一手交接给等待线程，并可以在其他线程连接使用完成后加入 ThreadLocal 之前，将其窃取给等待线程。
+
+```java
+public class ConcurrentBag<T extends IConcurrentBagEntry> implements AutoCloseable
+{
+    public T borrow(long timeout, final TimeUnit timeUnit) throws InterruptedException
+    {
+        // 优先从本地连接获取资源
+        // Try the thread-local list first
+        final List<Object> list = threadList.get();
+        for (int i = list.size() - 1; i >= 0; i--) {
+            final Object entry = list.remove(i);
+            @SuppressWarnings("unchecked")
+            final T bagEntry = weakThreadLocals ? ((WeakReference<T>) entry).get() : (T) entry;
+            if (bagEntry != null && bagEntry.compareAndSet(STATE_NOT_IN_USE, STATE_IN_USE)) {
+                return bagEntry;
+            }
+        }
+  
+        // 从 CopyOnWriteArrayList 获取资源
+        // Otherwise, scan the shared list ... then poll the handoff queue
+        final int waiting = waiters.incrementAndGet();
+        try {
+            for (T bagEntry : sharedList) {
+                if (bagEntry.compareAndSet(STATE_NOT_IN_USE, STATE_IN_USE)) {
+                    // If we may have stolen another waiter's connection, request another bag add.
+                    if (waiting > 1) {
+                        listener.addBagItem(waiting - 1);
+                    }
+                    return bagEntry;
+                }
+            }
+
+            listener.addBagItem(waiting);
+
+            // 从新增连接直接获取资源或者窃取其他线程资源
+            timeout = timeUnit.toNanos(timeout);
+            do {
+                final long start = currentTime();
+                final T bagEntry = handoffQueue.poll(timeout, NANOSECONDS);
+                if (bagEntry == null || bagEntry.compareAndSet(STATE_NOT_IN_USE, STATE_IN_USE)) {
+                    return bagEntry;
+                }
+
+                timeout -= elapsedNanos(start);
+            } while (timeout > 10_000);
+
+            return null;
+        }
+        finally {
+            waiters.decrementAndGet();
+        }
+    }
+
+    public void requite(final T bagEntry)
+    {
+        bagEntry.setState(STATE_NOT_IN_USE);
+
+        // 提供给其他线程窃取
+        for (int i = 0; waiters.get() > 0; i++) {
+            if (bagEntry.getState() != STATE_NOT_IN_USE || handoffQueue.offer(bagEntry)) {
+                return;
+            }
+            else if ((i & 0xff) == 0xff) {
+                parkNanos(MICROSECONDS.toNanos(10));
+            }
+            else {
+                Thread.yield();
+            }
+        }
+
+        // 加速当前线程获取资源
+        final List<Object> threadLocalList = threadList.get();
+        if (threadLocalList.size() < 50) {
+            threadLocalList.add(weakThreadLocals ? new WeakReference<>(bagEntry) : bagEntry);
+        }
+    }
+}
+```
+
+### PoolEntry
+
+```java
+final class PoolEntry implements IConcurrentBagEntry {
+    private static final AtomicIntegerFieldUpdater<PoolEntry> stateUpdater;
+
+    // Jdbc连接
+    Connection connection;
+  
+    // 上次归还的时间
+    long lastAccessed;
+    // 上次借出的时间
+    long lastBorrowed;
+
+    // 标记 STATE_NOT_IN_USE、STATE_IN_USE、STATE_REMOVED、STATE_RESERVED 状态
+    @SuppressWarnings("FieldCanBeLocal")
+    private volatile int state = 0;
+  
+    // 标记删除，并非真正删除，只有被再次获取且没有使用时才被删除
+    private volatile boolean evict;
+
+    // MaxLifetimeTask
+    private volatile ScheduledFuture<?> endOfLife;
+    // KeepaliveTask
+    private volatile ScheduledFuture<?> keepalive;
+
+    // 打开的Statement
+    private final FastList<Statement> openStatements;
+    private final HikariPool hikariPool;
+
+    private final boolean isReadOnly;
+    private final boolean isAutoCommit;
+
+    // 创建连接代理
+    Connection createProxyConnection(final ProxyLeakTask leakTask, final long now)
+    {
+        return ProxyFactory.getProxyConnection(this, connection, openStatements, leakTask, now, isReadOnly, isAutoCommit);
+    }
+}
+```
+
+### ProxyFactory
+
+生成 HikariProxyXXXX 的工厂，但内部并没有真正的实现，而是使用 JavassistProxyFactory 修改的字节码，将字节码压缩到35字节以下，以使用JIT内联，提高方法调用效率。
+
+## 时序图
+
+### 借用流程
+
+![346.png](assets/346.png)
+
+### 回收流程
+
+![347.png](assets/347.png)
+
+### 新建连接流程
+
+![348.png](assets/348.png)
+
+### 连接关闭流程
+
+![349.png](assets/349.png)

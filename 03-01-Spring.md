@@ -51,14 +51,14 @@
 * org.springframework.beans.factory.DisposableBean：对象销毁时执行。
 * org.springframework.context.ApplicationListener：2种方式调用，可以实现 ApplicationListener 或者 使用 @EventListener。
   Springboot 启动过程中事件：
-    1. ApplicationStartingEvent：Environment 未创建。
-    2. ApplicationEnvironmentPreparedEvent：Environment 已创建，环境变量、JVM参数、ServletContext 已加载。
-    3. ApplicationContextInitializedEvent：容器刚刚创建，ApplicationContextInitializer执行之后，还未load、refresh。
-    4. ApplicationPreparedEvent：已经完成load，BeanPostProcessor，入口类已完成加载，注解未完成扫描。
-    5. ContextRefreshedEvent：在refresh方法最后， refresh() 被调用时发生，所有的Bean被成功装载，后处理Bean被检测并激活，所有Singleton Bean 被预实例化。
-    6. ApplicationStartedEvent：容器已经完成refresh，所有bean都完成加载，ApplicationRunner、CommandLineRunner未执行。
-    7. ApplicationFailedEvent：容器启动失败时触发。
-    8. ApplicationReadyEvent：ApplicationRunner、CommandLineRunner已经执行，容器成功启动后触发。
+  1. ApplicationStartingEvent：Environment 未创建。
+  2. ApplicationEnvironmentPreparedEvent：Environment 已创建，环境变量、JVM参数、ServletContext 已加载。
+  3. ApplicationContextInitializedEvent：容器刚刚创建，ApplicationContextInitializer执行之后，还未load、refresh。
+  4. ApplicationPreparedEvent：已经完成load，BeanPostProcessor，入口类已完成加载，注解未完成扫描。
+  5. ContextRefreshedEvent：在refresh方法最后， refresh() 被调用时发生，所有的Bean被成功装载，后处理Bean被检测并激活，所有Singleton Bean 被预实例化。
+  6. ApplicationStartedEvent：容器已经完成refresh，所有bean都完成加载，ApplicationRunner、CommandLineRunner未执行。
+  7. ApplicationFailedEvent：容器启动失败时触发。
+  8. ApplicationReadyEvent：ApplicationRunner、CommandLineRunner已经执行，容器成功启动后触发。
 
 ## Bean 生命周期
 
@@ -205,12 +205,13 @@ Spring不仅支持classpath:、file:、http:等各种前缀开头的资源文件
 
 
 | Pattern | Description             | Example                                           | Remark                                                                                                                                                              |
-| --------- | ------------------------- | --------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ------- | ----------------------- | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | ?       | 匹配任何的单个字符      | example/?ork                                      | 可以匹配:example/fork;example/work                                                                                                                                  |
 | *       | 匹配0或者任意数量的字符 | file:C:/some/path/*.xml                           | 可以匹配C:/some/path下的所有xml文件                                                                                                                                 |
 | **      | 匹配0个或者更多的目录   | classpath:com/mycompany/**/applicationContext.xml | 可以匹配mycompany和applicationContext.xml的任意目录，例如: classpath:com/mycompany/test/applicationContext.xml;classpath:com/mycompany/work/applicationContext.xml. |
 
 ## BeanWrapper
+
 可通过 BeanWrapper 对 Bean 进行操作,可通过 PropertyAccessorFactory#forBeanPropertyAccess 进行创建，可通过 ApplicationContext 获取 ConversionService。
 
 ![101](assets/101.png)
@@ -598,6 +599,87 @@ public void setDessert(Dessert dessert) {
     "# { jukebox.songs.?[artist eq 'Aerosmith'].![title] }"
 ```
 
+# 重试
+
+## SpringRetry
+### 使用
+
+1. 引用 POM。
+
+    ```xml
+    <dependency>
+        <groupId>org.springframework.retry</groupId>
+        <artifactId>spring-retry</artifactId>
+        <version>1.2.2.RELEASE</version>
+    </dependency>
+    ```
+
+2. 使用
+
+    ```java
+    @EnableRetry
+    @SpringBootApplication
+    public class JpaApplication {
+    
+        public static void main(String[] args) {
+            SpringApplication.run(JpaApplication.class, args);
+        }
+    
+        @Retryable
+        public String hello(){
+            long times = helloTimes.incrementAndGet();
+            log.info("hello times:{}", times);
+            if (times % 4 != 0){
+                log.warn("发生异常，time：{}", LocalTime.now() );
+                throw new HelloRetryException("发生Hello异常");
+            }
+            return "hello " + nameService.getName();
+        }
+    
+    }
+    ```
+   
+## GuavaRetry
+
+1. 引用 POM。
+
+    ```xml
+    <dependency>
+        <groupId>com.github.rholder</groupId>
+        <artifactId>guava-retrying</artifactId>
+    </dependency>
+    ```
+
+2. 使用
+
+    ```java
+    @Slf4j
+    public class AppContextTest {
+    
+        @Test
+        public void guavaRetry() {
+            Retryer<String> retryer = RetryerBuilder.<String>newBuilder()
+                    .retryIfExceptionOfType(HelloRetryException.class)
+                    .retryIfResult(StringUtils::isEmpty)
+                    .withWaitStrategy(WaitStrategies.fixedWait(3, TimeUnit.SECONDS))
+                    .withStopStrategy(StopStrategies.stopAfterAttempt(3))
+                    .build();
+    
+            try {
+                retryer.call(() -> helloService.hello());
+            } catch (Exception e){
+                e.printStackTrace();
+            }
+        }
+    }
+    ```
+
+相比于SpringRetry，提供更多的重试机制：
+* retryIfException : 对所有异常进行重试。
+* retryIfExceptionOfType : 对指定异常进行重试。
+* retryIfResult : 对不符合预期的返回结果进行重试。
+* retryIfRuntimeException : 对所有RuntimeException进行重试。
+
 # SpringReactor
 
 * Mono 用于不超过一个的场景。
@@ -639,7 +721,7 @@ Mono<Map<Character, String>> animalMapMono = animalFlux.collectMap(a -> a.charAt
 
 
 | Scheduler方法 | 描述                                                                                                         |
-| --------------- | -------------------------------------------------------------------------------------------------------------- |
+| ------------- | ------------------------------------------------------------------------------------------------------------ |
 | .immediate()  | 在当前线程中执行订阅                                                                                         |
 | .single()     | 在单个可重用线程中执行订阅，对所有调用方重复使用同一线程                                                     |
 | .newSingle()  | 在每个调用专用线程中执行订阅                                                                                 |
@@ -656,8 +738,9 @@ Mono<Map<Character, String>> animalMapMono = animalFlux.collectMap(a -> a.charAt
 
 @Cacheable 和 @CachePut 属性：
 
+
 | 属性      | 类型     | 描述                                                               |
-| ----------- | ---------- | -------------------------------------------------------------------- |
+| --------- | -------- | ------------------------------------------------------------------ |
 | value     | String[] | 要使用的缓存名称                                                   |
 | condition | String   | SpEL 表达式，如果得到的值是 false 的话，不会将缓存应用到方法调用上 |
 | key       | String   | SpEL 表达式，用来计算自定义的缓存key                               |
@@ -665,8 +748,9 @@ Mono<Map<Character, String>> animalMapMono = animalFlux.collectMap(a -> a.charAt
 
 自定义缓存 key：
 
+
 | 表达式            | 描述                                                       |
-| ------------------- | ------------------------------------------------------------ |
+| ----------------- | ---------------------------------------------------------- |
 | #root.args        | 传递给缓存方法的参数，形式为数组                           |
 | #root.caches      | 该方法执行时所对应的缓存，形式为数组                       |
 | #root.target      | 目标对象                                                   |
@@ -678,8 +762,9 @@ Mono<Map<Character, String>> animalMapMono = animalFlux.collectMap(a -> a.charAt
 
 @CacheEvict 属性：
 
+
 | 属性             | 类型     | 描述                                                                                               |
-| ------------------ | ---------- | ---------------------------------------------------------------------------------------------------- |
+| ---------------- | -------- | -------------------------------------------------------------------------------------------------- |
 | value            | String[] | 要使用的缓存名称                                                                                   |
 | condition        | String   | SpEL 表达式，如果得到的值是 false 的话，缓存不会应用到方法调用上                                   |
 | key              | String   | SpEL 表达式，用来计算自定义的缓存key                                                               |
@@ -688,8 +773,9 @@ Mono<Map<Character, String>> animalMapMono = animalFlux.collectMap(a -> a.charAt
 
 # SpringBootActuator
 
+
 | HTTP 方法 | 路径            | 描述                                                            |
-| ----------- | ----------------- | ----------------------------------------------------------------- |
+| --------- | --------------- | --------------------------------------------------------------- |
 | GET       | /autoconfig     | 提供了一份自动配置报告，记录哪些自动配置条件通过了，哪些没通过  |
 | GET       | /configprops    | 描述配置属性(包含默认值)如何注入Bean                            |
 | GET       | /beans          | 描述应用程序上下文里全部的Bean，以及它们的关系                  |
@@ -721,8 +807,8 @@ Mono<Map<Character, String>> animalMapMono = animalFlux.collectMap(a -> a.charAt
 
 当使用 java -jar 命令启动时会自动禁用。
 
-
 配置文件加载顺序：按优先级排序，使用优先级高的配置。
+
 1. 命令行参数：
 
    ```shell
@@ -739,6 +825,7 @@ Mono<Map<Character, String>> animalMapMono = animalFlux.collectMap(a -> a.charAt
 7. 操作系统环境变量。
 8. RandomValuePropertySource，例如 my.secret=${random.value}
 9. 读取配置文件：
+
    * jar包外 优先 jar 包内。
    * config下 优先 根目录下。
    * application-{profile} 优先 application。
@@ -747,6 +834,7 @@ Mono<Map<Character, String>> animalMapMono = animalFlux.collectMap(a -> a.charAt
 11. SpringApplication.setDefaultProperties
 
 ymal传输到日志配置文件：
+
 
 | Spring Environment                | System Property               | Comments                                                |
 | --------------------------------- | ----------------------------- | ------------------------------------------------------- |
@@ -763,6 +851,7 @@ ymal传输到日志配置文件：
 
 Logback 额外的配置：
 
+
 | Spring Environment                                   | System Property                              | Comments                                                       |
 | ---------------------------------------------------- | -------------------------------------------- | -------------------------------------------------------------- |
 | logging.logback.rollingpolicy.file-name-pattern      | LOGBACK_ROLLINGPOLICY_FILE_NAME_PATTERN      | 翻转日志文件名的模式（默认${LOG_FILE}.%d{yyyy-MM-dd}.%i.gz）。 |
@@ -772,10 +861,12 @@ Logback 额外的配置：
 | logging.logback.rollingpolicy.max-history            | LOGBACK_ROLLINGPOLICY_MAX_HISTORY            | 要保留的存档日志文件的最大数量。                               |
 
 自动配置的线程池：
+
 * applicationTaskExecutor、taskExecutor：ThreadPoolTaskExecutor 类型，使用 spring.task.execution.pool 配置。
 * threadPoolTaskScheduler：ThreadPoolTaskScheduler 类型，使用 spring.task.scheduling 配置。
 
 测试：
+
 ```java
 //示例1
 @SpringBootTest
@@ -860,12 +951,15 @@ public class SignalDownloadTest2 {
 ```
 
 ## 自动配置原理
+
 ### @SpringBootApplication 注解
+
 * @SpringBootConfiguration：继承 @Configuration，和 @Configuration 功能一样。
 * @ComponentScan：自动扫描Bean，默认情况，不指定basePackages，扫描当前类包及其子包。
 * @EnableAutoConfiguration：通过 @Import({AutoConfigurationImportSelector.class}) 实现自动装配。
 
 ### 自动装配流程
+
 1. AutoConfigurationImportSelector 实现 ImportSelector 接口，@Import 会装载 ImportSelector#selectImports 返回的Bean，由 ConfigurationClassParser 来实现。
 2. 在 AutoConfigurationImportSelector#selectImports 中使用 SpringFactoriesLoader.loadFactoryNames(EnableAutoConfiguration.class,getBeanClassLoader()) 加载，会加载 META-INF/spring.factories 中 org.springframework.boot.autoconfigure.EnableAutoConfiguration 的属性。
 3. 通过 @ConditionalOnClass 来完成 添加具体starter 时完成自动加载，stater添加的只是依赖，负责引入依赖包，配置的逻辑存在于 spring-boot-autoconfigure 模块：例如：
@@ -877,16 +971,17 @@ public class SignalDownloadTest2 {
    @EnableConfigurationProperties(MongoProperties.class)
    @ConditionalOnMissingBean(type = "org.springframework.data.mongodb.MongoDatabaseFactory")
    public class MongoAutoConfiguration {
-  	 @Bean
-  	 @ConditionalOnMissingBean(MongoClient.class)
-  	 public MongoClient mongo(MongoProperties properties, Environment environment,
-  			 ObjectProvider<MongoClientSettingsBuilderCustomizer> builderCustomizers,
-  			 ObjectProvider<MongoClientSettings> settings) {
-  		 return new MongoClientFactory(properties, environment,
-  				 builderCustomizers.orderedStream().collect(Collectors.toList())).createMongoClient(settings.getIfAvailable());
-  	 }
+     @Bean
+     @ConditionalOnMissingBean(MongoClient.class)
+     public MongoClient mongo(MongoProperties properties, Environment environment,
+    		 ObjectProvider<MongoClientSettingsBuilderCustomizer> builderCustomizers,
+    		 ObjectProvider<MongoClientSettings> settings) {
+    	 return new MongoClientFactory(properties, environment,
+    			 builderCustomizers.orderedStream().collect(Collectors.toList())).createMongoClient(settings.getIfAvailable());
+     }
    }
    ```
+
 ## Starter
 
 自定义：

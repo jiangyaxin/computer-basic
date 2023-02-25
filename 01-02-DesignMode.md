@@ -1,6 +1,6 @@
 # 设计模式
 
-## 应用场景
+## 模式
 
 1. 策略模式：一个系统需要动态地在几种算法中选择一种，如果一个系统的策略多于四个，可以混合其他模式。
 2. 代理模式：对一个类做访问控制，适配器模式主要改变所考虑对象的接口，而代理模式不能改变所代理类的接口，装饰器模式为了增强功能，而代理模式是为了加以控制。
@@ -19,7 +19,7 @@
 15. 访问者模式：数据和逻辑分开，经常需要对数据进行不同类型的操作。
 16. 状态模式：行为随状态改变，状态不超过5个，条件分支的替代者。
 
-## 策略模式：一个接口方法有不同的实现
+### 策略模式：一个接口方法有不同的实现
 
 ```java
 public interface IStrategy {
@@ -41,7 +41,7 @@ public class Context {
 }
 ```
 
-## 代理模式：给多个接口方法提供统一的操作方式，可以给方法进行增强。
+### 代理模式：给多个接口方法提供统一的操作方式，可以给方法进行增强。
 
 ```java
 public interface KindWomen {
@@ -75,11 +75,11 @@ public class WangPo implements KindWomen {
 }
 ```
 
-## 单例模式
+### 单例模式
 
 参考 Java.md 单例实现。
 
-## 工厂方法模式：使用工厂创建完成复杂对象的创建，一种工厂创建一种对象。
+### 工厂方法模式：使用工厂创建完成复杂对象的创建，一种工厂创建一种对象。
 
 ```java
 public interface Human {
@@ -113,7 +113,7 @@ public class HumanFactory {
 }
 ```
 
-## 抽象工厂模式：不同的工厂创建不同的对象。多种工厂创建多种对象。
+### 抽象工厂模式：不同的工厂创建不同的对象。多种工厂创建多种对象。
 
 ```java
 public interface Human {
@@ -195,7 +195,7 @@ public class FemaleHumanFactory extends AbstractHumanFactory {
 }
 ```
 
-## 门面模式：将多个接口方法按照一定的顺序编排,简化任务的复杂性
+### 门面模式：将多个接口方法按照一定的顺序编排,简化任务的复杂性
 
 ```java
 public interface LetterProcess {
@@ -233,7 +233,7 @@ private LetterProcess letterProcess = new LetterProcessImpl();
 }
 ```
 
-## 适配器模式：负责兼容不同类型的实现，常用于不同厂家的对接。
+### 适配器模式：负责兼容不同类型的实现，常用于不同厂家的对接。
 
 ```java
 public interface IUserInfo {
@@ -274,8 +274,9 @@ public class OuterUserInfo extends OuterUser implements IUserInfo{
 }
 ```
 
-## 模板方法模式：通过 abstract 实现，可以将多个对象相同的逻辑固定下来。
-## 建造者模式：相比门面模式，可以自定义调用顺序。相比工厂模式，工厂模式强调的是创建，组装顺序并不关心。适用于产品类复杂、产品类的调用顺序产生变化。
+### 模板方法模式：通过 abstract 实现，可以将多个对象相同的逻辑固定下来。
+
+### 建造者模式：相比门面模式，可以自定义调用顺序。相比工厂模式，工厂模式强调的是创建，组装顺序并不关心。适用于产品类复杂、产品类的调用顺序产生变化。
 
 ```java
 public abstract class CarModel {
@@ -385,7 +386,7 @@ public class Director {
 }
 ```
 
-## 桥接模式：用桥将两个独立的结构联系起来，两部分可以独立变化，防止多实现导致类的扩张，例如 奶茶容量分为 大杯、中杯、小杯，味道分为微糖、少糖、多糖，如果使用继承将会有 9 个子类组合。
+### 桥接模式：用桥将两个独立的结构联系起来，两部分可以独立变化，防止多实现导致类的扩张，例如 奶茶容量分为 大杯、中杯、小杯，味道分为微糖、少糖、多糖，如果使用继承将会有 9 个子类组合。
 
 ![261](assets/261.png)
 
@@ -431,7 +432,7 @@ public class BossCar extends RefinedCar {
 
 使用修正类 RefinedCar ，可以组合 Engine 的功能。
 
-## 命令模式：将命令的发出和命令执行分开，委派给不同的对象，请求方发出命令，接收方执行命令。
+### 命令模式：将命令的发出和命令执行分开，委派给不同的对象，请求方发出命令，接收方执行命令。
 
 ```java
 public class Receiver {
@@ -490,7 +491,7 @@ public class Invoker {
 }
 ```
 
-## 装饰模式：给目标对象进行方法增强。
+### 装饰模式：给目标对象进行方法增强。
 
 ```java
 public abstract class SchoolReport {
@@ -590,7 +591,7 @@ public class Father {
 }
 ```
 
-## 组合模式：将容器对象和叶子对象进行递归组合，在使用过程中无须区分是容器还是叶子。在具有整体和部分的层次结构中，希望通过一种方式忽略整体与部分的差异，可以一致地对待它们。
+### 组合模式：将容器对象和叶子对象进行递归组合，在使用过程中无须区分是容器还是叶子。在具有整体和部分的层次结构中，希望通过一种方式忽略整体与部分的差异，可以一致地对待它们。
 
 ![262](assets/262.png)
 
@@ -639,7 +640,7 @@ class Composite implements Component {
 }
 ```
 
-## 观察者模式：解决一对多的对应关系，当一个对象发生改变时，通知到其他多个对象。
+### 观察者模式：解决一对多的对应关系，当一个对象发生改变时，通知到其他多个对象。
 
 ```java
 public class Subject {
@@ -673,8 +674,9 @@ public abstract class Observer {
 }
 ```
 
-## 责任链模式：请求按照一定顺序经过每一个处理器，观察者是 1对N 传播，责任链是 按顺序 1 对 1 传播。
-## 访问者模式：将数据结构和数据操作分离。
+### 责任链模式：请求按照一定顺序经过每一个处理器，观察者是 1对N 传播，责任链是 按顺序 1 对 1 传播。
+
+### 访问者模式：将数据结构和数据操作分离。
 
 ```java
 public interface ComputerPart {
@@ -713,7 +715,7 @@ public interface ComputerPartVisitor {
 }
 ```
 
-## 状态模式：类的行为基于状态改变，可替代 条件分支语句。
+### 状态模式：类的行为基于状态改变，可替代 条件分支语句。
 
 ```java
 public interface State {
@@ -777,6 +779,191 @@ public class StatePatternDemo {
 }
 ```
 
+## 应用
+
+## Spring中的事件机制
+
+1. 定义事件
+
+    ```java
+    public class UserRegisterEvent extends ApplicationEvent {
+
+        private String username;
+   
+        public UserRegisterEvent(Object source) {
+                super(source);
+        }
+   
+        public UserRegisterEvent(Object source, String username) {
+                super(source);
+                this.username = username;
+        }
+   
+        public String getUsername() {
+                return username;
+        }
+    } 
+    ```
+   
+2. 发布事件
+
+    ```java
+    @Service
+    public class UserService implements ApplicationEventPublisherAware { // <1>
+   
+        private Logger logger = LoggerFactory.getLogger(getClass());
+   
+        private ApplicationEventPublisher applicationEventPublisher;
+   
+        @Override
+        public void setApplicationEventPublisher(ApplicationEventPublisher applicationEventPublisher) {
+            this.applicationEventPublisher = applicationEventPublisher;
+        }
+   
+        public void register(String username) {
+            // ... 执行注册逻辑
+            logger.info("[register][执行用户({}) 的注册逻辑]", username);
+            // <2> ... 发布
+            applicationEventPublisher.publishEvent(new UserRegisterEvent(this, username));
+        }
+    }
+    ```
+   
+3. 消费事件
+
+    ```java
+    @Component
+    public class EmailService implements ApplicationListener<UserRegisterEvent> { // <1>
+        private Logger logger = LoggerFactory.getLogger(getClass());
+   
+        @Override
+        @Async// <3>
+        public void onApplicationEvent(UserRegisterEvent event) { // <2>
+            logger.info("[onApplicationEvent][给用户({}) 发送邮件]", event.getUsername());
+        }
+    }
+    ```
+
+    ```java
+    @Component
+    public class CouponService {
+        private Logger logger = LoggerFactory.getLogger(getClass());
+   
+        @EventListener// <1>
+        public void addCoupon(UserRegisterEvent event) {
+            logger.info("[addCoupon][给用户({}) 发放优惠劵]", event.getUsername());
+        }
+    }
+    ```
+
+## 策略树
+
+1. 定义策略
+
+   ```java
+   public interface StrategyHandler<T, R> {
+   
+       @SuppressWarnings("rawtypes")
+       StrategyHandler DEFAULT = t -> null;
+   
+       /**
+        * apply strategy
+        *
+        * @param param
+        * @return
+        */
+       R apply(T param);
+   }
+   ```
+
+2. 定义路由
+   
+   ```java
+     /**
+      * 通用的“策略树“框架，通过树形结构实现分发与委托，每层通过指定的参数进行向下分发委托，直到达到最终的执行者。
+      * 该框架包含两个类：{@code StrategyHandler} 和 {@code AbstractStrategyRouter}
+      * 其中：通过实现 {@code AbstractStrategyRouter} 抽象类完成对策略的分发，
+      * 实现 {@code StrategyHandler} 接口来对策略进行实现。
+      * 像是第二层 A、B 这样的节点，既是 Root 节点的策略实现者也是策略A1、A2、B1、B2 的分发者，这样的节点只需要
+      * 同时继承 {@code StrategyHandler} 和实现 {@code AbstractStrategyRouter} 接口就可以了。
+      *
+      * <pre>
+      *           +---------+
+      *           |  Root   |   ----------- 第 1 层策略入口
+      *           +---------+
+      *            /       \  ------------- 根据入参 P1 进行策略分发
+      *           /         \
+      *     +------+      +------+
+      *     |  A   |      |  B   |  ------- 第 2 层不同策略的实现
+      *     +------+      +------+
+      *       /  \          /  \  --------- 根据入参 P2 进行策略分发
+      *      /    \        /    \
+      *   +---+  +---+  +---+  +---+
+      *   |A1 |  |A2 |  |B1 |  |B2 |  ----- 第 3 层不同策略的实现
+      *   +---+  +---+  +---+  +---+
+      * </pre>
+      *
+      */
+      @Component
+      public abstract class AbstractStrategyRouter<T, R> {
+      
+       /**
+        * 策略映射器，根据指定的入参路由到对应的策略处理者。
+        *
+        * @param <T> 策略的入参类型
+        * @param <R> 策略的返回值类型
+        */
+        public interface StrategyMapper<T, R> {
+   
+            /**
+             * 根据入参获取到对应的策略处理者。可通过 if-else 实现，也可通过 Map 实现。
+             *
+             * @param param 入参
+             * @return 策略处理者
+             */
+             StrategyHandler<T, R> get(T param);
+        }
+      
+        private StrategyMapper<T, R> strategyMapper;
+      
+       /**
+        * 类初始化时注册分发策略 Mapper
+        */
+        @PostConstruct
+        private void abstractInit() {
+            strategyMapper = registerStrategyMapper();
+             Objects.requireNonNull(strategyMapper, "strategyMapper cannot be null");
+        }
+      
+        @Getter
+        @Setter
+        @SuppressWarnings("unchecked")
+        private StrategyHandler<T, R> defaultStrategyHandler = StrategyHandler.DEFAULT;
+        
+        /**
+         * 执行策略，框架会自动根据策略分发至下游的 Handler 进行处理
+         *
+         * @param param 入参
+         * @return 下游执行者给出的返回值
+         */
+         public R applyStrategy(T param) {
+            final StrategyHandler<T, R> strategyHandler = strategyMapper.get(param);
+            if (strategyHandler != null) {
+                return strategyHandler.apply(param);
+            }
+        
+            return defaultStrategyHandler.apply(param);
+         }
+        
+        /**
+         * 抽象方法，需要子类实现策略的分发逻辑
+         *
+         * @return 分发逻辑 Mapper 对象
+         */
+         protected abstract StrategyMapper<T, R> registerStrategyMapper();
+   }
+   ```
+
 # DDD
 
 ## 有效的建模
@@ -797,6 +984,7 @@ public class StatePatternDemo {
 ![264](assets/264.png)
 
 模型元素：
+
 * 实体：用来表示某种具有连续性和标识的事务，可以跟踪它所经历的不同状态。
 * 值对象：用来描述某种状态的属性，本身不具有状态，无法被改变，只能新创建。
 * 服务：动作或操作来表示，无状态活动的建模，不属于任何对象，以活动命令，应该是一个动词。
@@ -810,6 +998,7 @@ public class StatePatternDemo {
 如果把聚合比作组织，那聚合根就是这个组织的负责人。聚合根也称为根实体，它不仅是实体，还是聚合的管理者。
 
 使关联更容易控制：
+
 1. 规定一个遍历方向。
 2. 消除不必要的关联。
 3. 添加一个限定符，以便有效地减少多重关联。

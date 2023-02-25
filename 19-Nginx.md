@@ -1,6 +1,69 @@
-## 限流
+# 路由截断规则
 
-### 控制流速
+**location 中的 proxy_pass 的 uri**
+
+如果 proxy_pass 的 url 不带 uri
+
+如果尾部是"/"，则会截断匹配的uri
+
+如果尾部不是"/"，则不会截断匹配的uri
+
+如果proxy_pass的url带uri，则会截断匹配的uri
+
+示例：
+
+```properties
+#-------servers配置--------------------
+location / {
+    echo $uri    #回显请求的uri
+}
+
+#--------proxy_pass配置---------------------
+location /t1/ { proxy_pass http://servers; }    #正常，不截断
+location /t2/ { proxy_pass http://servers/; }    #正常，截断
+location /t3  { proxy_pass http://servers; }    #正常，不截断
+location /t4  { proxy_pass http://servers/; }    #正常，截断
+location /t5/ { proxy_pass http://servers/test/; }    #正常，截断
+location /t6/ { proxy_pass http://servers/test; }    #缺"/"，截断
+location /t7  { proxy_pass http://servers/test/; }    #含"//"，截断
+location /t8  { proxy_pass http://servers/test; }    #正常，截断
+#---------访问----------------------
+for i in $(seq 6)
+do
+    url=http://localhost/t$i/doc/index.html
+    echo "-----------$url-----------"
+    curl url
+done
+
+#--------结果---------------------------
+----------http://localhost:8080/t1/doc/index.html------------
+/t1/doc/index.html
+
+----------http://localhost:8080/t2/doc/index.html------------
+/doc/index.html
+
+----------http://localhost:8080/t3/doc/index.html------------
+/t3/doc/index.html
+
+----------http://localhost:8080/t4/doc/index.html------------
+/doc/index.html
+
+----------http://localhost:8080/t5/doc/index.html------------
+/test/doc/index.html
+
+----------http://localhost:8080/t6/doc/index.html------------
+/testdoc/index.html
+
+----------http://localhost:8080/t7/doc/index.html------------
+/test//doc/index.html
+
+----------http://localhost:8080/t8/doc/index.html------------
+/test/doc/index.html
+```
+
+# 限流
+
+## 控制流速
 
 `ngx_http_limit_req_module` 模块提供限制请求处理速率能力。
 
@@ -32,7 +95,7 @@ http {
 }
 ```
 
-### 并发限制
+## 并发限制
 
 `ngx_http_limit_conn_module`提供限制单个IP的请求数，只有在服务器处理了请求并且已经读取了整个请求头时，连接才被计数。
 
@@ -53,9 +116,9 @@ server {
 
 * limit_conn perserver 100 作用的key是 $server_name，表示虚拟主机(server) 同时能处理并发连接的总数。
 
-### 实战
+# 实战
 
-#### 设置白名单
+## 设置白名单
 
 使用  `ngx_http_geo_module` 和 `ngx_http_map_module` 两个工具模块即可搞定。
 

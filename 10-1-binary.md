@@ -390,15 +390,15 @@ static final int tableSizeFor(int cap) {
 ## 解析字节流
 
 ```java
-	//本次式例中均采用小端字节序。
-	/**
-	 * 0xff表示的数二进制1111 1111 占一个字节。和其进行&操作的数,最低8位,不会发生变化。
-	 *
-     * 在进行位运算时，两个操作数会先自动转换成int类型。
-     *
-     * 那么 & 0xFF到底有没有意义呢？答案肯定是有的，byte是一个字节，int是4个字节，由于操作数会先自动转换成int类型，所以会在byte前面补上3个字节的1，显然		 * 不是我们想要的结果，例如：
-     * 如byte型变量－1（二进制值为1111 1111）,强制转换成int类型后对应的二进制值为1111 1111  1111 1111  1111 1111  1111 1111，不是我们需要的		 * 0000 0000  0000 0000  0000 0000  1111 1111因此需要跟0xff相与，以达到将前3个字节置为0的目的。
-     */
+   //本次式例中均采用小端字节序。
+   /**
+    * 0xff表示的数二进制1111 1111 占一个字节。和其进行&操作的数,最低8位,不会发生变化。
+    *
+    * 在进行位运算时，两个操作数会先自动转换成int类型。
+    *
+    * 那么 & 0xFF到底有没有意义呢？答案肯定是有的，byte是一个字节，int是4个字节，由于操作数会先自动转换成int类型，所以会在byte前面补上3个字节的1，显然		 * 不是我们想要的结果，例如：
+    * 如byte型变量－1（二进制值为1111 1111）,强制转换成int类型后对应的二进制值为1111 1111  1111 1111  1111 1111  1111 1111，不是我们需要的		 * 0000 0000  0000 0000  0000 0000  1111 1111因此需要跟0xff相与，以达到将前3个字节置为0的目的。
+    */
     public static int readUnsignedChar8BitLE(byte[] b, int pos) {
         // 不可使用 (int)b[pos] ,这种方法只在正数环境下可用,负数环境下将会发生位扩展，byte为1字节，int为4字节，强转会使结果在byte基础上使用符号位补齐		  // 前面三个字节。
         return b[pos] & 0xFF;
@@ -410,21 +410,21 @@ static final int tableSizeFor(int cap) {
         return (x >= 128) ? x - 256 : x;
     }
 
-	// ((a & 0xFF) << 8) | (b & 0xFF) 将a往左移动一个字节后 再|上b，等于是把 b拼接在的a后面
+    // ((a & 0xFF) << 8) | (b & 0xFF) 将a往左移动一个字节后 再|上b，等于是把 b拼接在的a后面
     // 无符号short，两个字节，数值范围0->2^16-1 = 65535,由于java中没有无符号short，而short类型最大值为32767，小于65535，所以不能用int类型表示，但	 // 是数值范围小于int（4个字节）的正数部分（0-2^32-1 = 2147483647），所以用int存储
     public static int readUnsignedShort16BitLE(byte[] b, int pos) {
         pos = pos + 2;
         return ((b[--pos] & 0xFF) << 8) | (b[--pos] & 0xFF);
     }
 
-	// 有符号short，当按照无符号short解析出来的结果大于等于32768时，证明该数是负数，应该取该大于等于32768的数的补数
+    // 有符号short，当按照无符号short解析出来的结果大于等于32768时，证明该数是负数，应该取该大于等于32768的数的补数
     public static int readShort16BitLE(byte[] b, int pos) {
         pos = pos + 2;
         int x = ((b[--pos] & 0xFF) << 8) | (b[--pos] & 0xFF);
         return (x >= 32768) ? x - 65536 : x;
     }
 
-	// 无符号int，4个字节,使用long储存，原因同无符号short转换
+    // 无符号int，4个字节,使用long储存，原因同无符号short转换
     public static long readUnsignedInt32BitLE(byte[] b, int pos) {
         pos = pos + 4;
         return    (( ((long)b[--pos]) & 0xFF) << 24)
@@ -433,7 +433,7 @@ static final int tableSizeFor(int cap) {
                 | (  ((long)b[--pos]) & 0xFF);
     }
 
-	// 有符号int
+    // 有符号int
     public static int readInt32BitLE(byte[] b, int pos) {
         pos = pos + 4;
         long x =    (( ((long)b[--pos]) & 0xFF) << 24)
@@ -548,8 +548,3 @@ static final int tableSizeFor(int cap) {
         return HexUtils.fromHexString(Long.toUnsignedString(value,16));
     }
 ```
-
-$$
-
-
-$$

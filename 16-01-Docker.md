@@ -242,6 +242,9 @@ docker container stats | grep <container-id>
 docker logs -f <container-id>
 # 查看容器元数据
 docker inspect <container-id>
+# 宿主机和docker之间文件复制
+docker cp acbfb53afc52:/etc/nginx/nginx.conf /opt/
+docker cp /opt/nginx.conf acbfb53afc52:/etc/nginx/
 ```
 
 ## 示例
@@ -397,3 +400,420 @@ runc 是 OCI 规范的具体实现，它的作用是 创建容器，是独立的
 containerd 负责管理容器的生命周期，start|stop|pause|rm。
 
 ## DockerCompose
+
+### 安装
+
+```bash
+# 下载指令 uname -s 请查询linux中uname命令
+curl -L https://github.com/docker/compose/releases/download/1.26.0/docker-compose-`uname -s`-`uname -m` > /usr/local/bin/docker-compose
+# 下载完成后没有执行权限, 添加执行权限
+chmod +x /usr/local/bin/docker-compose
+```
+
+> uname命令显示多个系统信息，包括Linux内核体系结构，名称版本和发行版。
+> 要找出系统上正在运行的Linux内核版本，请输入以下命令：
+> `uname -srm`
+> 输出信息如下：
+> Linux 4.15.0-54-generic x86_64
+
+验证：
+
+```bash
+# 查看版本指令
+[root@worker ~]# docker-compose version
+# 输出内容
+docker-compose version 1.26.0, build d4451659
+docker-py version: 4.2.1
+CPython version: 3.7.7
+OpenSSL version: OpenSSL 1.1.0l  10 Sep 2019
+```
+
+### 配置文件
+
+Compose 文件的默认路径是 ./docker-compose.yml，即docker-compose命令需要在 docker-compose.yml 同层目录执行。
+
+#### 文件结构
+
+```yaml
+# Compose配置文件分为四个部分：version、services、networks和volumes。
+# 其中version指定Compose配置文件的版本，services定义服务，networks定义网络，volumes定义数据卷
+
+version: "3.8"
+services:
+  # 服务名 随便起,不重名就行
+  redis:
+    # 镜像名 (本地拥有的镜像或者公共仓库的镜像),以下格式都ok
+    # image: redis
+    # image: ubuntu:14.04
+    # image: tutum/influxdb
+    # image: example-registry.com:4000/postgresql
+    # image: a4bc65fd
+    # 除了这种方式指定镜像外还可以使用build方式来指定，详情见下文 采用 Dockerfile 来构建镜像
+    image: redis:alpine
+    # 端口映射规则 例： - "6379:6379" 宿主机:容器
+    ports:
+      - "6379"
+    # 加入到 frontend 网络，可以加入多个网络，例如:
+    # - frontend
+    # - backend
+    # 其中frontend、backend需要在顶级networks中配置，如果不配置，Compose 默认设置一个网络，详情见下文 网络配置。
+    networks:
+      - frontend
+    deploy:
+      replicas: 2
+      update_config:
+        parallelism: 2
+        delay: 10s
+      restart_policy:
+        condition: on-failure
+
+  db:
+    image: postgres:9.4
+    #挂载卷 host：container 详情见下文 volumes
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    networks:
+      - backend
+    deploy:
+      placement:
+        constraints:
+          - "node.role==manager"
+
+  vote:
+    image: dockersamples/examplevotingapp_vote:before
+    ports:
+      - "5000:80"
+    networks:
+      - frontend
+    #依赖启动顺序 详情见下文 depends_on
+    depends_on:
+      - redis
+    deploy:
+      replicas: 2
+      update_config:
+        parallelism: 2
+      restart_policy:
+        condition: on-failure
+
+  result:
+    image: dockersamples/examplevotingapp_result:before
+    ports:
+      - "5001:80"
+    networks:
+      - backend
+    depends_on:
+      - db
+    deploy:
+      replicas: 1
+      update_config:
+        parallelism: 2
+        delay: 10s
+      restart_policy:
+        condition: on-failure
+
+  worker:
+    image: dockersamples/examplevotingapp_worker
+    networks:
+      - frontend
+      - backend
+    deploy:
+      mode: replicated
+      replicas: 1
+      labels: [APP=VOTING]
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+        max_attempts: 3
+        window: 120s
+      placement:
+        constraints:
+          - "node.role==manager"
+
+  visualizer:
+    image: dockersamples/visualizer:stable
+    ports:
+      - "8080:8080"
+    stop_grace_period: 1m30s
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock"
+    deploy:
+      placement:
+        constraints:
+          - "node.role==manager"
+
+networks:
+  frontend:
+  backend:
+
+volumes:
+  db-data:
+```
+
+#### 采用 Dockerfile 来构建镜像
+
+前面目录结构中是通过 image 这个配置，这个相对简单，给出能在镜像仓库中找到镜像的名称即可。
+
+另外一种指定镜像的方式就是直接采用 Dockerfile 来构建镜像，通过 build 这个配置我们能够定义构建的环境目录，与 `docker build` 中的环境目录是同一个含义。
+
+如果我们通过这种方式指定镜像，那么 Docker Compose 先会帮助我们执行镜像的构建，之后再通过这个镜像启动容器。
+
+在构建时应用的配置项。一般直接指定Dockerfile所在文件夹路径，可以是绝对路径，或者相对于Compose配置文件的路径。可以指定为包含构建上下文（context）路径的字符串。例如：
+
+```yaml
+version: "3.8"
+services:
+  webapp:
+    build: ./dir
+```
+
+也可以使用context指定上下文路径，使用dockerfile基于上下文路径指定Dockerfile文件，使用args指定构建参数。例如：
+
+```yaml
+version: "3.8"
+services:
+  webapp:
+    build:
+      #指定包含Dockerfile的目录路径或git仓库url。该目录是发送给Docker守护进程（Daemon）的构建上下文（context）。当配置的值是相对路径时，它将被解释为相对于Compose配置文件的路径。
+      context: ./dir
+      #指定Dockerfile文件。Compose会使用指定的Dockerfile文件构建镜像，但必须要指定构建上下文路径。
+      dockerfile: Dockerfile-alternate
+      # 使用之前首先需要在Dockerfile文件中指定参数，例如在dockerfile中添加以下配置：
+      # ARG buildno
+      # RUN echo "Build number: $buildno"
+      # 指定参数的其他写法，详情见下文 args详细
+      args:
+        buildno: 1
+```
+
+如果同时指定了build和image。例如：
+
+```yaml
+build: ./dir
+image: webapp:tag
+```
+
+Compose会在./dir目录下构建一个名为webapp，标签为tag的镜像。
+
+##### args详细
+
+build中指定参数，以下两种写法都可以：
+
+```yaml
+build:
+  context: .
+  args:
+    buildno: 1
+    gitcommithash: cdc3b19
+```
+
+```yaml
+build:
+  context: .
+  args:
+    - buildno=1
+    - gitcommithash=cdc3b19
+```
+
+这时构建过程中使用的参数的值为args指定的值。在指定构建参数时也可以不指定值，在这种情况下，构建过程中使用的参数的值为运行Compose的环境中的值。例如：
+
+```yaml
+args:
+  - buildno
+  - gitcommithash
+```
+
+#### 网络配置
+
+Compose 默认给你的 app 设置一个网络，service 中的每个容器默认都加入这个网络，容器之间彼此是互通的，可以利用容器名字识别到。
+
+例如 `docker-compose.yml`：
+
+```yaml
+version: "3"
+services:
+  web:
+    build: .
+    ports:
+      - "8000:8000"
+  db:
+    image: postgres
+    ports:
+      - "8001:5432"
+```
+
+假设，上面这个文件放在 `myapp` 文件夹下。那么，当你 `docker-compose up -d` 之后：
+
+- 一个叫 `myapp_default` 网络被创建；
+- 一个使用 web 配置的容器会被创建，它以 `web` 的名字加入了 `myapp_default` 这个网络；
+- 一个使用 db 配置的容器会被创建，它以 `db` 的名字加入了 `myapp_default` 网络；
+
+现在，每个容器都可以查找主机名 web 或 db，并获取相应容器的 IP 地址。例如，web 应用的代码可以使用 URL postgres://db:5432 连接数据库并使用它。
+
+- 重要的是要注意 HOST_PORT 和 CONTAINER_PORT 之间的区别。前者是指的是宿主机的端口，后者指的是容器中的端口。
+- 容器网络中的服务间使用的是 CONTAINER_PORT 通信。
+- HOST_PORT 定义了是为了容器网络外被调用的。所以，前面才使用的是 postgres://db:5432 而不是 postgres://db:8001。因为他们属于同一个容器网络中。
+
+另外值得注意的是：**services 下级的服务中 networks 指定的网络不是指要创建的网络，而是这个服务要加入的网络，如果网络不存在会出现`ERROR: Service "mongodb" uses an undefined network "mogo_net"`**,不过可以通过 top-level 的 networks 定义一下网络，运行时，会自动创建网络，例如：
+
+```yaml
+version: "2"
+services:
+    mongodb:
+        image: mongo:4
+        container_name: devops-mongo # 容器名
+        ports:
+            - "27017:27017"
+        volumes:
+            - "/data/docker_local/mongo/configdb:/data/configdb"
+            - "/data/docker_local/mongo/data/db:/data/db"
+        command: --auth # 开启授权验证
+        networks:
+            - mongo_net
+networks:
+  mongo_net:
+    name: mongo_net
+```
+
+#### command
+
+覆盖容器启动后默认执行的命令
+
+```yaml
+command: bundle exec thin -p 3000
+```
+
+或
+
+```yaml
+command: ["bundle", "exec", "thin", "-p", "3000"]
+```
+
+#### depends_on
+
+指定服务之间的依赖关系
+
+- `docker-compose up` 以依赖顺序启动服务。
+- `docker-compose up SERVICE` 会自动包含SERVICE的依赖项。
+- `docker-compose stop` 以依赖顺序停止服务。
+
+例如以下示例：
+
+```yaml
+version: "3.8"
+services:
+  web:
+    build: .
+    depends_on:
+      - db
+      - redis
+  redis:
+    image: redis
+  db:
+    image: postgres
+```
+
+启动时会先启动db和redis，最后才启动web。在使用docker-compose up web启动web时，也会启动db和redis，因为在web服务中指定了依赖关系。在停止时也在web之前先停止db和redis。
+
+#### dns
+
+自定义DNS服务器
+
+```yaml
+dns: 8.8.8.8
+dns:
+  - 8.8.8.8
+  - 9.9.9.9
+```
+
+#### entrypoint
+
+覆盖默认的入口命令
+
+```yaml
+entrypoint: /code/entrypoint.sh
+```
+
+也可以写成JSON数组形式，例如：
+
+```yaml
+entrypoint: ["php", "-d", "memory_limit=-1", "vendor/bin/phpunit"]
+```
+
+#### environment
+
+设置环境变量
+
+```yaml
+environment:
+  RACK_ENV: development
+  SHOW: 'true'
+  SESSION_SECRET:
+environment:
+  - RACK_ENV=development
+  - SHOW=true
+  - SESSION_SECRET
+```
+
+#### extra_hosts
+
+添加主机名到IP的映射。
+
+```yaml
+extra_hosts:
+  - "somehost:162.242.195.82"
+  - "otherhost:50.31.209.229"
+```
+
+启动后容器中的/etc/hosts文件会添加：
+
+```yaml
+162.242.195.82  somehost
+50.31.209.229   otherhost
+```
+
+#### network_mode
+
+设置网络模式
+
+```yaml
+network_mode: "bridge"
+network_mode: "host"
+network_mode: "none"
+network_mode: "service:[service name]"
+network_mode: "container:[container name/id]"
+```
+
+#### restart
+
+指定重启策略
+
+```yaml
+restart: always
+```
+
+重启策略：
+
+- no：在任何情况下都不会重启容器。默认的重启策略。
+- always：在容器退出时总是重启容器。
+- on-failure：在容器以非0状态码退出时才会重启。
+- unless-stopped：在容器退出时总是重启容器，但是不考虑在Docker守护进程启动时就已经停止了的容器。
+
+#### volumes
+
+指定所挂载的主机路径或数据卷名称。但是如果想要在多个服务之间重用数据卷，需要在顶层volumes配置项中定义一个数据卷名称。
+
+通用的 `[SOURCE:]TARGET[:MODE]` 格式，SOURCE可以是主机路径或数据卷名称，TARGET为挂载数据卷的容器路径，MODE可以为ro只读模式或rw读写模式（默认）。
+
+```yaml
+volumes:
+  #只指定一个路径，Docker会自动在创建一个数据卷（这个路径是容器内部的）
+  - /var/lib/mysql
+  #使用绝对路径挂载数据卷
+  - /opt/data:/var/lib/mysql
+  #使用基于Compose配置文件的相对路径作为数据卷挂载到容器
+  - ./cache:/tmp/cache
+  #使用基于root用户的相对路径作为数据卷挂载到容器
+  - ~/configs:/etc/configs/:ro
+  #使用已经存在命名的数据卷挂载到容器
+  - datavolume:/var/lib/mysql
+```

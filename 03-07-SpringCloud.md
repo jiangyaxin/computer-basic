@@ -328,6 +328,8 @@ eureka:
 
 ## nacos
 
+动态路由刷新：[动态路由刷新](extend/NacosDynamicRouteService.md)
+
 ### 使用
 
 #### 服务端部署
@@ -2253,6 +2255,8 @@ Object run();
 
 ## SpringCloudGateWay
 
+配置示例：[配置示例](extend/Gateway-config-sample.yaml)
+
 ## 使用
 
 1. 添加依赖
@@ -2426,7 +2430,7 @@ spring:
               - OPTION
 ```
 
-配置示例: [Gateway-config-sample](Gateway-config-sample.yaml)
+配置示例: [Gateway-config-sample](extend/Gateway-config-sample.yaml)
 
 自定义Filter：通过继承 AbstractGatewayFilterFactory 实现，类名必须以 GatewayFilterFactory 结果，过滤器名字为 类名 除了 GatewayFilterFactory 之外的前缀。
 

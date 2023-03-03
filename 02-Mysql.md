@@ -323,7 +323,18 @@ where
 t3.rownum = 1
 ```
 
-### 
+### Connector/J 参数
+
+### connection
+
+* `connectionAttributes`: 使用`key:value`方式自定义连接属性，会保存在`PERFORMANCE_SCHEMA`库的`session_account_connect_attrs`和`session_connect_attrs`表，当设置为 `connectionAttributes=none` 时，连接属性处理会被跳过，在连接创建至关重要的场景可以设置。
+* `connectionLifecycleInterceptors`：连接拦截器，通过实现`com.mysql.cj.jdbc.interceptors.ConnectionLifecycleInterceptor`，并使用逗号分割设置。
+* `rollbackOnPooledClose`: 当池中的逻辑连接关闭时，是否回滚，默认为true。
+
+### session
+
+* `sessionVariables`：使用`key:value`方式设置 session 参数,例如`sessionVariables=sql_mode='STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION'`
+* `characterEncoding`: 字符编码,可以使用 utf8mb4。
 
 ## 储存引擎
 

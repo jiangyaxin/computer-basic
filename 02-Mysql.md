@@ -333,8 +333,19 @@ t3.rownum = 1
 
 ### session
 
-* `sessionVariables`：使用`key:value`方式设置 session 参数,例如`sessionVariables=sql_mode='STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION'`
+* `sessionVariables`：使用`key:value`方式设置 session 参数,例如`sessionVariables=sql_mode='STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION'`。
 * `characterEncoding`: 字符编码,可以使用 utf8mb4。
+
+### networking
+
+* `connectTimeout`：建立连接超时，0表示没有超时时间
+* `socketTimeout`：TCP连接发送数据后，等待响应的超时时间，0表示没有超时时间。
+* `maxAllowedPacket`：发送到服务器的最大允许数据包大小，若未设置，使用系统变量"max\_allowed\_packet"，默认值65535。
+* `tcpKeepAlive`：是否设置"SO\_KEEPALIVE"，默认为是。
+* `tcpNoDelay`：是否设置"SO\_TCP\_NODELAY"，默认为是。
+* `tcpRcvBuf`：设置"SO\_RCV\_BUF"，默认值为0，表示使用平台默认值。
+* `tcpSndBuf`：设置"tcpSndBuf"，默认值为0，表示使用平台默认值。
+* `useCompression`：是否开启压缩功能传输，默认关闭。
 
 ## 储存引擎
 

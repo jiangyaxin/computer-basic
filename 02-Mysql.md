@@ -340,11 +340,11 @@ t3.rownum = 1
 
 * `connectTimeout`：建立连接超时，0表示没有超时时间
 * `socketTimeout`：TCP连接发送数据后，等待响应的超时时间，0表示没有超时时间。
-* `maxAllowedPacket`：发送到服务器的最大允许数据包大小，若未设置，使用系统变量"max\_allowed\_packet"，默认值65535。
-* `tcpKeepAlive`：是否设置"SO\_KEEPALIVE"，默认为是。
-* `tcpNoDelay`：是否设置"SO\_TCP\_NODELAY"，默认为是。
-* `tcpRcvBuf`：设置"SO\_RCV\_BUF"，默认值为0，表示使用平台默认值。
-* `tcpSndBuf`：设置"tcpSndBuf"，默认值为0，表示使用平台默认值。
+* `maxAllowedPacket`：发送到服务器的最大允许数据包大小，若未设置，使用系统变量"max_allowed_packet"，默认值65535。
+* `tcpKeepAlive`：是否设置"SO_KEEPALIVE"，默认为是。
+* `tcpNoDelay`：是否设置"SO_TCP_NODELAY"，默认为是。
+* `tcpRcvBuf`：设置"SO_RCV_BUF"，默认值为0，表示使用平台默认值。
+* `tcpSndBuf`：设置"SO_SND_BUF"，默认值为0，表示使用平台默认值。
 * `useCompression`：是否开启压缩功能传输，默认关闭。
 
 ### security
@@ -369,6 +369,8 @@ t3.rownum = 1
   > keystore:  一个仓库,存储本地向CA机构申请的数字证书和本地的秘钥,也就是客户端的证书和私钥
   > truststore: 一个仓库,存储可信任的证书,也就是CA证书，也就是服务端的证书
   > CA证书中包含公钥
+
+* `allowMultiQueries`：允许使用`;`在一个语句中分隔多个查询，不影响'addBatch()' 和 'executeBatch()'。
 
 ## 储存引擎
 

@@ -347,6 +347,29 @@ t3.rownum = 1
 * `tcpSndBuf`：设置"tcpSndBuf"，默认值为0，表示使用平台默认值。
 * `useCompression`：是否开启压缩功能传输，默认关闭。
 
+### security
+
+* `serverRSAPublicKeyFile`：获取服务器公钥地址，如果使用`caching_sha2_password`插件，需要配置该参数或者`allowPublicKeyRetrieval=true`，否则会出现`Public Key Retrieval is not allowed`y异常，一般有三种情况会清除缓存（`服务重启；故障节点切换-MGR；flush privileges`），例如`serverRSAPublicKeyFile=/data/public_key.pem`
+* `allowPublicKeyRetrieval`：允许从服务器获取公钥。
+* `sslMode`：是否使用SSL连接，用于替换'useSSL','requireSSL','verifyServerCertificate'三个属性,默认配置为 "PREFERRED"。
+
+
+  | sslMode         | useSSL | requireSSL | verifyServerCertificate | 说明                                                                     |
+  | --------------- | ------ | ---------- | ----------------------- | ------------------------------------------------------------------------ |
+  | disabled        | false  | false      | false                   | 不使用SSL连接                                                            |
+  | preferred       | true   | false      | false                   | 先使用SSL连接,失败的话改成普通连接                                       |
+  | required        | true   | true       | false                   | 先使用SSL连接,失败的话报错                                               |
+  | verify_ca       | true   | true       | true                    | 使用SSL连接,并且需要验证服务端的身份(就是客户端这边需要配置CA证书)       |
+  | verify_identity | true   | true       | true                    | 使用SSL连接,并且需要验证服务端的身份和域名(就是客户端这边需要配置CA证书) |
+* `trustCertificateKeyStoreUrl`：服务端储存在本地的证书仓库地址，例如`trustCertificateKeyStoreUrl=classpath:mysql.ks`。
+* `trustCertificateKeyStorePassword`：仓库密码，例如`trustCertificateKeyStorePassword=123456`。
+* `clientCertificateKeyStoreUrl`：客户端证书仓库地址。
+* `clientCertificateKeyStorePassword`：仓库密码。
+
+  > keystore:  一个仓库,存储本地向CA机构申请的数字证书和本地的秘钥,也就是客户端的证书和私钥
+  > truststore: 一个仓库,存储可信任的证书,也就是CA证书，也就是服务端的证书
+  > CA证书中包含公钥
+
 ## 储存引擎
 
 1. InnoDB：支持事务、行锁、支持外键、使用MVCC来获得高并发性、实现了事务的4中隔离级别。

@@ -325,18 +325,22 @@ t3.rownum = 1
 
 ### Connector/J 参数
 
-### connection
+详情查看官方文档:
+
+> https://dev.mysql.com/doc/connector-j/8.0/en/connector-j-reference-configuration-properties.html
+
+### Connection
 
 * `connectionAttributes`: 使用`key:value`方式自定义连接属性，会保存在`PERFORMANCE_SCHEMA`库的`session_account_connect_attrs`和`session_connect_attrs`表，当设置为 `connectionAttributes=none` 时，连接属性处理会被跳过，在连接创建至关重要的场景可以设置。
 * `connectionLifecycleInterceptors`：连接拦截器，通过实现`com.mysql.cj.jdbc.interceptors.ConnectionLifecycleInterceptor`，并使用逗号分割设置。
 * `rollbackOnPooledClose`: 当池中的逻辑连接关闭时，是否回滚，默认为true。
 
-### session
+### Session
 
 * `sessionVariables`：使用`key:value`方式设置 session 参数,例如`sessionVariables=sql_mode='STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION'`。
 * `characterEncoding`: 字符编码,可以使用 utf8mb4。
 
-### networking
+### Networking
 
 * `connectTimeout`：建立连接超时，0表示没有超时时间
 * `socketTimeout`：TCP连接发送数据后，等待响应的超时时间，0表示没有超时时间。
@@ -347,7 +351,7 @@ t3.rownum = 1
 * `tcpSndBuf`：设置"SO_SND_BUF"，默认值为0，表示使用平台默认值。
 * `useCompression`：是否开启压缩功能传输，默认关闭。
 
-### security
+### Security
 
 * `serverRSAPublicKeyFile`：获取服务器公钥地址，如果使用`caching_sha2_password`插件，需要配置该参数或者`allowPublicKeyRetrieval=true`，否则会出现`Public Key Retrieval is not allowed`y异常，一般有三种情况会清除缓存（`服务重启；故障节点切换-MGR；flush privileges`），例如`serverRSAPublicKeyFile=/data/public_key.pem`
 * `allowPublicKeyRetrieval`：允许从服务器获取公钥。
@@ -369,8 +373,107 @@ t3.rownum = 1
   > keystore:  一个仓库,存储本地向CA机构申请的数字证书和本地的秘钥,也就是客户端的证书和私钥
   > truststore: 一个仓库,存储可信任的证书,也就是CA证书，也就是服务端的证书
   > CA证书中包含公钥
-
+  >
 * `allowMultiQueries`：允许使用`;`在一个语句中分隔多个查询，不影响'addBatch()' 和 'executeBatch()'。
+
+### Statements
+
+* `cacheDefaultTimeZone`：缓存客户端的默认时区，默认为 true。
+* `continueBatchOnError` ：批量执行时一条命令失败后是否继续执行，默认为 true。
+* `queryInterceptors` ：查询拦截器。
+
+### Datetime
+
+* `connectionTimeZone` : 设置时区,例如`connectionTimeZone=Asia/Shanghai`。
+
+### HighAvailability
+
+* `autoReconnect` : 如果启用，将会在死连接上查询抛出异常，但会在新事务中下一个查询之前尝试重新连接，不建议使用，默认值false。
+
+### Performance
+
+* `cacheCallableStmts` : 是否开启储存过程调用缓存，默认为false。
+* `callableStmtCacheSize` : 储存过程调用缓存数量，默认100。
+* `cachePrepStmts` ：是否开启客户端 PreparedStatement 缓存,默认为false。
+* `prepStmtCacheSize` ： PreparedStatement 缓存数量，默认25，可设置250-500。
+* `prepStmtCacheSqlLimit` : PreparedStatement 缓存单条SQL最大长度，默认256，可设置2048。
+* `useCursorFetch` : 是否使用游标来获取结果，详情搜索 Orm 章节。
+* `defaultFetchSize` : 与 `useCursorFetch` 配合使用。
+* `rewriteBatchedStatements` : 是否重写PreparedStatement批量操作，'addBatch()' 和 'executeBatch()' 合并成一次IO操作，默认为false。
+
+### Debugging
+
+* `logSlowQueries` : 驱动是否打印慢查询，默认为false。
+* `slowQueryThresholdMillis` ： 慢查询的阀值，默认 2000。
+
+需要配置：
+
+```yaml
+spring:
+  datasource:
+    hikari:
+      data-source-properties:
+        logger: com.mysql.cj.log.Slf4JLogger
+```
+
+### Exceptions
+
+* `exceptionInterceptors` ： 异常拦截器，默认为false。
+* `includeInnodbStatusInDeadlockExceptions` ： 监测到死锁时，异常信息中包含`SHOW ENGINE INNODB STATUS`的结果，默认为false。
+* `includeThreadDumpInDeadlockExceptions` : 监测到死锁时，异常信息中包含  Java thread dump ，默认为false。
+
+### 配置SSL
+
+1. 查看是否开启 `show variables like '%ssl%';`，显示 have_ssl = YES 。
+2. 检查用户是否启动ssl认证 `select ssl_type from mysql.user where user='username' and host='%';` ，显示 ssl_type 为空表示可用可不用，不为空则必须使用 ssl。
+3. 强制用户使用ssl。
+
+```sql
+ALTER USER 'username'@'%' REQUIRE SSL;
+FLUSH PRIVILEGES;
+```
+
+4. 生成客户端证书。
+
+源文件：![410.png](assets/410.png)
+
+目标文件：![411.png](assets/411.png)
+
+生成truststore文件：
+
+```shell
+keytool -importcert -alias Cacert -file ca.pem  -keystore truststoremysql -storepass password123
+```
+
+生成keystore文件:
+
+```shell
+openssl pkcs12 -export -in client-cert.pem -inkey client-key.pem -name "mysqlclient" -passout pass:mypassword -out client-keystore.p12
+keytool -importkeystore -srckeystore client-keystore.p12 -srcstoretype pkcs12 -srcstorepass mypassword -destkeystore keystoremysql -deststoretype JKS -deststorepass password456
+```
+
+5. 修改连接参数
+
+```properties
+ssl.cert.path = /home/app/cert
+ssl.config = required&clientCertificateKeyStoreUrl=file:${ssl.cert.path}/keystoremysql&clientCertificateKeyStorePassword=password456&trustCertificateKeyStoreUrl=file:${ssl.cert.path}/truststoremysql&trustCertificateKeyStorePassword=password123 
+spring.datasource.url = jdbc:mysql://1.2.3.4:3306/db?serverTimezone=Asia/Shanghai&useUnicode=true&characterEncoding=utf-8&$sslMode={ssl.config}
+```
+
+### 批量插入
+
+1. 设置 rewriteBatchedStatements=true。
+2. 调整 max\_allowed\_packet。
+3. 调整 innodb_buffer_pool_size，从而调整 Insert Buffer。
+4. 使用事务可以提高数据的插入效率，因为MySQL内部会建立一个事务，在事务内才进行真正插入处理操作，但要避免超大事务，事务大于 innodb_log_buffer_size 时会执行刷盘。
+
+```sql
+START TRANSACTION;
+INSERT INTO `test`.`user`(`id`, `age`, `name`, `balance`, `create_time`, `deleted`) VALUES (1, 18, '我我我我我我我我我我', 100.00, '2022-04-26 22:28:27', 0);
+INSERT INTO `test`.`user`(`id`, `age`, `name`, `balance`, `create_time`, `deleted`) VALUES (2, 17, 'IIIIIIIIII', 1000.00, '2022-04-26 22:29:03', 0);
+INSERT INTO `test`.`user`(`id`, `age`, `name`, `balance`, `create_time`, `deleted`) VALUES (3, 11, '😁😁😁😁😁😁😁😁😁😁', 1000000000.00, '2022-04-26 22:29:41', 0);
+COMMIT;
+```
 
 ## 储存引擎
 

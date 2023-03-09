@@ -338,7 +338,7 @@ t3.rownum = 1
 ### Session
 
 * `sessionVariables`：使用`key:value`方式设置 session 参数,例如`sessionVariables=sql_mode='STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION'`。
-* `characterEncoding`: 字符编码,可以使用 utf8mb4。
+* `characterEncoding`: 字符编码,可以使用 `UTF-8`。
 
 ### Networking
 
@@ -394,6 +394,7 @@ t3.rownum = 1
 
 * `cacheCallableStmts` : 是否开启储存过程调用缓存，默认为false。
 * `callableStmtCacheSize` : 储存过程调用缓存数量，默认100。
+* `useServerPrepStmts` : 服务端PreparedStatement，默认为false。
 * `cachePrepStmts` ：是否开启客户端 PreparedStatement 缓存,默认为false。
 * `prepStmtCacheSize` ： PreparedStatement 缓存数量，默认25，可设置250-500。
 * `prepStmtCacheSqlLimit` : PreparedStatement 缓存单条SQL最大长度，默认256，可设置2048。
@@ -414,6 +415,8 @@ spring:
     hikari:
       data-source-properties:
         logger: com.mysql.cj.log.Slf4JLogger
+# 或者在连接中添加 logger=Slf4JLogger
+spring.datasource.url = jdbc:mysql://1.2.3.4:3306/db?logger=Slf4JLogger
 ```
 
 ### Exceptions

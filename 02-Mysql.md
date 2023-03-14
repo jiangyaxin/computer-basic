@@ -156,7 +156,7 @@ END WHILE;
 USE mysql;
 SELECT * from user;
 # 创建用户,<ip> 例如 '10.148.%.%'，如果该值设置为 '%',用户可以从任意主机访问,如果该值不指定，将采用'%'.
-CREATE USER <user>@<ip> INDENTIFIED WITH mysql_native_password BY <password>;
+CREATE USER <user>@<ip> IDENTIFIED WITH mysql_native_password BY <password>;
 # 更新密码
 SET PASSWORD FOR <user> = Password(<password>);
 ALTER USER <user>@<ip> IDENTIFIED WITH mysql_native_password BY <password>;
@@ -168,6 +168,15 @@ DROP USER <user>;
 GRANT <权限> ON <数据库或者表，例如 table.*> TO <user>@<ip>;
 REVOKE <权限> ON <数据库或者表，例如 table.*> FROM <user>@<ip>;
 # 刷新权限
+flush privileges;
+
+# 创建不限制ip访问的用户，并授予所有权限
+CREATE USER <user>@<ip> IDENTIFIED WITH mysql_native_password BY <password>;
+GRANT ALL privileges ON *.* TO <user>@<ip>;
+flush privileges;
+# 创建root用户远程连接
+CREATE USER root@'%' IDENTIFIED WITH mysql_native_password BY '123456';
+GRANT ALL privileges ON *.* TO root@'%';
 flush privileges;
 ```
 

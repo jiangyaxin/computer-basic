@@ -176,7 +176,7 @@ GRANT ALL privileges ON *.* TO <user>@<ip>;
 flush privileges;
 # 创建root用户远程连接
 CREATE USER root@'%' IDENTIFIED WITH mysql_native_password BY '123456';
-GRANT ALL privileges ON *.* TO root@'%';
+GRANT ALL privileges ON *.* TO root@'%' with grant option;
 flush privileges;
 ```
 
@@ -926,7 +926,8 @@ user = mysql
 basedir = /usr/local/mysql-8.0.31
 # mysql数据文件所在位置
 datadir = /usr/local/mysql-8.0.31/data
-# 设置socket文件地址
+# 设置socket文件地址，或者使用 mysqlx_socket
+sokcet_port  = 33060
 socket  = /tmp/mysql/mysql.sock
 # 临时目录 比如load data infile会用到,一般都是使用/tmp
 tmpdir  = /tmp/mysql

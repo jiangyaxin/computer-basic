@@ -475,7 +475,7 @@ spring.datasource.url = jdbc:mysql://1.2.3.4:3306/db?serverTimezone=Asia/Shangha
 ### 批量插入
 
 1. 设置 rewriteBatchedStatements=true。
-2. 调整 max\_allowed\_packet。
+2. 调整 max_allowed_packet。
 3. 调整 innodb_buffer_pool_size，从而调整 Insert Buffer。
 4. 使用事务可以提高数据的插入效率，因为MySQL内部会建立一个事务，在事务内才进行真正插入处理操作，但要避免超大事务，事务大于 innodb_log_buffer_size 时会执行刷盘。
 
@@ -485,6 +485,70 @@ INSERT INTO `test`.`user`(`id`, `age`, `name`, `balance`, `create_time`, `delete
 INSERT INTO `test`.`user`(`id`, `age`, `name`, `balance`, `create_time`, `deleted`) VALUES (2, 17, 'IIIIIIIIII', 1000.00, '2022-04-26 22:29:03', 0);
 INSERT INTO `test`.`user`(`id`, `age`, `name`, `balance`, `create_time`, `deleted`) VALUES (3, 11, '😁😁😁😁😁😁😁😁😁😁', 1000000000.00, '2022-04-26 22:29:41', 0);
 COMMIT;
+```
+
+5. 可使用 LOAD 命令，需要 GRANT FILE 权限。
+
+语法：
+
+```sql
+LOAD DATA
+    [LOW_PRIORITY | CONCURRENT] [LOCAL]
+INFILE 'file_name'
+    [REPLACE | IGNORE]
+INTO TABLE tbl_name
+    [PARTITION (partition_name [, partition_name] ...)]
+    [CHARACTER SET charset_name]
+    [{FIELDS | COLUMNS}
+        [TERMINATED BY 'string']
+        [[OPTIONALLY] ENCLOSED BY 'char']
+        [ESCAPED BY 'char']
+    ]
+    [LINES
+        [STARTING BY 'string']
+        [TERMINATED BY 'string']
+    ]
+    [IGNORE number {LINES | ROWS}]
+    [(col_name_or_user_var
+        [, col_name_or_user_var] ...)]
+    [SET col_name={expr | DEFAULT}
+        [, col_name={expr | DEFAULT}] ...]
+```
+
+默认值：
+
+```sql
+-- TERMINATED BY: 在 \n 处寻找行边界
+-- TERMINATED BY: 在 \t 处将行分进字段
+-- ENCLOSED BY: 不要期望字段由任何引号字符封装
+-- ESCAPED BY: 将由“\”开头的定位符、换行符或“\”解释成转义序列。例如 \t, \n, and \ 分别解释成 定位符，换行，反斜杠。
+-- STARTING BY: 行前缀
+
+FIELDS TERMINATED BY '\t' ENCLOSED BY '' ESCAPED BY '\\'
+LINES TERMINATED BY '\n' STARTING BY ''
+```
+
+实例：
+
+````java
+try (PreparedStatement statement = connection.prepareStatement("下面的SQL")) {
+
+} catch (Exception e) {
+
+}
+````
+
+
+```sql
+LOAD DATA
+    -- load允许查询操作
+    CONCURRENT
+    -- 在非服务端执行load data需要使用local 
+    LOCAL
+INFILE ''
+    -- 唯一键冲突时替换还是忽略
+    [REPLACE | IGNORE]
+INTO TABLE 表名 CHARACTER SET UTF8 (字段一，字段二，字段三)
 ```
 
 ## 储存引擎

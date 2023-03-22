@@ -48,6 +48,25 @@ AVG()、COUNT()、MAX()、MIN()、SUM() 都可使用 DISTINCT 关键字。
 6. WHERE子句过滤分组前的行，HAVING子句过滤分组后的组。
 7. 不要忘记使用ORDER BY，这是保证数据正确排序的唯一正确方法。
 
+获取group by 以外的字段：
+
+```sql
+-- 方法一
+SELECT
+    id,name,yuwen,shuxue,english,physics,createTime 
+FROM lsq_test_table 
+WHERE id IN(
+    SELECT MAX(id) FROM lsq_test_table where CLASS = "1" GROUP BY NAME, YUWEN
+)
+-- 方法二
+-- 会选择被分到同一组的数据里第一条数据的指定列值作为返回数据
+SELECT 
+    ANY_VALUE(ID),ANY_VALUE(NAME),ANY_VALUE(YUWEN),ANY_VALUE(ENGLISH),ANY_VALUE(SHUXUE),ANY_VALUE(PHYSICS),ANY_VALUE(CREATETIME) 
+FROM lsq_test_table 
+where lsq_test_table.CLASS = "1" 
+GROUP BY NAME, YUWEN;
+```
+
 ### CURD
 
 ```bash

@@ -1463,7 +1463,7 @@ explain select * from test_table where ***
 4. 增大 innodb_log_buffer_size，减少redolog刷盘次数。
 5. 增大 table_open_cache 和 table_open_cache_instances，优化表缓存。
 6. 增大 thread_cache_size 减少频繁的创建销毁线程。
-7. innodb_flush_log_at_trx_commit 设置为 2 ,
+7. innodb_flush_log_at_trx_commit 设置为 2 , sync_binlog = 1000
 
 ## 文件
 

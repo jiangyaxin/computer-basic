@@ -602,79 +602,79 @@ public void setDessert(Dessert dessert) {
 # 重试
 
 ## SpringRetry
+
 ### 使用
 
 1. 引用 POM。
 
-    ```xml
-    <dependency>
-        <groupId>org.springframework.retry</groupId>
-        <artifactId>spring-retry</artifactId>
-        <version>1.2.2.RELEASE</version>
-    </dependency>
-    ```
-
+   ```xml
+   <dependency>
+       <groupId>org.springframework.retry</groupId>
+       <artifactId>spring-retry</artifactId>
+       <version>1.2.2.RELEASE</version>
+   </dependency>
+   ```
 2. 使用
 
-    ```java
-    @EnableRetry
-    @SpringBootApplication
-    public class JpaApplication {
-    
-        public static void main(String[] args) {
-            SpringApplication.run(JpaApplication.class, args);
-        }
-    
-        @Retryable
-        public String hello(){
-            long times = helloTimes.incrementAndGet();
-            log.info("hello times:{}", times);
-            if (times % 4 != 0){
-                log.warn("发生异常，time：{}", LocalTime.now() );
-                throw new HelloRetryException("发生Hello异常");
-            }
-            return "hello " + nameService.getName();
-        }
-    
-    }
-    ```
-   
+   ```java
+   @EnableRetry
+   @SpringBootApplication
+   public class JpaApplication {
+
+       public static void main(String[] args) {
+           SpringApplication.run(JpaApplication.class, args);
+       }
+
+       @Retryable
+       public String hello(){
+           long times = helloTimes.incrementAndGet();
+           log.info("hello times:{}", times);
+           if (times % 4 != 0){
+               log.warn("发生异常，time：{}", LocalTime.now() );
+               throw new HelloRetryException("发生Hello异常");
+           }
+           return "hello " + nameService.getName();
+       }
+
+   }
+   ```
+
 ## GuavaRetry
 
 1. 引用 POM。
 
-    ```xml
-    <dependency>
-        <groupId>com.github.rholder</groupId>
-        <artifactId>guava-retrying</artifactId>
-    </dependency>
-    ```
-
+   ```xml
+   <dependency>
+       <groupId>com.github.rholder</groupId>
+       <artifactId>guava-retrying</artifactId>
+   </dependency>
+   ```
 2. 使用
 
-    ```java
-    @Slf4j
-    public class AppContextTest {
-    
-        @Test
-        public void guavaRetry() {
-            Retryer<String> retryer = RetryerBuilder.<String>newBuilder()
-                    .retryIfExceptionOfType(HelloRetryException.class)
-                    .retryIfResult(StringUtils::isEmpty)
-                    .withWaitStrategy(WaitStrategies.fixedWait(3, TimeUnit.SECONDS))
-                    .withStopStrategy(StopStrategies.stopAfterAttempt(3))
-                    .build();
-    
-            try {
-                retryer.call(() -> helloService.hello());
-            } catch (Exception e){
-                e.printStackTrace();
-            }
-        }
-    }
-    ```
+   ```java
+   @Slf4j
+   public class AppContextTest {
+
+       @Test
+       public void guavaRetry() {
+           Retryer<String> retryer = RetryerBuilder.<String>newBuilder()
+                   .retryIfExceptionOfType(HelloRetryException.class)
+                   .retryIfResult(StringUtils::isEmpty)
+                   .withWaitStrategy(WaitStrategies.fixedWait(3, TimeUnit.SECONDS))
+                   .withStopStrategy(StopStrategies.stopAfterAttempt(3))
+                   .build();
+
+           try {
+               retryer.call(() -> helloService.hello());
+           } catch (Exception e){
+               e.printStackTrace();
+           }
+       }
+   }
+   ```
 
 相比于SpringRetry，提供更多的重试机制：
+
 * retryIfException : 对所有异常进行重试。
 * retryIfExceptionOfType : 对指定异常进行重试。
 * retryIfResult : 对不符合预期的返回结果进行重试。

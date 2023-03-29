@@ -302,19 +302,6 @@ UNBOUNDED FOLLOWING #最后一行
 
 `NTILE(n)`：获取一定比例的数据。
 
-### 参数配置
-
-#### 连接
-
-* max_connections：最大连接数，max_used_connection/max_connections 理想值约等于85%。
-* back_log：等待连接队列的长度，达到 max_connections 后，新的请求被放入队列中。
-* wait_timeout：关闭连接之前所需要等待的秒数，太大会看到太多的 sleep 状态的连接，太小会导致关闭连接很快。
-
-#### 缓冲区
-
-* key_buffer_size：索引缓冲区的大小，决定索引的处理速度，只对 MAISAM 生效，该值是否合理，通过 key_reads/key_read_requests 来判断，至少 1:100，默认8M，4G内存可调为256M。
-* query_cache_size：查询结果缓冲区，对同样的select语句（区分大小写），将直接从缓冲区中读取结果。通过 `show ststus like 'Qcache%'` 可以知道query_cache_size的设置是否合理。
-
 ### SQL执行顺序
 
 1. FROM
@@ -556,7 +543,6 @@ try (PreparedStatement statement = connection.prepareStatement("下面的SQL")) 
 
 }
 ````
-
 
 ```sql
 LOAD DATA
@@ -1270,6 +1256,189 @@ innodb_flush_log_at_trx_commit = 1
 # 在关闭时把热数据dump到本地磁盘。默认值为on，不修改
 # innodb_buffer_pool_dump_at_shutdown = 1
 ```
+
+#### 参考配置
+
+16核、256G内存、3T硬盘
+
+```properties
+[client]
+user = root
+password = 1111aaA_
+
+[mysql]
+prompt = [\\u@\\p][\\d]>\\_
+no-auto-rehash
+
+[mysqld_safe]
+malloc-lib=tcmalloc
+
+[mysqldump]
+single-transaction
+
+[mysqld]
+# basic settings #
+user = mysql
+sql_mode = "STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION,NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER"
+autocommit = 1
+server-id = 8888
+character_set_server=utf8mb4
+datadir=/mysql_data/data
+transaction_isolation = READ-COMMITTED
+explicit_defaults_for_timestamp = 1
+max_allowed_packet = 64M
+event_scheduler = 1
+
+# connection #
+interactive_timeout = 1800
+wait_timeout = 1800
+lock_wait_timeout = 1800
+skip_name_resolve = 1
+max_connections = 1024
+max_user_connections = 256
+max_connect_errors = 1000000
+
+# table cache performance settings
+table_open_cache = 4096
+table_definition_cache = 4096
+table_open_cache_instances = 64
+
+# session memory settings #
+read_buffer_size = 16M
+read_rnd_buffer_size = 32M
+sort_buffer_size = 32M
+tmp_table_size = 64M
+join_buffer_size = 128M
+thread_cache_size = 64
+
+# log settings #
+log_error = error.log
+log_bin = binlog
+log_error_verbosity = 2
+general_log_file = general.log
+slow_query_log = 1
+slow_query_log_file = slow.log
+log_queries_not_using_indexes = 1
+log_slow_admin_statements = 1
+log_slow_slave_statements = 1
+log_throttle_queries_not_using_indexes = 10
+expire_logs_days = 90
+long_query_time = 2
+min_examined_row_limit = 100
+log-bin-trust-function-creators = 1
+log-slave-updates = 1
+
+# innodb settings #
+innodb_page_size = 16384
+innodb_buffer_pool_size = 160G
+innodb_buffer_pool_instances = 16
+innodb_buffer_pool_load_at_startup = 1
+innodb_buffer_pool_dump_at_shutdown = 1
+innodb_lru_scan_depth = 4096
+innodb_lock_wait_timeout = 5
+innodb_io_capacity = 10000
+innodb_io_capacity_max = 20000
+innodb_flush_method = O_DIRECT
+innodb_undo_logs = 128
+innodb_undo_tablespaces = 3
+innodb_flush_neighbors = 0
+innodb_log_file_size = 16G
+innodb_log_files_in_group = 2
+innodb_log_buffer_size = 64M
+innodb_purge_threads = 4
+innodb_large_prefix = 1
+innodb_thread_concurrency = 32
+innodb_print_all_deadlocks = 1
+innodb_strict_mode = 1
+innodb_sort_buffer_size = 64M
+innodb_write_io_threads = 16
+innodb_read_io_threads = 16
+innodb_file_per_table = 1
+innodb_stats_persistent_sample_pages = 64
+innodb_autoinc_lock_mode = 2
+innodb_online_alter_log_max_size=1G
+innodb_open_files=4096
+
+# replication settings #
+master_info_repository = TABLE
+relay_log_info_repository = TABLE
+sync_binlog = 1
+gtid_mode = on
+enforce_gtid_consistency = 1
+log_slave_updates
+binlog_format = ROW
+binlog_rows_query_log_events = 1
+relay_log = relay.log
+relay_log_recovery = 1
+slave_skip_errors = ddl_exist_errors
+slave-rows-search-algorithms = 'INDEX_SCAN,HASH_SCAN'
+
+# semi sync replication settings #
+plugin-load = "group_replication.so;validate_password.so;semisync_master.so;semisync_slave.so"
+loose_rpl_semi_sync_master_enabled = 1
+loose_rpl_semi_sync_master_timeout = 3000
+loose_rpl_semi_sync_slave_enabled = 1
+
+# password plugin #
+validate_password_policy = STRONG
+validate-password = FORCE_PLUS_PERMANENT
+
+# perforamnce_schema settings
+performance-schema-instrument='memory/%=COUNTED'
+performance_schema_digests_size = 40000
+performance_schema_max_table_handles = 40000
+performance_schema_max_table_instances = 40000
+performance_schema_max_sql_text_length = 4096
+performance_schema_max_digest_length = 4096
+
+[mysqld-5.6]
+# metalock performance settings
+metadata_locks_hash_instances = 64
+
+[mysqld-5.7]
+# new innodb settings #
+loose_innodb_numa_interleave = 1
+innodb_buffer_pool_dump_pct = 40
+innodb_page_cleaners = 16
+innodb_undo_log_truncate = 1
+innodb_max_undo_log_size = 2G
+innodb_purge_rseg_truncate_frequency = 128
+
+# new replication settings #
+slave-parallel-type = LOGICAL_CLOCK
+slave-parallel-workers = 16
+slave_preserve_commit_order = 1
+slave_transaction_retries = 128
+# other change settings #
+binlog_gtid_simple_recovery = 1
+log_timestamps = system
+show_compatibility_56 = on
+
+# group replication settings
+plugin-load = "group_replication.so;validate_password.so;semisync_master.so;semisync_slave.so"
+transaction-write-set-extraction = XXHASH64
+# report_host = 127.0.0.1 # optional for group replication
+# binlog_checksum = NONE # only for group replication
+loose_group_replication = FORCE_PLUS_PERMANENT
+loose_group_replication_group_name = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+loose_group_replication_compression_threshold = 100
+loose_group_replication_flow_control_mode = 0
+loose_group_replication_single_primary_mode = 0
+loose_group_replication_enforce_update_everywhere_checks = 1
+loose_group_replication_transaction_size_limit = 10485760
+loose_group_replication_unreachable_majority_timeout = 120
+loose_group_replication_start_on_boot = 0
+```
+
+#### 配置优化思路
+
+1. 增大 innodb_buffer_pool_size，减少脏页刷新，增大 insert buffer。
+2. 增大 innodb_buffer_pool_instances，提高并发能力。
+3. 增大 innodb_log_files_in_group 和 innodb_log_file_size，减少checkpoint频率。
+4. 增大 innodb_log_buffer_size，减少redolog刷盘次数。
+5. 增大 table_open_cache 和 table_open_cache_instances，优化表缓存。
+6. 增大 thread_cache_size 减少频繁的创建销毁线程。
+7. innodb_flush_log_at_trx_commit 设置为 2 ,
 
 ## 文件
 

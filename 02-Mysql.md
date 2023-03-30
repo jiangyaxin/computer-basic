@@ -1458,12 +1458,12 @@ explain select * from test_table where ***
 ```
 
 1. 增大 innodb_buffer_pool_size，减少脏页刷新，增大 insert buffer。
-2. 增大 innodb_buffer_pool_instances，提高并发能力。
+2. 增大 innodb_buffer_pool_instances，提高并发能力，一个实例10G。
 3. 增大 innodb_log_files_in_group 和 innodb_log_file_size，减少checkpoint频率。
 4. 增大 innodb_log_buffer_size，减少redolog刷盘次数。
 5. 增大 table_open_cache 和 table_open_cache_instances，优化表缓存。
 6. 增大 thread_cache_size 减少频繁的创建销毁线程。
-7. innodb_flush_log_at_trx_commit 设置为 2 , sync_binlog = 1000
+7. innodb_flush_log_at_trx_commit 设置为 2 , sync_binlog = 1000。
 
 ## 文件
 

@@ -493,7 +493,7 @@ INSERT INTO `test`.`user`(`id`, `age`, `name`, `balance`, `create_time`, `delete
 COMMIT;
 ```
 
-5. 可使用 LOAD 命令，需要 GRANT FILE 权限。
+5. 可使用 LOAD 命令，需要 GRANT FILE 权限，服务端需要添加 `local_infile = 1`
 
 语法：
 

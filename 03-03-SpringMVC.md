@@ -309,6 +309,16 @@ spring.servlet.multipart.max-file-size=10MB
  }
 ```
 
+## 下载文件
+
+```java
+// 设置http头
+response.setContentType(MediaType.APPLICATION_OCTET_STREAM_VALUE);
+response.setContentType(StandardCharsets.UTF_8.name());
+String fileName = URLEncoder.encode(fileName, StandardCharsets.UTF_8.name()).replaceAll("\\+","%20");
+response.setHeader(HttpHeaders.CONTENT_DISPOSITION,String.format("attachment;filename=%s.xlsx",fileName));
+```
+
 ## 异常处理
 
 * 特定的Spring异常将会自动映射为指定的HTTP状态码；

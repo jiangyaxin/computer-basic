@@ -860,6 +860,31 @@ Logback 额外的配置：
 | logging.logback.rollingpolicy.total-size-cap         | LOGBACK_ROLLINGPOLICY_TOTAL_SIZE_CAP         | 要保留的日志备份的总大小。                                     |
 | logging.logback.rollingpolicy.max-history            | LOGBACK_ROLLINGPOLICY_MAX_HISTORY            | 要保留的存档日志文件的最大数量。                               |
 
+动态修改logback日志级别：
+
+```java
+@Controller
+@RequestMapping("/logback")
+public class LogbackController {
+	@RequestMapping(value = "/root/{level}", method = RequestMethod.GET)
+	@ResponseBody
+	public String updateRootLogbackLevel(HttpServletRequest request, HttpServletResponse response, @PathVariable("level") String levelName) {
+		LoggerContext loggerContext = (LoggerContext) LoggerFactory.getILoggerFactory();
+		loggerContext.getLogger(Logger.ROOT_LOGGER_NAME).setLevel(Level.toLevel(levelName));
+		return "修改root的logback{" + levelName + "}级别成功";
+	}
+
+	@RequestMapping(value = "/{package}/{level}", method = RequestMethod.GET)
+	@ResponseBody
+	public String updateLogbackLevel(HttpServletRequest request, HttpServletResponse response, @PathVariable("package") String packageName,
+			@PathVariable("level") String levelName) {
+		LoggerContext loggerContext = (LoggerContext) LoggerFactory.getILoggerFactory();
+		loggerContext.getLogger(packageName).setLevel(Level.toLevel(levelName));
+		return "修改package{" + packageName + "}的logback{" + levelName + "}级别成功";
+	}
+}
+```
+
 自动配置的线程池：
 
 * applicationTaskExecutor、taskExecutor：ThreadPoolTaskExecutor 类型，使用 spring.task.execution.pool 配置。

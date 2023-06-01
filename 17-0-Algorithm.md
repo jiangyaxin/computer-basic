@@ -70,12 +70,44 @@ int BFS(Node start, Node target) {
 ```
 
 ## 数组
+
 遍历
 
 ```java
 void traverse(int[] arr) {
     for (int i = 0; i < arr.length; i++) {
         // 迭代访问 arr[i]
+    }
+}
+```
+
+### 滑动窗口
+
+```java
+void slidingWindow(String s) {
+    // 用合适的数据结构记录窗口中的数据
+    Map<Character, Integer> window = new HashMap<Character, Integer>();
+  
+    int left = 0, right = 0;
+    while (right < s.length()) {
+        // c 是将移入窗口的字符
+        char c = s.charAt(right);
+        window.put(c, window.getOrDefault(c, 0) + 1);
+        // 增大窗口
+        right++;
+        // 进行窗口内数据的一系列更新
+        ...
+
+        // 判断左侧窗口是否要收缩
+        while (left < right && window needs shrink) {
+            // d 是将移出窗口的字符
+            char d = s.charAt(left);
+            window.put(d, window.get(d) - 1);
+            // 缩小窗口
+            left++;
+            // 进行窗口内数据的一系列更新
+            ...
+        }
     }
 }
 ```
@@ -105,6 +137,7 @@ class NumArray {
 ```
 
 #### 二维数组前缀和
+
 ![](assets/1010.png)
 
 ```java
@@ -181,6 +214,7 @@ class Difference {
 nums[0..slow] 都是无重复的元素，当 fast 指针遍历完整个数组 nums 后，nums[0..slow] 就是整个数组去重之后的结果。
 
 ## 链表
+
 具有迭代和递归两种结构
 
 ```java
@@ -205,6 +239,7 @@ void traverse(ListNode head) {
 访问链表可以借助指针来访问，通过移动指针的位置来依次访问每个节点，另外可以创建一个虚拟节点 和 它的指针来创建一个新的指针。
 
 ### 合并2个升序链表
+
 建立一个结果链表，然后使用3个指针分别在3个链表上进行移动
 
 ```java
@@ -238,6 +273,7 @@ ListNode mergeTwoLists(ListNode l1, ListNode l2) {
 ```
 
 ### 合并K个升序链表
+
 使用 优先队列 对各个链表头节点进行排序
 
 ```java
@@ -270,6 +306,7 @@ ListNode mergeKLists(ListNode[] lists) {
 ```
 
 ### 检查是否有环
+
 使用 快慢两个指针 若指针相遇则又环
 
 ```java
@@ -294,13 +331,16 @@ boolean hasCycle(ListNode head) {
 若相遇 快指针走过 2k 个节点，慢指针走过 k 个节点，若求环起点 只需要将慢节点重置回头节点， 快慢节点以同样速度再走一次
 
 ### 删除倒数第n个节点
+
 1. 使用后序遍历，递归删除
 2. 使用快慢节点，快节点先走 n 个节点，快慢节点再一起走，快节点走到头，慢节点即为删除节点。
 
 ### 判断两个链表是否相交
+
 让 p1 遍历完链表 A 之后开始遍历链表 B，让 p2 遍历完链表 B 之后开始遍历链表 A。
 
 如果这样进行拼接，就可以让 p1 和 p2 同时进入公共部分，因为相交节点到尾节点的距离相同。
+
 ### 翻转链表
 
 ```java
@@ -372,6 +412,7 @@ boolean traverse(ListNode right) {
 ```
 
 ## 二叉树
+
 遍历
 
 ```java
@@ -427,6 +468,7 @@ void traverse(TreeNode root) {
 ```
 
 ## 快速排序
+
 其实就是二叉树的前序遍历：
 
 ```java
@@ -442,6 +484,7 @@ void sort(int[] nums, int lo, int hi) {
 ```
 
 ## 归并排序
+
 其实就是二叉树的后序遍历：
 
 ```java

@@ -885,6 +885,92 @@ public class LogbackController {
 }
 ```
 
+异步日志使用 AsyncAppender：
+
+
+| 参数                | 默认值 | 说明                                                  |
+| ------------------- | ------ | ----------------------------------------------------- |
+| discardingThreshold | 20     | 默认情况下，当队列容量剩余 20% 时，只保留警告和错误。 |
+| queueSize           | 256    | 队列长度。                                            |
+| neverBlock          | false  | 满队列时是否阻塞，设置为true则不阻塞直接丢弃数据。    |
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!-- scan 当此属性设置为true时，配置文件如果发生改变，将会被重新加载，默认值为true。 -->
+<!-- scanPeriod 设置监测配置文件是否有修改的时间间隔，如果没有给出时间单位，默认单位是毫秒。当scan为true时，此属性生效。默认的时间间隔为1分钟。 -->
+<configuration scan="true" scanPeriod="60 seconds" debug="false">
+    <conversionRule conversionWord="clr" converterClass="org.springframework.boot.logging.logback.ColorConverter" />
+    <springProperty scope="context" name="APP_NAME" source="spring.application.name"/>
+    <springProperty scope="context" name="ENV" source="spring.profiles.active"/>
+    <springProperty scope="context" name="LOGSTASH_DESTINATION" source="logstash.destination"/>
+
+    <property name="CONSOLE_LOG_PATTERN" value="%clr(%d{yyyy-MM-dd HH:mm:ss.SSS}){faint} %clr(%5p) %clr([%t]){faint} %clr(%logger{36}){cyan} %clr(:){faint} %m%n" />
+    <property name="CONSOLE_LOG_CHARSET" value="UTF-8"/>
+    <property name="FILE_LOG_PATTERN" value="%d{yyyy-MM-dd HH:mm:ss.SSS} %5p [%t] %logger{36}: %m%n"/>
+    <property name="FILE_LOG_CHARSET" value="UTF-8"/>
+
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>${CONSOLE_LOG_PATTERN}</pattern>
+            <charset>${CONSOLE_LOG_CHARSET}</charset>
+        </encoder>
+    </appender>
+
+    <!-- 异步写入日志 -->
+    <appender name="ASYNC" class="ch.qos.logback.classic.AsyncAppender">
+        <discardingThreshold>0</discardingThreshold>
+        <queueSize>512</queueSize>
+        <!-- 指定异步写入名称为 FILE 的 appender，这里最多只能添加一个 appender-ref -->
+        <appender-ref ref="FILE" />
+    </appender>
+
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <encoder>
+            <pattern>${FILE_LOG_PATTERN}</pattern>
+            <charset>${FILE_LOG_CHARSET}</charset>
+        </encoder>
+        <File>${LOG_PATH}/${LOG_FILE}-${ENV}.log</File>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <FileNamePattern>${LOG_PATH}/${LOG_FILE}-${ENV}-%d{yyyyMMdd}-%i.log</FileNamePattern>
+            <maxFileSize>5MB</maxFileSize>
+            <maxHistory>90</maxHistory>
+        </rollingPolicy>
+    </appender>
+
+    <appender name="LOGSTASH" class="net.logstash.logback.appender.LogstashTcpSocketAppender">
+        <destination>${LOGSTASH_DESTINATION}</destination>
+        <encoder charset="UTF-8" class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
+            <providers>
+                <timestamp>
+                    <timeZone>UTC</timeZone>
+                </timestamp>
+                <pattern>
+                    <pattern>
+                        {
+                            "appName": "${APP_NAME}",
+                            "env": "${ENV}",
+                            "level": "%level",
+                            "thread": "%thread",
+                            "class": "%logger{50}",
+                            "message": "%message",
+                            "stack_trace": "%exception",
+                            "time":"%d{yyyy-MM-dd HH:mm:ss.SSS}"
+                        }
+                    </pattern>
+                </pattern>
+            </providers>
+        </encoder>
+    </appender>
+
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+        <appender-ref ref="ASYNC"/>
+        <appender-ref ref="LOGSTASH"/>
+    </root>
+</configuration>
+```
+
 自动配置的线程池：
 
 * applicationTaskExecutor、taskExecutor：ThreadPoolTaskExecutor 类型，使用 spring.task.execution.pool 配置。

@@ -318,3 +318,10 @@ final class ProcessingSequenceBarrier implements SequenceBarrier
 #### WorkProcessor & WorkerPool
 
 一个 WorkerPool 由多个 WorkProcessor 组成，共享一个 workSequence，可形成互斥消费，如果 生产者生产 10 个事件，一个 WorkerPool 中每个消费者消费一部分，所有消费者消费的事件总数为 10
+
+### WaitStrategy
+
+1. BlockingWaitStrategy: 默认策略，使用锁进行数据监控和线程等待、唤醒，最节省CPU，但由于需要线程切换在高并发场景下性能最糟糕。
+2. SleepingWaitStrategy: 会进行自旋等待，如果不成功会调用yield让出CPU，并最终使用 LockSupport.parkNanos(可配置时间) 进行线程休眠，以确保不占用过多CPU，可能会产生较高的平均延时，对延时要求不是特别高的场合，对生产者线程影响最小，典型场景就是异步日志。
+3. YieldingWaitStrategy：用于低延时环境，内部是一个 yield 的死循环，会消耗大量的CPU资源，相当于绑定该核心，最好有多于该消费者线程数量的核心数量。
+4. BusySpinWaitStrategy：相比 YieldingWaitStrategy 更加疯狂，不会让出CPU，吃掉所有的CPU资源，所以物理核必须要多于消费者数目，即使逻辑核也会影响无法工作。

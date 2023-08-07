@@ -355,7 +355,7 @@ public abstract byte get();
 
 FileChannel、SocketChannel等在通过 IOUtil 进行 非DirectBuffer IO读写操作时，底层会使用一个临时的 IOVecWrapper 来和系统进行真正的IO交互，IOVecWrapper 本质上也是一个 堆外直接内存，使用完后这个临时的 IOVecWrapper 会被缓存到ThreadLocal，当直接使用 IOUtil 操作非DirectBuffer 的线程数较多或者 IO 操作的数据量较大时，会导致临时的DirectByteBuffer 占用大量堆外内存造成内存泄露。可通过 -Djdk.nio.maxCachedBufferSize 限制，超过这个限制 不会被缓存到 ThreadLocal。
 
-MappedByteBuffer 释放：
+MappedByteBuffer 释放：高版本jdk Cleaner 已经迁移到 jdk.internal.ref.Cleaner
 
 ```java
 private static void unmap(MappedByteBuffer bb) {

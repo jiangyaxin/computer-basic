@@ -1022,7 +1022,7 @@ collation_server = utf8mb4_general_ci
 # 是否对sql语句大小写敏感，默认值为0，1表示不敏感
 lower_case_table_names = 1
 
-# 最大连接数,默认值为151,上限值是16384，实际连接数是最大连接数的85%较为合适
+# 最大连接数,默认值为151,上限值是16384，实际连接数是最大连接数的85%较为合适,修改此参数需要同步修改 /usr/lib/systemd/system/mysqld.service 中 LimitNOFILE=65535
 max_connections = 800
 # 最大错误连接数，阻止过多尝试失败的客户端以防止暴力破解密码
 # 默认值100，最大错误连接数，如果有超出该参数值个数的中断错误连接，则该主机将被禁止连接。如需对该主机进行解禁，执行：FLUSH HOSTS

@@ -378,10 +378,10 @@ public class Director {
   *	D类型的宝马车只有一个功能，就是跑，启动起来就跑，永远不停止，牛叉
   */
   public BMWModel getDBMWModel(){
-  this.sequence.clear();
-  this.sequence.add("start");
-  this.bmwBuilder.setSequence(this.sequence);
-  return (BMWModel)this.benzBuilder.getCarModel();
+     this.sequence.clear();
+     this.sequence.add("start");
+     this.bmwBuilder.setSequence(this.sequence);
+     return (BMWModel)this.benzBuilder.getCarModel();
   }
 }
 ```

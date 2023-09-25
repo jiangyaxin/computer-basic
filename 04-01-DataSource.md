@@ -42,6 +42,20 @@ maximumPoolSize = ((core_count * 2)+ effective_spindle_count),effective_spindle_
 增大连接池大小可以缓解池锁问题，**但是扩大池之前是可以先检查一下应用层面能够调优，不要直接调整连接池大小**。
 pool size = Tn x (Cm - 1) + 1，T n是线程的最大数量，C m是单个线程持有的同时连接的最大数量，这是避免池锁的最低限度。
 
+### 如何解决失活连接监测问题
+
+当连接失活，但应用层获取连接执行SQL时会出现 `No operations allowed after connection closed` 异常。
+
+监测失活连接由两个参数控制：
+
+* maxLifetime：连接在hikari中的最长存活时间，但及时达到该时间但是连接处于 IN_USE 状态并不会回收，只能依赖于 idleTimeout 兜底。
+* idleTimeout：空闲连接能够在hikari中能够存活的最长时间，当 idleTimeout >= maxLifeTime 且 minIdle < maxPoolSize的话，会将idleTimeout置为0，所以参数设置错误时会导致 idleTimeout 失效。
+  * 只有 `idleTimeout > 0` 才会进行空闲连接回收。
+  * 只有 `minimumIdle < maximumPoolSize`才会进行空闲连接回收。
+
+当连接由于 IN_USE 逃脱 maxLifetime 回收，并且 idleTimeout 设置错误导致失效，会使连接失效但不会暴露到应用层，等待下一次获取该连接时出现 `No operations allowed after connection closed`，这时该连接才会被回收。
+
+
 ## 监控指标
 
 1. 多少个线程在等待获取数据库连接？获取数据库连接需要的平均时长是多少？数据库连接池是否已经不能满足业务模块需求？如果存在获取数据库连接较慢，则可能说明配置的数据库连接数不足，或存在连接泄漏问题。

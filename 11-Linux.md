@@ -1439,3 +1439,4 @@ LoginShell 读取的配置文件：
 | 数据写入磁盘                | sync                                                                                          |
 | 修改时间                    | timedatectl set-time "2015-09-01 02:02",不像使用date修改时间后，还需要使用hwclock修正BIOS时间 |
 | ntp手动校时                 | ntpdate s2m.time.edu.cn<br> hwclock w 将正确时间写入BIOS                                      |
+| 下载、本地文件 | rz 上传 sz 下载 |

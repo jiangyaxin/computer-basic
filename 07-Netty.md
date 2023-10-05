@@ -358,11 +358,52 @@ FileChannel、SocketChannel等在通过 IOUtil 进行 非DirectBuffer IO读写�
 MappedByteBuffer 释放：高版本jdk Cleaner 已经迁移到 jdk.internal.ref.Cleaner
 
 ```java
-private static void unmap(MappedByteBuffer bb) {
-     Cleaner cl = ((DirectBuffer)bb).cleaner();
-     if (cl != null){
-         cl.clean();
-     }
+public class MappedByteBufferUtil {
+    public static void unmap(MappedByteBuffer bb) {
+        Cleaner cl = ((DirectBuffer) bb).cleaner();
+        if (cl != null) {
+            cl.clean();
+        }
+    }
+
+    // 兼容不同jdk版本
+    //  jdk9+ 启动参数需添加：
+    //  --add-exports java.base/jdk.internal.ref=ALL-UNNAMED
+    //  --add-opens java.base/java.nio=ALL-UNNAMED
+    public void closeMappedByteBuffer(MappedByteBuffer mappedByteBuffer) {
+        if (mappedByteBuffer == null) {
+            return;
+        }
+
+        AccessController.doPrivileged((PrivilegedAction<Object>) () -> {
+            try {
+                Class<? extends MappedByteBuffer> clazz = mappedByteBuffer.getClass();
+                Method cleanerMethod = ReflectionUtils.findMethod(clazz,"cleaner");
+                if (cleanerMethod == null) {
+                    throw new SerializableException(String.format("Get method %s#cleaner() failed.", clazz.getName()));
+                }
+
+                cleanerMethod.setAccessible(true);
+                Object cleaner = cleanerMethod.invoke(mappedByteBuffer);
+                if (cleaner == null) {
+                    throw new SerializableException(String.format("%s get Cleaner failed.", clazz.getName()));
+                }
+
+                Class<?> cleanerClazz = cleaner.getClass();
+                Method cleanMethod = ReflectionUtils.findMethod(cleanerClazz,"clean");
+                if (cleanerMethod == null) {
+                    throw new SerializableException(String.format("Get method %s#clean() failed.", cleanerClazz.getName()));
+                }
+                cleanerMethod.setAccessible(true);
+
+                cleanMethod.invoke(cleaner);
+            } catch (Exception e) {
+                throw new SerializableException("Closed MappedByteBuffer failed.", e);
+            }
+
+            return null;
+        });
+    }
 }
 ```
 
@@ -396,7 +437,7 @@ private static void unmap(MappedByteBuffer bb) {
      * Native Memory Tracking：NMT内存采集本身占用的内存大小。
      * Arena Chunk：所有通过 arena 方式分配的内存。
    并未统计 Direct Buffer 、MMap Buffer 内存。
-3. 对应直接内存可通过 Jprofile 查看 MBeans 的 java.nio.BufferPool 监控，单位是字节。
+3. 对应直接内存可通过 Jprofile 查看 MBeans 的 java.nio.BufferPool 监控，单位是字节，也可使用 JVisualVM 安装 VisualVM-BufferMonitor 监控
 
 ## Selector
 

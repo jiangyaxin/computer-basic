@@ -353,7 +353,7 @@ public abstract byte get();
 * MappedByteBuffer 是 DirectByteBuffer 的父类，DirectByteBuffer有两种类型，一直是由DirectByteBuffer实现，一种由 MappedByteBuffer 实现，都是分配在堆外，不同的是 MappedByteBuffer 实现的堆外内存使用mmap技术映射了内核内存，这时内核内存和用户堆外内存共享，操作堆外内存等于直接操作内核内存，避免了数据的复制，FileChannel#transferTo 就是使用的这种内存。
 * MappedByteBuffer 由 FileChannel#map 创建，DirectByteBuffer & HeapByteBuffer 通过 ByteBuffer 创建。
 
-FileChannel、SocketChannel等在通过 IOUtil 进行 非DirectBuffer IO读写操作时，底层会使用一个临时的 IOVecWrapper 来和系统进行真正的IO交互，IOVecWrapper 本质上也是一个 堆外直接内存，使用完后这个临时的 IOVecWrapper 会被缓存到ThreadLocal，当直接使用 IOUtil 操作非DirectBuffer 的线程数较多或者 IO 操作的数据量较大时，会导致临时的DirectByteBuffer 占用大量堆外内存造成内存泄露。可通过 -Djdk.nio.maxCachedBufferSize 限制，超过这个限制 不会被缓存到 ThreadLocal。
+FileChannel、SocketChannel等在通过 IOUtil 进行 非DirectBuffer IO读写操作时，底层会使用一个临时的 IOVecWrapper 来和系统进行真正的IO交互，IOVecWrapper 本质上也是一个 堆外直接内存，使用完后这个临时的 IOVecWrapper 会被缓存到ThreadLocal，当直接使用 IOUtil 操作非DirectBuffer 的线程数较多或者 IO 操作的数据量较大时，会导致临时的DirectByteBuffer 占用大量堆外内存造成内存泄露。可通过 -Djdk.nio.maxCachedBufferSize 限制单个线程直接内存缓存，超过这个限制 不会被缓存到 ThreadLocal。
 
 MappedByteBuffer 释放：高版本jdk Cleaner 已经迁移到 jdk.internal.ref.Cleaner
 

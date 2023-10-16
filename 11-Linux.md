@@ -699,6 +699,8 @@ systemd 配置文件:
 * /etc/sysconfig/*：服务初始化的一些选项设置，例如：网络的设置则写在 /etc/sysconfig/network-scripts/ 。
 * /var/lib：服务产生的数据，如 /var/lib/mysql 。
 
+查询日志：/var/log/syslog 或 /var/log/messages
+
 ### systemctl 管理服务
 
 语法：`systemctl [命令] [unit]`
@@ -738,8 +740,6 @@ atd.service - Job spooling tools
 * disabled 不开机自启
 * static 不可以自己启动，可能会被其他的 enabled 的服务来唤醒。
 * mask 无法被启动，被强制注销，可通过 `systemctl unmask ` 变更为原来状态。
-
-查询日志：
 
 ### 查看系统上所有服务
 

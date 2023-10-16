@@ -1382,7 +1382,7 @@ done
 避免输入密码：
 
 1. 可按照sshpass避免输入密码。
-2. `ssh-keygen -t rsa`
+2. 可添加互信秘钥验证避免输入密码：`ssh-keygen -t rsa` `ssh-copy-id -i ~/.ssh/id_rsa.pub 用户名@IP`
 3. 在第二步基础上更新秘钥，使用 `ssh-keygen -R ip` 将目标机器公钥删除并将自己的公钥复制到目标机器，从而避免密码输入。
 
 ## LoginShell & non-LoginShell

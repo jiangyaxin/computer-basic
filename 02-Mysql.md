@@ -1788,14 +1788,30 @@ WarmBackup：在数据库运行时备份，但会对数据库操作有影响，�
 ### mysqldump
 
 ```bash
+# -A, --all-databases
 # 备份所有数据库，保存可执行的sql文件，当还原dump时，drop语句会在创建表之前清除所有表
 # 包含 create database 、 use database 、drop table if exists 、 create table 、insert
+
+# --add-drop-database 添加删除库语句，默认不添加
+# --add-drop-table 添加删除表语句，默认添加，使用 --skip-add-drop-table 禁用
+# --add-locks 插入语句前添加锁表语句，默认添加，使用 --skip-add-locks 禁用
+
+# --set-gtid-purged=OFF 不包含 gtid ，用于当前数据库恢复，包含gtid的sql可用于从库恢复
+
+# -B, --databases 导出数据库，参数后面所有名字参量都被看作数据库名
+# --ignore-table=database.table1 --ignore-table=database.table2 …… 忽略表
+
+# --default-character-set=utf8mb4 设置默认字符集
+
 # --routines --events 存储过程、函数和事件
 # -F 导出后生成新的binlog
-# --no-data 只导出表结构
-# --no-create-db --no-create-info --complete-insert 只备份数据
-# --where 添加过滤条件
 
+# -n, --no-create-db 不添加CREATE DATABASE 语句，建表语句仍然存在
+# -t, --no-create-info 不添加CREATE TABLE 语句，建库语句仍然存在 
+# -d, --no-data 添加 CREATE DATABASE 、CREATE TABLE 语句，没有 INSERT 语句
+# -c, --complete-insert 包含列名称
+
+# --where 添加过滤条件
 
 # --lock-all-tables 默认设置，保证数据的一致性，锁表。
 # --single-transaction 一致性的另一种方案，和上面的参数，二选一。在执行备份之前，将事务隔离模式改为 REPEATABLE READ，开启事务，在dump期间如果其他事务修改了数据，对dump的数据无影响，适用于InnoDB，可以减少锁表。
@@ -1807,6 +1823,13 @@ mysqldump --all-databases -u <user> -p<password> > dump.sql
 # 或者
 mysqldump --databases <db1> <db2> -u <user> -p<password> > dump.sql
 mysqldump  database <db> -u <user> -p<password> > dump.sql
+
+# 只导出建库语句
+--set-gtid-purged=OFF -t -d
+# 只导出建表语句
+--set-gtid-purged=OFF -n -d
+# 只导出数据
+--set-gtid-purged=OFF -n -t -c
 
 # 创建备份用户
 grant replication slave,replication client on *.* to <user>@<ip> identified by <password>;

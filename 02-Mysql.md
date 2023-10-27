@@ -611,8 +611,9 @@ INTO TABLE 表名 CHARACTER SET UTF8 (字段一，字段二，字段三)
 10\tKEY05\tValue05\t2012-06-08 15:50:30\t2012-06-08 16:50:30\n
 ```
 
-服务器本地执行：LOAD DATA INFILE '/home/data.txt' INTO TABLE 表名;
-客户端远程执行：LOAD DATA LOCAL INFILE '/home/data.txt' INTO TABLE 表名;
+服务器本地执行：`LOAD DATA INFILE '/home/data.txt' INTO TABLE 表名;`
+
+客户端远程执行：`LOAD DATA LOCAL INFILE '/home/data.txt' INTO TABLE 表名;`
 
 ## 储存引擎
 

@@ -493,7 +493,7 @@ INSERT INTO `test`.`user`(`id`, `age`, `name`, `balance`, `create_time`, `delete
 COMMIT;
 ```
 
-5. 可使用 LOAD 命令，需要 GRANT FILE 权限，服务端需要添加 `local_infile = 1`
+5. 可使用 LOAD 命令，需要 GRANT FILE 权限，服务端需要添加 `local_infile = 1`，jdbc 连接需要添加 `allowLoadLocalInfile=true`。
 
 语法：
 
@@ -524,8 +524,8 @@ INTO TABLE tbl_name
 默认值：
 
 ```sql
--- TERMINATED BY: 在 \n 处寻找行边界
--- TERMINATED BY: 在 \t 处将行分进字段
+-- LINES TERMINATED BY: 在 \n 处寻找行边界
+-- FIELDS TERMINATED BY: 在 \t 处将行分进字段
 -- ENCLOSED BY: 不要期望字段由任何引号字符封装
 -- ESCAPED BY: 将由“\”开头的定位符、换行符或“\”解释成转义序列。例如 \t, \n, and \ 分别解释成 定位符，换行，反斜杠。
 -- STARTING BY: 行前缀
@@ -536,10 +536,53 @@ LINES TERMINATED BY '\n' STARTING BY ''
 
 实例：
 
-````java
-try (PreparedStatement statement = connection.prepareStatement("下面的SQL")) {
+1. 代码执行
 
-} catch (Exception e) {
+有两种方式：
+* 先将数据写入文件，然后填写 INFILE 后面的文件路径，并使用下面命令的方式执行。
+* 不写入文件，直接写入到输入流，不填写INFILE 后面的文件路径，如下面代码所示。
+
+````java
+public class LoadDataTest {
+    
+    public void test() {
+        InputStream in = getTestDataInputStream();
+        try(PreparedStatement statement = connection.prepareStatement("下面的SQL")){
+            com.mysql.cj.jdbc.JdbcPreparedStatement jdbcPreparedStatement = statement.unwrap(com.mysql.cj.jdbc.JdbcPreparedStatement.class);
+
+            jdbcPreparedStatement.setLocalInfileInputStream(dataStream);
+            int result = mysqlStatement.executeUpdate();
+            // MysqlErrorNumbers 可以匹配 SQLWarnings.getErrorCode()
+            // SQLWarning.getNextWarning 可获取下一个异常
+            SQLWarning sqlWarning = mysqlStatement.getWarnings();
+        } catch(Exception e){
+
+        }
+    }
+
+    public InputStream getTestDataInputStream() {
+        StringBuilder builder = new StringBuilder();
+        for (int i = 1; i <= 10; i++) {
+            for (int j = 0; j <= 10000; j++) {
+
+                builder.append(4);
+                builder.append("\t");
+                builder.append(4 + 1);
+                builder.append("\t");
+                builder.append(4 + 2);
+                builder.append("\t");
+                builder.append(4 + 3);
+                builder.append("\t");
+                builder.append(4 + 4);
+                builder.append("\t");
+                builder.append(4 + 5);
+                builder.append("\n");
+            }
+        }
+        byte[] bytes = builder.toString().getBytes(StandardCharsets.UTF_8);
+        InputStream is = new ByteArrayInputStream(bytes);
+        return is;
+    }
 
 }
 ````
@@ -555,6 +598,21 @@ INFILE ''
     [REPLACE | IGNORE]
 INTO TABLE 表名 CHARACTER SET UTF8 (字段一，字段二，字段三)
 ```
+
+2. 命令执行
+
+创建文件 data.txt, \\N 表示 null
+
+```txt
+6\tKEY01\tValue01\t2012-06-08 15:50:30\t2012-06-08 16:50:30\n
+7\tKEY02\tValue02\t2012-06-08 15:50:30\t2012-06-08 16:50:30\n
+8\tKEY03\tValue03\t2012-06-08 15:50:30\t2012-06-08 16:50:30\n
+9\tKEY04\tValue04\t2012-06-08 15:50:30\t2012-06-08 16:50:30\n
+10\tKEY05\tValue05\t2012-06-08 15:50:30\t2012-06-08 16:50:30\n
+```
+
+服务器本地执行：LOAD DATA INFILE '/home/data.txt' INTO TABLE 表名;
+客户端远程执行：LOAD DATA LOCAL INFILE '/home/data.txt' INTO TABLE 表名;
 
 ## 储存引擎
 

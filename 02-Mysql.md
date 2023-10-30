@@ -539,12 +539,13 @@ LINES TERMINATED BY '\n' STARTING BY ''
 1. 代码执行
 
 有两种方式：
+
 * 先将数据写入文件，然后填写 INFILE 后面的文件路径，并使用下面命令的方式执行。
 * 不写入文件，直接写入到输入流，不填写INFILE 后面的文件路径，如下面代码所示。
 
 ````java
 public class LoadDataTest {
-    
+  
     public void test() {
         InputStream in = getTestDataInputStream();
         try(PreparedStatement statement = connection.prepareStatement("下面的SQL")){
@@ -614,6 +615,53 @@ INTO TABLE 表名 CHARACTER SET UTF8 (字段一，字段二，字段三)
 服务器本地执行：`LOAD DATA INFILE '/home/data.txt' INTO TABLE 表名;`
 
 客户端远程执行：`LOAD DATA LOCAL INFILE '/home/data.txt' INTO TABLE 表名;`
+
+### 批量查询
+
+#### 游标查询
+
+设置连接属性 `useCursorFetch` 为 true, 然后调用 `setFetchSize(int)` 来设置每次要获取的行数。
+
+特点：
+
+1. 服务端按照fetchSize的大小返回数据，假如数据有1亿数据，FetchSize设置成1000，会进行10万次来回通信。
+2. MySQL需要建立一个临时空间来存放将要使用的数据，会导致服务端文件系统飙升，但是不会阻塞服务端连接。
+3. 客户端发送SQL会等待长时间服务端准备数据，数据准备完成后，开始传输数据的阶段，网络响应、硬盘读取开始飙升。
+
+```java
+public class QueryTest {
+  
+    public void cursorTest() {
+        Connection conn = DriverManager.getConnection("jdbc:mysql://localhost/?useCursorFetch=true", "user", "s3cr3t");
+        Statement stmt = conn.createStatement();
+        stmt.setFetchSize(100);
+    }
+}
+```
+
+#### 流式查询
+
+设置 `forward-only`, `read-only` 以及将 `fetch size` 设置为 `Integer.MIN_VALUE`, 即表明让 MySQL 以流式传输结果集中的数据。
+
+特点：
+
+1. 建立长连接，占用一个连接，在ResultSet关闭前，不能做查询操作，否则会报错。
+2. 从第一条数据开始一直往客户端发送数据，知道客户端缓存区被填满时阻塞，直到客户端缓存区有空间时继续发送。
+3. JDBC一次从内核缓冲区读取读取一条数据。
+4. 相比游标查询更快，但是更容易阻塞。
+
+```java
+public class QueryTest {
+  
+    public void streamTest() {
+        try(PreparedStatement statement = connection.prepareStatement(sql, ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY)){
+              statement.setFetchSize(Integer.MIN_VALUE);
+        } catch(Exception e){
+
+        }
+    }
+}
+```
 
 ## 储存引擎
 

@@ -767,6 +767,7 @@ atd.service - Job spooling tools
 ### 自定义服务
 
 1. 在 /etc/systemd/system 目录下创建服务 xxx.service,例如：
+2. 更新服务：`systemctl daemon-reload`
 
 ```properties
 # unit 自身描述，已经服务间的依赖

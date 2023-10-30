@@ -1054,6 +1054,7 @@ basedir = /usr/local/mysql-8.0.31
 # mysql数据文件所在位置
 datadir = /usr/local/mysql-8.0.31/data
 # 设置socket文件地址，或者使用 mysqlx_socket，sock 文件需要有权限访问，否则会报错。
+# 连接示例：mysql -uroot -S/tmp/mysql/mysql.sock -P33060
 sokcet_port  = 33060
 socket  = /tmp/mysql/mysql.sock
 # 临时目录 比如load data infile会用到,一般都是使用/tmp

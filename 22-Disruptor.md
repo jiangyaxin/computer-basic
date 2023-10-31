@@ -313,7 +313,7 @@ final class ProcessingSequenceBarrier implements SequenceBarrier
 #### BatchEventProcessor
 
 1. BatchEventProcessor可以处理超时，可以处理中断，可以通过用户实现的异常处理类处理异常，发生异常之后再次启动，不会漏消费，也不会重复消费。
-2. 多个 BatchEventProcessor 并行时互补干扰，如果 生产者生产 10 个事件，每个消费者都会消费 10 个事件。
+2. 多个 BatchEventProcessor 并行时互不干扰，如果 生产者生产 10 个事件，每个消费者都会消费 10 个事件。
 
 #### WorkProcessor & WorkerPool
 

@@ -697,7 +697,7 @@ systemd 配置文件:
 其他相关目录：
 
 * /etc/sysconfig/*：服务初始化的一些选项设置，例如：网络的设置则写在 /etc/sysconfig/network-scripts/ , 如果需要设置ip即修改该文件 `BOOTPROTO=static`，在文件添加下列参数，并使用 `service network restart` 重启网卡。
-  f
+
 ```properties
 IPADDR=192.168.50.99
 NETMASK=255.255.255.0

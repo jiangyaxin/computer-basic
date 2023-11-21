@@ -331,8 +331,7 @@ UNBOUNDED FOLLOWING #最后一行
 
 ```sql
 -- 通过UNION ALL来查出所有数据
-SELECT max_id FROM (SELECT max_id FROM (SELECT @last_max_id:=0 as max_id) tmp) t1
-UNION ALL
+SET @last_max_id=0;
 SELECT max_id FROM (SELECT @last_max_id:=max(id) as max_id FROM (SELECT id FROM #{tableName} WHERE id > (SELECT @last_max_id) limit #{batchSize}) tmp) t1
 UNION ALL
 SELECT max_id FROM (SELECT @last_max_id:=max(id) as max_id FROM (SELECT id FROM #{tableName} WHERE id > (SELECT @last_max_id) limit #{batchSize}) tmp) t1

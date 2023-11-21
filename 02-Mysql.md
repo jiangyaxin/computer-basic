@@ -330,6 +330,14 @@ UNBOUNDED FOLLOWING #最后一行
 变量为 batchSize 、tableName
 
 ```sql
+-- 通过UNION ALL来查出所有数据
+SET @last_max_id=0;
+SELECT max_id FROM (SELECT @last_max_id:=max(id) as max_id FROM (SELECT id FROM #{tableName} WHERE id > (SELECT @last_max_id) limit #{batchSize}) tmp) t1
+UNION ALL
+SELECT max_id FROM (SELECT @last_max_id:=max(id) as max_id FROM (SELECT id FROM #{tableName} WHERE id > (SELECT @last_max_id) limit #{batchSize}) tmp) t1
+```
+
+```sql
 SELECT id
 FROM (SELECT @rownum := ((@rownum + 1)% #{batchSize}) AS rownum, id
       FROM

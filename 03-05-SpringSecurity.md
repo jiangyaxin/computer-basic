@@ -140,97 +140,92 @@ FilterComparator 中同一对 Filters 进行排序。
 #### 核心代码
 
 ```java
-......
+public class ExceptionTranslationFilter {
 
-public void doFilter(ServletRequest req, ServletResponse res, FilterChain chain)
-      throws IOException, ServletException {
-   HttpServletRequest request = (HttpServletRequest) req;
-   HttpServletResponse response = (HttpServletResponse) res;
+    public void doFilter(ServletRequest req, ServletResponse res, FilterChain chain)
+            throws IOException, ServletException {
+        HttpServletRequest request = (HttpServletRequest) req;
+        HttpServletResponse response = (HttpServletResponse) res;
 
-   try {
-      chain.doFilter(request, response);
+        try {
+            chain.doFilter(request, response);
 
-      logger.debug("Chain processed normally");
-   }
-   catch (IOException ex) {
-      throw ex;
-   }
-   catch (Exception ex) {
-      // Try to extract a SpringSecurityException from the stacktrace
-      Throwable[] causeChain = throwableAnalyzer.determineCauseChain(ex);
-      RuntimeException ase = (AuthenticationException) throwableAnalyzer
-            .getFirstThrowableOfType(AuthenticationException.class, causeChain);
+            logger.debug("Chain processed normally");
+        } catch (IOException ex) {
+            throw ex;
+        } catch (Exception ex) {
+            // Try to extract a SpringSecurityException from the stacktrace
+            Throwable[] causeChain = throwableAnalyzer.determineCauseChain(ex);
+            RuntimeException ase = (AuthenticationException) throwableAnalyzer
+                    .getFirstThrowableOfType(AuthenticationException.class, causeChain);
 
-      if (ase == null) {
-         ase = (AccessDeniedException) throwableAnalyzer.getFirstThrowableOfType(
-               AccessDeniedException.class, causeChain);
-      }
+            if (ase == null) {
+                ase = (AccessDeniedException) throwableAnalyzer.getFirstThrowableOfType(
+                        AccessDeniedException.class, causeChain);
+            }
 
-      if (ase != null) {
-         if (response.isCommitted()) {
-            throw new ServletException("Unable to handle the Spring Security Exception because the response is already committed.", ex);
-         }
-         handleSpringSecurityException(request, response, chain, ase);
-      }
-      else {
-         // Rethrow ServletExceptions and RuntimeExceptions as-is
-         if (ex instanceof ServletException) {
-            throw (ServletException) ex;
-         }
-         else if (ex instanceof RuntimeException) {
-            throw (RuntimeException) ex;
-         }
+            if (ase != null) {
+                if (response.isCommitted()) {
+                    throw new ServletException("Unable to handle the Spring Security Exception because the response is already committed.", ex);
+                }
+                handleSpringSecurityException(request, response, chain, ase);
+            } else {
+                // Rethrow ServletExceptions and RuntimeExceptions as-is
+                if (ex instanceof ServletException) {
+                    throw (ServletException) ex;
+                } else if (ex instanceof RuntimeException) {
+                    throw (RuntimeException) ex;
+                }
 
-         // Wrap other Exceptions. This shouldn't actually happen
-         // as we've already covered all the possibilities for doFilter
-         throw new RuntimeException(ex);
-      }
-   }
+                // Wrap other Exceptions. This shouldn't actually happen
+                // as we've already covered all the possibilities for doFilter
+                throw new RuntimeException(ex);
+            }
+        }
+    }
 }
-
-......
 ```
 
 **可以看到程序如果没有抛出异常，`ExceptionTranslationFilter`不会做任何事**
 
 ```java
-private void handleSpringSecurityException(HttpServletRequest request,
-			HttpServletResponse response, FilterChain chain, RuntimeException exception)
-			throws IOException, ServletException {
-		if (exception instanceof AuthenticationException) {
-			logger.debug(
-					"Authentication exception occurred; redirecting to authentication entry point",
-					exception);
+public class ExceptionTranslationFilter {
+    private void handleSpringSecurityException(HttpServletRequest request,
+                                               HttpServletResponse response, FilterChain chain, RuntimeException exception)
+            throws IOException, ServletException {
+        if (exception instanceof AuthenticationException) {
+            logger.debug(
+                    "Authentication exception occurred; redirecting to authentication entry point",
+                    exception);
 
-			sendStartAuthentication(request, response, chain,
-					(AuthenticationException) exception);
-		}
-		else if (exception instanceof AccessDeniedException) {
-			Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-			if (authenticationTrustResolver.isAnonymous(authentication) || authenticationTrustResolver.isRememberMe(authentication)) {
-				logger.debug(
-						"Access is denied (user is " + (authenticationTrustResolver.isAnonymous(authentication) ? "anonymous" : "not fully authenticated") + "); redirecting to authentication entry point",
-						exception);
+            sendStartAuthentication(request, response, chain,
+                    (AuthenticationException) exception);
+        } else if (exception instanceof AccessDeniedException) {
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            if (authenticationTrustResolver.isAnonymous(authentication) || authenticationTrustResolver.isRememberMe(authentication)) {
+                logger.debug(
+                        "Access is denied (user is " + (authenticationTrustResolver.isAnonymous(authentication) ? "anonymous" : "not fully authenticated") + "); redirecting to authentication entry point",
+                        exception);
 
-				sendStartAuthentication(
-						request,
-						response,
-						chain,
-						new InsufficientAuthenticationException(
-							messages.getMessage(
-								"ExceptionTranslationFilter.insufficientAuthentication",
-								"Full authentication is required to access this resource")));
-			}
-			else {
-				logger.debug(
-						"Access is denied (user is not anonymous); delegating to AccessDeniedHandler",
-						exception);
+                sendStartAuthentication(
+                        request,
+                        response,
+                        chain,
+                        new InsufficientAuthenticationException(
+                                messages.getMessage(
+                                        "ExceptionTranslationFilter.insufficientAuthentication",
+                                        "Full authentication is required to access this resource")));
+            } else {
+                logger.debug(
+                        "Access is denied (user is not anonymous); delegating to AccessDeniedHandler",
+                        exception);
 
-				accessDeniedHandler.handle(request, response,
-						(AccessDeniedException) exception);
-			}
-		}
-	}
+                accessDeniedHandler.handle(request, response,
+                        (AccessDeniedException) exception);
+            }
+        }
+    }
+}
 ```
 
 
@@ -299,15 +294,17 @@ access 接受的表达式：
 
 ```java
 @Override
-protected void configure(HttpSecurity http) throws Exception {
-  http
-    .authorizeRequests()
-    .antMatchers("/spitter/me").hasRole("SPITTER")
-    .antMatchers(HttpMethod.POST, "/spittles").hasRole("SPITTER")
-    .anyRequest().permitAll()
-    .and()
-    .requeresChannel()
-    .antMatchers("/spitter/form").requiresSecure();
+public class SecurityTest {
+    protected void configure(HttpSecurity http) throws Exception {
+        http
+                .authorizeRequests()
+                .antMatchers("/spitter/me").hasRole("SPITTER")
+                .antMatchers(HttpMethod.POST, "/spittles").hasRole("SPITTER")
+                .anyRequest().permitAll()
+                .and()
+                .requeresChannel()
+                .antMatchers("/spitter/form").requiresSecure();
+    }
 }
 ```
 
@@ -358,52 +355,48 @@ protected void configure(HttpSecurity http) throws Exception {
 ### 部分源码
 
 ```java
-......
-private static SecurityContextHolderStrategy strategy;
-......
+public class SecurityContextHolder {
 
-public static SecurityContext getContext() {
-		return strategy.getContext();
-}
+    private static SecurityContextHolderStrategy strategy;
 
-private static void initialize() {
-    if (!StringUtils.hasText(strategyName)) {
-        // Set default
-        strategyName = MODE_THREADLOCAL;
+
+    public static SecurityContext getContext() {
+        return strategy.getContext();
     }
 
-    if (strategyName.equals(MODE_THREADLOCAL)) {
-        // 默认策略
-        strategy = new ThreadLocalSecurityContextHolderStrategy();
-    }
-    else if (strategyName.equals(MODE_INHERITABLETHREADLOCAL)) {
-        strategy = new InheritableThreadLocalSecurityContextHolderStrategy();
-    }
-    else if (strategyName.equals(MODE_GLOBAL)) {
-        strategy = new GlobalSecurityContextHolderStrategy();
-    }
-    else {
-        // Try to load a custom strategy
-        try {
-            Class<?> clazz = Class.forName(strategyName);
-            Constructor<?> customStrategy = clazz.getConstructor();
-            strategy = (SecurityContextHolderStrategy) customStrategy.newInstance();
+    private static void initialize() {
+        if (!StringUtils.hasText(strategyName)) {
+            // Set default
+            strategyName = MODE_THREADLOCAL;
         }
-        catch (Exception ex) {
-            ReflectionUtils.handleReflectionException(ex);
-        }
-    }
 
-    initializeCount++;
+        if (strategyName.equals(MODE_THREADLOCAL)) {
+            // 默认策略
+            strategy = new ThreadLocalSecurityContextHolderStrategy();
+        } else if (strategyName.equals(MODE_INHERITABLETHREADLOCAL)) {
+            strategy = new InheritableThreadLocalSecurityContextHolderStrategy();
+        } else if (strategyName.equals(MODE_GLOBAL)) {
+            strategy = new GlobalSecurityContextHolderStrategy();
+        } else {
+            // Try to load a custom strategy
+            try {
+                Class<?> clazz = Class.forName(strategyName);
+                Constructor<?> customStrategy = clazz.getConstructor();
+                strategy = (SecurityContextHolderStrategy) customStrategy.newInstance();
+            } catch (Exception ex) {
+                ReflectionUtils.handleReflectionException(ex);
+            }
+        }
+
+        initializeCount++;
+    }
 }
-......
 ```
 
 默认使用`ThreadLocalSecurityContextHolderStrategy`储存，即`ThreadLocal`。
 
 ```java
 final class ThreadLocalSecurityContextHolderStrategy implements SecurityContextHolderStrategy {
-	.....
 
 	private static final ThreadLocal<SecurityContext> contextHolder = new ThreadLocal<>();
 
@@ -417,8 +410,6 @@ final class ThreadLocalSecurityContextHolderStrategy implements SecurityContextH
 
 		return ctx;
 	}
-
-    .....
 }
 ```
 
@@ -473,11 +464,10 @@ final class ThreadLocalSecurityContextHolderStrategy implements SecurityContextH
 
 ```java
 public class ProviderManager implements AuthenticationManager, MessageSourceAware, InitializingBean {
-    .....
+    
 	private List<AuthenticationProvider> providers = Collections.emptyList();
 
 	private AuthenticationManager parent;
-    .....
 
 	public Authentication authenticate(Authentication authentication)
 			throws AuthenticationException {
@@ -565,8 +555,6 @@ public class ProviderManager implements AuthenticationManager, MessageSourceAwar
 
 		throw lastException;
 	}
-
-    ......
 }
 ```
 
@@ -609,7 +597,7 @@ public class ProviderManager implements AuthenticationManager, MessageSourceAwar
 ```java
 public abstract class AbstractAuthenticationProcessingFilter extends GenericFilterBean
       implements ApplicationEventPublisherAware, MessageSourceAware {
-     ......
+     
      	protected ApplicationEventPublisher eventPublisher;
 	protected AuthenticationDetailsSource<HttpServletRequest, ?> authenticationDetailsSource = new WebAuthenticationDetailsSource();
 	private AuthenticationManager authenticationManager;
@@ -626,7 +614,7 @@ public abstract class AbstractAuthenticationProcessingFilter extends GenericFilt
 
 	private AuthenticationSuccessHandler successHandler = new SavedRequestAwareAuthenticationSuccessHandler();
 	private AuthenticationFailureHandler failureHandler = new SimpleUrlAuthenticationFailureHandler();
-     ......
+    
 	public void doFilter(ServletRequest req, ServletResponse res, FilterChain chain)
 			throws IOException, ServletException {
 
@@ -676,7 +664,7 @@ public abstract class AbstractAuthenticationProcessingFilter extends GenericFilt
 
 		successfulAuthentication(request, response, chain, authResult);
 	}
-     ......
+    
 }
 ```
 
@@ -689,7 +677,8 @@ public abstract class AbstractAuthenticationProcessingFilter extends GenericFilt
 3. 若认证失败：
 
    ```java
-   	protected void unsuccessfulAuthentication(HttpServletRequest request,
+   public class AbstractAuthenticationProcessingFilter {
+   	    protected void unsuccessfulAuthentication(HttpServletRequest request,
    			HttpServletResponse response, AuthenticationException failed)
    			throws IOException, ServletException {
            		// 1
@@ -699,54 +688,63 @@ public abstract class AbstractAuthenticationProcessingFilter extends GenericFilt
            		// 3 new SimpleUrlAuthenticationFailureHandler()
                    failureHandler.onAuthenticationFailure(request, response, failed);
        }
+   }
    ```
 
-4. 若认证成功：
+   4. 若认证成功：
 
-   ```java
-   		try {
-   			authResult = attemptAuthentication(request, response);
-   			if (authResult == null) {
-   				return;
-   			}
-              	// 1 new NullAuthenticatedSessionStrategy() ，登录成功首先通知SessionAuthenticationStrategy。
-   			sessionStrategy.onAuthentication(authResult, request, response);
-   		}
-   		catch (AuthenticationException failed) {
-   			unsuccessfulAuthentication(request, response, failed);
-   			return;
-   		}
+      ```java
+      public class AbstractAuthenticationProcessingFilter {
+           public void doFilter(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
+                throws IOException, ServletException {
+              // .....
+              try {
+                  authResult = attemptAuthentication(request, response);
+                  if (authResult == null) {
+                      return;
+                  }
+                     // 1 new NullAuthenticatedSessionStrategy() ，登录成功首先通知SessionAuthenticationStrategy。
+                  sessionStrategy.onAuthentication(authResult, request, response);
+              }
+              catch (AuthenticationException failed) {
+                  unsuccessfulAuthentication(request, response, failed);
+                  return;
+              }
+    
+              if (continueChainBeforeSuccessfulAuthentication) {
+                  chain.doFilter(request, response);
+              }
+              successfulAuthentication(request, response, chain, authResult);
+           }
+      }
+      ```
 
-   		if (continueChainBeforeSuccessfulAuthentication) {
-   			chain.doFilter(request, response);
-   		}
-   		successfulAuthentication(request, response, chain, authResult);
-   ```
+      ```java
+      public class AbstractAuthenticationProcessingFilter {
+          protected void successfulAuthentication(HttpServletRequest request,
+                  HttpServletResponse response, FilterChain chain, Authentication authResult)
+                  throws IOException, ServletException {
 
-   ```java
-   	protected void successfulAuthentication(HttpServletRequest request,
-   			HttpServletResponse response, FilterChain chain, Authentication authResult)
-   			throws IOException, ServletException {
+              if (logger.isDebugEnabled()) {
+                  logger.debug("Authentication success. Updating SecurityContextHolder to contain: "
+                          + authResult);
+              }
+              // 2 Later the SecurityContextPersistenceFilter saves the SecurityContext to the HttpSession.
+              SecurityContextHolder.getContext().setAuthentication(authResult);
+              // 3
+              rememberMeServices.loginSuccess(request, response, authResult);
 
-   		if (logger.isDebugEnabled()) {
-   			logger.debug("Authentication success. Updating SecurityContextHolder to contain: "
-   					+ authResult);
-   		}
-   		// 2 Later the SecurityContextPersistenceFilter saves the SecurityContext to the HttpSession.
-   		SecurityContextHolder.getContext().setAuthentication(authResult);
-   		// 3
-   		rememberMeServices.loginSuccess(request, response, authResult);
-
-   		// Fire event
-   		if (this.eventPublisher != null) {
-               // 4 发布 InteractiveAuthenticationSuccessEvent
-   			eventPublisher.publishEvent(new InteractiveAuthenticationSuccessEvent(
-   					authResult, this.getClass()));
-   		}
-   		// 5 new SavedRequestAwareAuthenticationSuccessHandler()
-   		successHandler.onAuthenticationSuccess(request, response, authResult);
-   	}
-   ```
+              // Fire event
+              if (this.eventPublisher != null) {
+                  // 4 发布 InteractiveAuthenticationSuccessEvent
+                  eventPublisher.publishEvent(new InteractiveAuthenticationSuccessEvent(
+                          authResult, this.getClass()));
+              }
+              // 5 new SavedRequestAwareAuthenticationSuccessHandler()
+              successHandler.onAuthenticationSuccess(request, response, authResult);
+          }
+      }
+      ```
 
 ## Form Login
 
@@ -761,13 +759,15 @@ public abstract class AbstractAuthenticationProcessingFilter extends GenericFilt
 配置示例：
 
 ```java
-protected void configure(HttpSecurity http) throws Exception {
-	http
-		// ...
-		.formLogin(form -> form
-			.loginPage("/login")
-			.permitAll()
-		);
+public class SecurityTest {
+    protected void configure(HttpSecurity http) throws Exception {
+        http
+                // ...
+                .formLogin(form -> form
+                        .loginPage("/login")
+                        .permitAll()
+                );
+    }
 }
 ```
 
@@ -872,19 +872,21 @@ public class BasicAuthenticationFilter extends OncePerRequestFilter {
 例如：
 
 ```java
-@Bean
-public UserDetailsService users() {
-	UserDetails user = User.builder()
-		.username("user")
-		.password("{bcrypt}$2a$10$GRLdNijSQMUvl/au9ofL.eDwmoohzzS7.rmNSJZ.0FxO/BTk76klW")
-		.roles("USER")
-		.build();
-	UserDetails admin = User.builder()
-		.username("admin")
-		.password("{bcrypt}$2a$10$GRLdNijSQMUvl/au9ofL.eDwmoohzzS7.rmNSJZ.0FxO/BTk76klW")
-		.roles("USER", "ADMIN")
-		.build();
-	return new InMemoryUserDetailsManager(user, admin);
+public class AuthenticationConfig {
+    @Bean
+    public UserDetailsService users() {
+        UserDetails user = User.builder()
+                .username("user")
+                .password("{bcrypt}$2a$10$GRLdNijSQMUvl/au9ofL.eDwmoohzzS7.rmNSJZ.0FxO/BTk76klW")
+                .roles("USER")
+                .build();
+        UserDetails admin = User.builder()
+                .username("admin")
+                .password("{bcrypt}$2a$10$GRLdNijSQMUvl/au9ofL.eDwmoohzzS7.rmNSJZ.0FxO/BTk76klW")
+                .roles("USER", "ADMIN")
+                .build();
+        return new InMemoryUserDetailsManager(user, admin);
+    }
 }
 ```
 
@@ -905,9 +907,11 @@ public UserDetailsService users() {
 例如：
 
 ```java
-@Bean
-CustomUserDetailsService customUserDetailsService() {
-	return new CustomUserDetailsService();
+public class AuthenticationConfig {
+    @Bean
+    CustomUserDetailsService customUserDetailsService() {
+        return new CustomUserDetailsService();
+    }
 }
 ```
 
@@ -1067,23 +1071,25 @@ https://docs.spring.io/spring-security/reference/servlet/authentication/jaas.htm
 ## 自定义配置
 
 ```java
-protected void configure(HttpSecurity http) throws Exception {
-    http
-        .logout(logout -> logout
-            // logout 触发的url
-            .logoutUrl("/my/logout")
-            // logout完成后重定向url
-            .logoutSuccessUrl("/my/index")
-            // 自定义logoutSuccessHandler，配置该属性logoutSuccessUrl失效
-            .logoutSuccessHandler(logoutSuccessHandler)
-            // 默认是true，可以通过SecurityContextLogoutHandler更改
-            .invalidateHttpSession(true)
-            // 添加一个logoutHandler，SecurityContextLogoutHandler默认是最后一个。
-            .addLogoutHandler(logoutHandler)
-            // 删除名为 cookieNamesToClear 的cookie，这是CookieClearingLogoutHandler的简单设置方式。
-            .deleteCookies(cookieNamesToClear)
-        )
-        ...
+public class AuthenticationConfig {
+    protected void configure(HttpSecurity http) throws Exception {
+        http
+                .logout(logout -> logout
+                        // logout 触发的url
+                        .logoutUrl("/my/logout")
+                        // logout完成后重定向url
+                        .logoutSuccessUrl("/my/index")
+                        // 自定义logoutSuccessHandler，配置该属性logoutSuccessUrl失效
+                        .logoutSuccessHandler(logoutSuccessHandler)
+                        // 默认是true，可以通过SecurityContextLogoutHandler更改
+                        .invalidateHttpSession(true)
+                        // 添加一个logoutHandler，SecurityContextLogoutHandler默认是最后一个。
+                        .addLogoutHandler(logoutHandler)
+                        // 删除名为 cookieNamesToClear 的cookie，这是CookieClearingLogoutHandler的简单设置方式。
+                        .deleteCookies(cookieNamesToClear)
+                )
+        
+    }
 }
 ```
 
@@ -1094,10 +1100,12 @@ protected void configure(HttpSecurity http) throws Exception {
 如果需要监听这些事件需要配置一个 `AuthenticationEventPublisher`：
 
 ```java
-@Bean
-public AuthenticationEventPublisher authenticationEventPublisher
-        (ApplicationEventPublisher applicationEventPublisher) {
-    return new DefaultAuthenticationEventPublisher(applicationEventPublisher);
+public class AuthenticationConfig {
+    @Bean
+    public AuthenticationEventPublisher authenticationEventPublisher
+            (ApplicationEventPublisher applicationEventPublisher) {
+        return new DefaultAuthenticationEventPublisher(applicationEventPublisher);
+    }
 }
 ```
 
@@ -1118,30 +1126,34 @@ public AuthenticationEventPublisher authenticationEventPublisher
 如果需要额外的映射，可以自定义配置：
 
 ```java
-@Bean
-public AuthenticationEventPublisher authenticationEventPublisher
-        (ApplicationEventPublisher applicationEventPublisher) {
-    Map<Class<? extends AuthenticationException>,
-        Class<? extends AbstractAuthenticationFailureEvent>> mapping =
-            Collections.singletonMap(FooException.class, FooEvent.class);
-    AuthenticationEventPublisher authenticationEventPublisher =
-        new DefaultAuthenticationEventPublisher(applicationEventPublisher);
-    authenticationEventPublisher.setAdditionalExceptionMappings(mapping);
-    return authenticationEventPublisher;
+public class AuthenticationConfig {
+    @Bean
+    public AuthenticationEventPublisher authenticationEventPublisher
+            (ApplicationEventPublisher applicationEventPublisher) {
+        Map<Class<? extends AuthenticationException>,
+                Class<? extends AbstractAuthenticationFailureEvent>> mapping =
+                Collections.singletonMap(FooException.class, FooEvent.class);
+        AuthenticationEventPublisher authenticationEventPublisher =
+                new DefaultAuthenticationEventPublisher(applicationEventPublisher);
+        authenticationEventPublisher.setAdditionalExceptionMappings(mapping);
+        return authenticationEventPublisher;
+    }
 }
 ```
 
 或者任何`AuthenticationException`使用同一个事件：
 
 ```java
-@Bean
-public AuthenticationEventPublisher authenticationEventPublisher
-        (ApplicationEventPublisher applicationEventPublisher) {
-    AuthenticationEventPublisher authenticationEventPublisher =
-        new DefaultAuthenticationEventPublisher(applicationEventPublisher);
-    authenticationEventPublisher.setDefaultAuthenticationFailureEvent
-        (GenericAuthenticationFailureEvent.class);
-    return authenticationEventPublisher;
+public class AuthenticationConfig {
+    @Bean
+    public AuthenticationEventPublisher authenticationEventPublisher
+            (ApplicationEventPublisher applicationEventPublisher) {
+        AuthenticationEventPublisher authenticationEventPublisher =
+                new DefaultAuthenticationEventPublisher(applicationEventPublisher);
+        authenticationEventPublisher.setDefaultAuthenticationFailureEvent
+                (GenericAuthenticationFailureEvent.class);
+        return authenticationEventPublisher;
+    }
 }
 ```
 
@@ -1162,98 +1174,98 @@ public interface GrantedAuthority extends Serializable {
 对是否能进行授权进行检查。
 
 ```java
-	protected InterceptorStatusToken beforeInvocation(Object object) {
-		Assert.notNull(object, "Object was null");
-		final boolean debug = logger.isDebugEnabled();
+public class AbstractSecurityInterceptor {
+    protected InterceptorStatusToken beforeInvocation(Object object) {
+        Assert.notNull(object, "Object was null");
+        final boolean debug = logger.isDebugEnabled();
 
-		if (!getSecureObjectClass().isAssignableFrom(object.getClass())) {
-			throw new IllegalArgumentException(
-					"Security invocation attempted for object "
-							+ object.getClass().getName()
-							+ " but AbstractSecurityInterceptor only configured to support secure objects of type: "
-							+ getSecureObjectClass());
-		}
+        if (!getSecureObjectClass().isAssignableFrom(object.getClass())) {
+            throw new IllegalArgumentException(
+                    "Security invocation attempted for object "
+                            + object.getClass().getName()
+                            + " but AbstractSecurityInterceptor only configured to support secure objects of type: "
+                            + getSecureObjectClass());
+        }
 
-		Collection<ConfigAttribute> attributes = this.obtainSecurityMetadataSource()
-				.getAttributes(object);
+        Collection<ConfigAttribute> attributes = this.obtainSecurityMetadataSource()
+                .getAttributes(object);
 
-		if (attributes == null || attributes.isEmpty()) {
-			if (rejectPublicInvocations) {
-				throw new IllegalArgumentException(
-						"Secure object invocation "
-								+ object
-								+ " was denied as public invocations are not allowed via this interceptor. "
-								+ "This indicates a configuration error because the "
-								+ "rejectPublicInvocations property is set to 'true'");
-			}
+        if (attributes == null || attributes.isEmpty()) {
+            if (rejectPublicInvocations) {
+                throw new IllegalArgumentException(
+                        "Secure object invocation "
+                                + object
+                                + " was denied as public invocations are not allowed via this interceptor. "
+                                + "This indicates a configuration error because the "
+                                + "rejectPublicInvocations property is set to 'true'");
+            }
 
-			if (debug) {
-				logger.debug("Public object - authentication not attempted");
-			}
+            if (debug) {
+                logger.debug("Public object - authentication not attempted");
+            }
 
-			publishEvent(new PublicInvocationEvent(object));
+            publishEvent(new PublicInvocationEvent(object));
 
-			return null; // no further work post-invocation
-		}
+            return null; // no further work post-invocation
+        }
 
-		if (debug) {
-			logger.debug("Secure object: " + object + "; Attributes: " + attributes);
-		}
+        if (debug) {
+            logger.debug("Secure object: " + object + "; Attributes: " + attributes);
+        }
 
-		if (SecurityContextHolder.getContext().getAuthentication() == null) {
-			credentialsNotFound(messages.getMessage(
-					"AbstractSecurityInterceptor.authenticationNotFound",
-					"An Authentication object was not found in the SecurityContext"),
-					object, attributes);
-		}
+        if (SecurityContextHolder.getContext().getAuthentication() == null) {
+            credentialsNotFound(messages.getMessage(
+                            "AbstractSecurityInterceptor.authenticationNotFound",
+                            "An Authentication object was not found in the SecurityContext"),
+                    object, attributes);
+        }
 
-		Authentication authenticated = authenticateIfRequired();
+        Authentication authenticated = authenticateIfRequired();
 
-		// Attempt authorization
-		try {
-			this.accessDecisionManager.decide(authenticated, object, attributes);
-		}
-		catch (AccessDeniedException accessDeniedException) {
-			publishEvent(new AuthorizationFailureEvent(object, attributes, authenticated,
-					accessDeniedException));
+        // Attempt authorization
+        try {
+            this.accessDecisionManager.decide(authenticated, object, attributes);
+        } catch (AccessDeniedException accessDeniedException) {
+            publishEvent(new AuthorizationFailureEvent(object, attributes, authenticated,
+                    accessDeniedException));
 
-			throw accessDeniedException;
-		}
+            throw accessDeniedException;
+        }
 
-		if (debug) {
-			logger.debug("Authorization successful");
-		}
+        if (debug) {
+            logger.debug("Authorization successful");
+        }
 
-		if (publishAuthorizationSuccess) {
-			publishEvent(new AuthorizedEvent(object, attributes, authenticated));
-		}
+        if (publishAuthorizationSuccess) {
+            publishEvent(new AuthorizedEvent(object, attributes, authenticated));
+        }
 
-		// Attempt to run as a different user
-		Authentication runAs = this.runAsManager.buildRunAs(authenticated, object,
-				attributes);
+        // Attempt to run as a different user
+        Authentication runAs = this.runAsManager.buildRunAs(authenticated, object,
+                attributes);
 
-		if (runAs == null) {
-			if (debug) {
-				logger.debug("RunAsManager did not change Authentication object");
-			}
+        if (runAs == null) {
+            if (debug) {
+                logger.debug("RunAsManager did not change Authentication object");
+            }
 
-			// no further work post-invocation
-			return new InterceptorStatusToken(SecurityContextHolder.getContext(), false,
-					attributes, object);
-		}
-		else {
-			if (debug) {
-				logger.debug("Switching to RunAs Authentication: " + runAs);
-			}
+            // no further work post-invocation
+            return new InterceptorStatusToken(SecurityContextHolder.getContext(), false,
+                    attributes, object);
+        } else {
+            if (debug) {
+                logger.debug("Switching to RunAs Authentication: " + runAs);
+            }
 
-			SecurityContext origCtx = SecurityContextHolder.getContext();
-			SecurityContextHolder.setContext(SecurityContextHolder.createEmptyContext());
-			SecurityContextHolder.getContext().setAuthentication(runAs);
+            SecurityContext origCtx = SecurityContextHolder.getContext();
+            SecurityContextHolder.setContext(SecurityContextHolder.createEmptyContext());
+            SecurityContextHolder.getContext().setAuthentication(runAs);
 
-			// need to revert to token.Authenticated post-invocation
-			return new InterceptorStatusToken(origCtx, true, attributes, object);
-		}
-	}
+            // need to revert to token.Authenticated post-invocation
+            return new InterceptorStatusToken(origCtx, true, attributes, object);
+        }
+    }
+}
 ```
 
 ### AccessDecisionManager
@@ -1319,29 +1331,31 @@ public interface AccessDecisionVoter<S> {
 这是最常用的`AccessDecisionVoter`，通过`role name`来判断是否授权。
 
 ```java
-	public int vote(Authentication authentication, Object object,
-			Collection<ConfigAttribute> attributes) {
-		if (authentication == null) {
-			return ACCESS_DENIED;
-		}
-		int result = ACCESS_ABSTAIN;
-		Collection<? extends GrantedAuthority> authorities = extractAuthorities(authentication);
+public class RoleVoter {
+    public int vote(Authentication authentication, Object object,
+                    Collection<ConfigAttribute> attributes) {
+        if (authentication == null) {
+            return ACCESS_DENIED;
+        }
+        int result = ACCESS_ABSTAIN;
+        Collection<? extends GrantedAuthority> authorities = extractAuthorities(authentication);
 
-		for (ConfigAttribute attribute : attributes) {
-			if (this.supports(attribute)) {
-				result = ACCESS_DENIED;
+        for (ConfigAttribute attribute : attributes) {
+            if (this.supports(attribute)) {
+                result = ACCESS_DENIED;
 
-				// Attempt to find a matching granted authority
-				for (GrantedAuthority authority : authorities) {
-					if (attribute.getAttribute().equals(authority.getAuthority())) {
-						return ACCESS_GRANTED;
-					}
-				}
-			}
-		}
+                // Attempt to find a matching granted authority
+                for (GrantedAuthority authority : authorities) {
+                    if (attribute.getAttribute().equals(authority.getAuthority())) {
+                        return ACCESS_GRANTED;
+                    }
+                }
+            }
+        }
 
-		return result;
-	}
+        return result;
+    }
+}
 ```
 
 如果`ConfigAttribute `以`rolePrefix`为前缀，默认`ROLE_`，将会进入投票阶段，如果存在`GrantedAuthority.getAuthority()  `与`ConfigAttribute `能完全匹配，则投同意票，否则投反对票。如果没有`ConfigAttribute `以`rolePrefix`为前缀，则弃权。
@@ -1351,39 +1365,41 @@ public interface AccessDecisionVoter<S> {
 用于区分匿名用户、记住我身份认证用户、完全身份认证用户(`fully-authenticated`)，`fully-authenticated`表示不是`anonymous`或`remember-me`,而是通过正常认证途径的用户。优先级是按照`IS_AUTHENTICATED_FULLY`>`IS_AUTHENTICATED_REMEMBERED`>`IS_AUTHENTICATED_ANONYMOUSLY`;
 
 ```java
-	public int vote(Authentication authentication, Object object,
-			Collection<ConfigAttribute> attributes) {
-		int result = ACCESS_ABSTAIN;
+public class AuthenticatedVoter {
+    public int vote(Authentication authentication, Object object,
+                    Collection<ConfigAttribute> attributes) {
+        int result = ACCESS_ABSTAIN;
 
-		for (ConfigAttribute attribute : attributes) {
-			if (this.supports(attribute)) {
-				result = ACCESS_DENIED;
+        for (ConfigAttribute attribute : attributes) {
+            if (this.supports(attribute)) {
+                result = ACCESS_DENIED;
 
-				if (IS_AUTHENTICATED_FULLY.equals(attribute.getAttribute())) {
-					if (isFullyAuthenticated(authentication)) {
-						return ACCESS_GRANTED;
-					}
-				}
+                if (IS_AUTHENTICATED_FULLY.equals(attribute.getAttribute())) {
+                    if (isFullyAuthenticated(authentication)) {
+                        return ACCESS_GRANTED;
+                    }
+                }
 
-				if (IS_AUTHENTICATED_REMEMBERED.equals(attribute.getAttribute())) {
-					if (authenticationTrustResolver.isRememberMe(authentication)
-							|| isFullyAuthenticated(authentication)) {
-						return ACCESS_GRANTED;
-					}
-				}
+                if (IS_AUTHENTICATED_REMEMBERED.equals(attribute.getAttribute())) {
+                    if (authenticationTrustResolver.isRememberMe(authentication)
+                            || isFullyAuthenticated(authentication)) {
+                        return ACCESS_GRANTED;
+                    }
+                }
 
-				if (IS_AUTHENTICATED_ANONYMOUSLY.equals(attribute.getAttribute())) {
-					if (authenticationTrustResolver.isAnonymous(authentication)
-							|| isFullyAuthenticated(authentication)
-							|| authenticationTrustResolver.isRememberMe(authentication)) {
-						return ACCESS_GRANTED;
-					}
-				}
-			}
-		}
+                if (IS_AUTHENTICATED_ANONYMOUSLY.equals(attribute.getAttribute())) {
+                    if (authenticationTrustResolver.isAnonymous(authentication)
+                            || isFullyAuthenticated(authentication)
+                            || authenticationTrustResolver.isRememberMe(authentication)) {
+                        return ACCESS_GRANTED;
+                    }
+                }
+            }
+        }
 
-		return result;
-	}
+        return result;
+    }
+}
 ```
 
 ## After Invocation Handling
@@ -1426,31 +1442,35 @@ public interface AccessDecisionVoter<S> {
 6. 如果`granted`，`FilterSecurityInterceptor`继续交给`FilterChain`处理。
 
 ```java
-//所有的请求需要授权
-protected void configure(HttpSecurity http) throws Exception {
-	http
-		// ...
-		.authorizeHttpRequests(authorize -> authorize
-			.anyRequest().authenticated()
-		);
+public class SecurityConfig {
+    //所有的请求需要授权
+    protected void configure(HttpSecurity http) throws Exception {
+        http
+                // ...
+                .authorizeHttpRequests(authorize -> authorize
+                        .anyRequest().authenticated()
+                );
+    }
 }
 ```
 
 ```java
-// 不同的请求不同的权限 和 不同的优先级
-protected void configure(HttpSecurity http) throws Exception {
-	http
-		// ...
-		.authorizeHttpRequests(authorize -> authorize
-             // 任何用户都能访问
-			.mvcMatchers("/resources/**", "/signup", "/about").permitAll()
-             // 具有ROLE_ADMIN角色的用户可以访问,hasRole方法不需要ROLE_前缀
-			.mvcMatchers("/admin/**").hasRole("ADMIN")
-             // 具有ROLE_ADMIN角色或者ROLE_DBA角色的用户可以访问,hasRole表达式不需要ROLE_前缀
-			.mvcMatchers("/db/**").access("hasRole('ADMIN') and hasRole('DBA')")
-             // 所有用户都不能访问
-			.anyRequest().denyAll()
-		);
+public class SecurityConfig {
+    // 不同的请求不同的权限 和 不同的优先级
+    protected void configure(HttpSecurity http) throws Exception {
+        http
+                // ...
+                .authorizeHttpRequests(authorize -> authorize
+                        // 任何用户都能访问
+                        .mvcMatchers("/resources/**", "/signup", "/about").permitAll()
+                        // 具有ROLE_ADMIN角色的用户可以访问,hasRole方法不需要ROLE_前缀
+                        .mvcMatchers("/admin/**").hasRole("ADMIN")
+                        // 具有ROLE_ADMIN角色或者ROLE_DBA角色的用户可以访问,hasRole表达式不需要ROLE_前缀
+                        .mvcMatchers("/db/**").access("hasRole('ADMIN') and hasRole('DBA')")
+                        // 所有用户都不能访问
+                        .anyRequest().denyAll()
+                );
+    }
 }
 ```
 
@@ -1488,12 +1508,17 @@ public class WebSecurity {
 				...
 		}
 }
+
 //然后
-http
-    .authorizeHttpRequests(authorize -> authorize
-        .antMatchers("/user/**").access("@webSecurity.check(authentication,request)")
-        ...
-    )
+public class SecurityConfig {
+
+    protected void configure(HttpSecurity http) throws Exception {
+        http
+                .authorizeHttpRequests(authorize -> authorize
+                        .antMatchers("/user/**").access("@webSecurity.check(authentication,request)")
+                );
+    }
+}
 ```
 
 ### Path Variables in Web Security Expressions
@@ -1504,15 +1529,18 @@ http
 //首先
 public class WebSecurity {
 		public boolean checkUserId(Authentication authentication, int id) {
-				...
+				
 		}
 }
 //然后
-http
-	.authorizeHttpRequests(authorize -> authorize
-		.antMatchers("/user/{userId}/**").access("@webSecurity.checkUserId(authentication,#userId)")
-		...
-	);
+public class SecurityConfig {
+
+    protected void configure(HttpSecurity http) throws Exception {
+        http
+                .authorizeHttpRequests(authorize -> authorize
+                        .antMatchers("/user/{userId}/**").access("@webSecurity.checkUserId(authentication,#userId)"));
+    }
+}
 ```
 
 ## Method Security Expressions

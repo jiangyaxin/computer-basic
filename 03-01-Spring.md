@@ -108,10 +108,11 @@
 2. 依次从缓存中获取bean，这里的bean有个可能是 FactoryBean 也有可能是普通bean，并且可能没有实例化，缓存有三个：
 
    ```java
+   public class DefaultSingletonBeanRegistry {
      /**
       * 存放的是单例 bean 的映射。
       * 对应关系为 bean name --> bean instance
-     */
+      */
      private final Map<String, Object> singletonObjects = new ConcurrentHashMap<>(256);
 
     /**
@@ -127,6 +128,7 @@
      * bean 在创建过程中就已经加入到 earlySingletonObjects 中了，所以当在 bean 的创建过程中，就可以通过 getBean() 方法获取。
      */
      private final Map<String, Object> earlySingletonObjects = new HashMap<>(16);
+   }
    ```
 3. 如果从缓存中获取到bean，由于bean不是最终的bean，所以需要调用 getObjectForBeanInstance(...) 获取bean实例 或 FactoryBean.getObject() 的对象。
 4. 如果没有从缓存中获取到bean 先从 parentBeanFactory 获取 Bean。
@@ -218,21 +220,25 @@ Spring不仅支持classpath:、file:、http:等各种前缀开头的资源文件
 ![102](assets/102.png)
 
 ```java
-// 获取 ConversionService。
-ConfigurableWebApplicationContext applicationContext = (ConfigurableWebApplicationContext) SpringContextHolder.getApplicationContext();
-ConversionService conversionService = applicationContext.getBeanFactory().getConversionService();
-// 或者
-ConversionService conversionService = ApplicationConversionService.getSharedInstance();
-// 创建 BeanWrapper
-BeanWrapper beanWrapper = PropertyAccessorFactory.forBeanPropertyAccess(appContext);
-beanWrapper.setConversionService(conversionService);
-// 使用 BeanWrapper 操作bean
-PropertyValue brandValue = new PropertyValue("brand","东风");   
-PropertyValue maxSpeedValue = new PropertyValue("maxSpeed",333);    
-PropertyValue priceValue = new PropertyValue("price",202020);    
-beanWrapper.setPropertyValue(brandValue);    
-beanWrapper.setPropertyValue(maxSpeedValue);    
-beanWrapper.setPropertyValue(priceValue);
+public class BeanWrapperTest {
+    public void test() {
+        // 获取 ConversionService。
+        ConfigurableWebApplicationContext applicationContext = (ConfigurableWebApplicationContext) SpringContextHolder.getApplicationContext();
+        ConversionService conversionService = applicationContext.getBeanFactory().getConversionService();
+        // 或者
+        ConversionService conversionService = ApplicationConversionService.getSharedInstance();
+        // 创建 BeanWrapper
+        BeanWrapper beanWrapper = PropertyAccessorFactory.forBeanPropertyAccess(appContext);
+        beanWrapper.setConversionService(conversionService);
+        // 使用 BeanWrapper 操作bean
+        PropertyValue brandValue = new PropertyValue("brand", "东风");
+        PropertyValue maxSpeedValue = new PropertyValue("maxSpeed", 333);
+        PropertyValue priceValue = new PropertyValue("price", 202020);
+        beanWrapper.setPropertyValue(brandValue);
+        beanWrapper.setPropertyValue(maxSpeedValue);
+        beanWrapper.setPropertyValue(priceValue);
+    }
+}
 ```
 
 # 上下文
@@ -306,14 +312,18 @@ ApplicationContext 继承 ResourcePatternResolver 的 getResources() 方法可�
 表达的变量可能从 EvaluationContext 和 rootObject 取。
 
 ```java
-// 创建解析器
-ExpressionParser parser = new SpelExpressionParser();
-// 生成表达式
-Expression expression = parser.parseExpression("#p.name");
-// 结合 EvaluationContext 和 rootObject 计算结果
-expression.getValue();
-expression.getValue(EvaluationContext);
-expression.getValue(rootObject);
+public class SpelExpressionParserTest {
+    public void test() {
+        // 创建解析器
+        ExpressionParser parser = new SpelExpressionParser();
+        // 生成表达式
+        Expression expression = parser.parseExpression("#p.name");
+        // 结合 EvaluationContext 和 rootObject 计算结果
+        expression.getValue();
+        expression.getValue(EvaluationContext);
+        expression.getValue(rootObject);
+    }
+}
 ```
 
 ## MessageSource
@@ -548,55 +558,57 @@ public void setDessert(Dessert dessert) {
 * Spring表达式语言（SpEL）：#{...} 形式,例如
 
 ```java
-//1. 它的最终结果是计算表达式的那一刻当前时间的毫秒数。T () 表达式会将java.lang.System视为Java中对应的类型，因此可以调用其static修饰的currentTimeMillis()方法。
-"# {T(System).currentTimeMillis()}"
-//2. SpEL表达式可以引用其他的bean或其他bean的属性。
-   //例如，引用sgtPeppers的bean
-   "{ sgtPeppers }"
-   //例如，如下的表达式会计算得到ID为sgtPeppers的bean的artist属性：
-   "# { sgtPeppers.artist }"
-//3. 还可以通过systemProperties对象引用系统属性：
-   "# { systemProperties['disc.title'] }"
-//4. 表示字面值：
-   "# { 3.1415926 }"
-   "# { 9.87E4 }"
-   "# { 'Hello' }"
-   "# { false }"
-//5. 引用其他的bean的方法
-   "# { artistSelector.selectArtist () }"
-   //为了防止方法值为null，抛出异常，可以使用“?.”
-   //不是null，正常返回；如果是null，不执行后面的方法，直接返回null
-   "# { artistSelector.selectArtist ()?.toUpperCase() }"
-//6. 如果要在SpEL中访问类作用域的方法和常量的话，要依赖T() 这个关键的运算符。
-   "# { T(java.lang.Math).PI }"
-   "# { T(java.lang.Math).random() }"
-//7. 还可以将运算符用在表达式上，如：
-   "# { 2 * T(java.lang.Math).PI * circle.radius }"
-   "# { disc.title + ' by ' + disc.artist }"
-//8. 比较数字相等的写法
-   "# { counter.total == 100 }"
-   "# { counter.total eq 100 }"
-//9. 三元运算符
+public class SpELTest {
+    //1. 它的最终结果是计算表达式的那一刻当前时间的毫秒数。T () 表达式会将java.lang.System视为Java中对应的类型，因此可以调用其static修饰的currentTimeMillis()方法。
+    "# {T(System).currentTimeMillis()}"
+    //2. SpEL表达式可以引用其他的bean或其他bean的属性。
+    //例如，引用sgtPeppers的bean
+    "{ sgtPeppers }"
+    //例如，如下的表达式会计算得到ID为sgtPeppers的bean的artist属性：
+    "# { sgtPeppers.artist }"
+    //3. 还可以通过systemProperties对象引用系统属性：
+    "# { systemProperties['disc.title'] }"
+    //4. 表示字面值：
+    "# { 3.1415926 }"
+    "# { 9.87E4 }"
+    "# { 'Hello' }"
+    "# { false }"
+    //5. 引用其他的bean的方法
+    "# { artistSelector.selectArtist () }"
+    //为了防止方法值为null，抛出异常，可以使用“?.”
+    //不是null，正常返回；如果是null，不执行后面的方法，直接返回null
+    "# { artistSelector.selectArtist ()?.toUpperCase() }"
+    //6. 如果要在SpEL中访问类作用域的方法和常量的话，要依赖T() 这个关键的运算符。
+    "# { T(java.lang.Math).PI }"
+    "# { T(java.lang.Math).random() }"
+    //7. 还可以将运算符用在表达式上，如：
+    "# { 2 * T(java.lang.Math).PI * circle.radius }"
+    "# { disc.title + ' by ' + disc.artist }"
+    //8. 比较数字相等的写法
+    "# { counter.total == 100 }"
+    "# { counter.total eq 100 }"
+    //9. 三元运算符
     "# { scoreboard.score > 1000 ? "Winner!" : "Loser" }"
     "# { disc.title ?: 'Rattle and Hum' } " // 如果disc.title的值为空，返回'Rattle and Hum'
-//10. 支持正则表达式
+    //10. 支持正则表达式
     "# { admin.email matches '[a-zA-Z0-9.*%+-]+@[a-zA-Z0-9.*]+\.com' }"
-//11. 支持与集合和数组相关的表达式
+    //11. 支持与集合和数组相关的表达式
     "# { jukebox.songs[4].title }"
     "# { jukebox.songs[T(java.lang.Math).random() * jukebox.songs.size()].title }"
     "# { 'This is a test' [3] }" // 引用第4个字符 - “s”
-//12. 支持查询运算符
+    //12. 支持查询运算符
     //例如你希望得到jukebox中artist属性为Aerosmith的所有歌曲：
     "# { jukebox.songs.?[artist eq 'Aerosmith'] }"
     //查找列表中第一个artist属性为Aerosmith的歌曲：
     "# { jukebox.songs.^[artist eq 'Aerosmith'] }"
     //查找列表中最后一个artist属性为Aerosmith的歌曲：
     "# { jukebox.songs.$[artist eq 'Aerosmith'] }"
-//13. 支持投影运算符
+    //13. 支持投影运算符
     //假设我们不想要歌曲对象的集合，而是所有歌曲名称的集合。如下表达式会将title属性投影到一个新的String类型的集合中：
     "# { jukebox.songs.![title]}"
     //获取Aerosmith所有歌曲的title
     "# { jukebox.songs.?[artist eq 'Aerosmith'].![title] }"
+}
 ```
 
 # 重试
@@ -697,8 +709,12 @@ public void setDessert(Dessert dessert) {
 * 缓冲数据：
 
 ```java
-Flux.just("apple", "orange", "banana", "kiwi", "strawberry")
-Flux<List<String>> bufferedFlux = fruitFlux.buffer(3)
+public class FluxTest {
+    public void test() {
+        Flux.just("apple", "orange", "banana", "kiwi", "strawberry");
+        Flux<List<String>> bufferedFlux = fruitFlux.buffer(3);
+    }
+}
 ```
 
 会生成一个新的Flux
@@ -706,13 +722,21 @@ Flux<List<String>> bufferedFlux = fruitFlux.buffer(3)
 * 收集数据：
 
 ```java
-Flux<String> fruitFlux = Flux.just("apple", "orange", "banana", "kiwi", "strawberry");
-Mono<List<String>> fruitListMono = fruitFlux.collectList();
+public class FluxTest {
+    public void test() {
+        Flux<String> fruitFlux = Flux.just("apple", "orange", "banana", "kiwi", "strawberry");
+        Mono<List<String>> fruitListMono = fruitFlux.collectList();
+    }
+}
 ```
 
 ```java
-Flux<String> animalFlux = Flux.just("aardvark", "elephant", "koala", "eagle", "kangaroo");
-Mono<Map<Character, String>> animalMapMono = animalFlux.collectMap(a -> a.charAt(0));
+public class FluxTest {
+    public void test() {
+        Flux<String> animalFlux = Flux.just("aardvark", "elephant", "koala", "eagle", "kangaroo");
+        Mono<Map<Character, String>> animalMapMono = animalFlux.collectMap(a -> a.charAt(0));
+    }
+}
 ```
 
 转换：

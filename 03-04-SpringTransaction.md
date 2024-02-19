@@ -78,19 +78,25 @@ public class test {
 ```
 
 ```java
-// 使用 transactionTemplate，无须捕获和提交
-// 1. 注入TransactionTemplate
-private TransactionTemplate transactionTemplate;
+public class TransactionTemplateTest {
 
-// 2. 执行业务，无返回值
-transactionTemplate.executeWithoutResult(status -> {
-    //执行业务
-});
-// 3. 执行业务，有返回值
-T result = transactionTemplate.execute(status -> {
-    //执行业务
-    return T;
-});
+    // 使用 transactionTemplate，无须捕获和提交
+    // 1. 注入TransactionTemplate
+    @Autowire
+    private TransactionTemplate transactionTemplate;
+
+    public void test() {
+        // 2. 执行业务，无返回值
+        transactionTemplate.executeWithoutResult(status -> {
+            //执行业务
+        });
+        // 3. 执行业务，有返回值
+        T result = transactionTemplate.execute(status -> {
+            //执行业务
+            return T;
+        });
+    }
+}
 ```
 
 * 声明性事务：

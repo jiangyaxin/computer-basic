@@ -38,7 +38,7 @@ OAuth定义了四种角色：
 
 ## 协议流程
 
-```java
+```
  +--------+                               +---------------+
  |        |--(A)- Authorization Request ->|   Resource    |
  |        |                               |     Owner     |
@@ -458,7 +458,7 @@ public final class ClientRegistration {
 
 ```java
 ClientRegistration clientRegistration =
-    ClientRegistrations.fromIssuerLocation("https://idp.example.com/issuer").build();
+ClientRegistrations.fromIssuerLocation("https://idp.example.com/issuer").build();
 ```
 
 ClientAuthenticationMethod类型：
@@ -494,19 +494,23 @@ mappings.put(MacAlgorithm.HS512, "HmacSHA512");
 2. 生成客户端 clientSecret 的 JWT
 
 ```java
-OAuth2AccessTokenResponseClient<OAuth2AuthorizationCodeGrantRequest> accessTokenResponseClient = accessTokenResponseClient();
+public class SecurityConfig {
 
-http.authorizeRequests((requests) -> requests
-                .antMatchers("/foo/bar")
-                .hasAnyAuthority("ROLE_ANONYMOUS","SCOPE_userinfo")
-                .anyRequest().authenticated())
-        .oauth2Login().authorizationEndpoint()
-        .and()
-        .tokenEndpoint().accessTokenResponseClient(accessTokenResponseClient);
-http.oauth2Client()
-        .authorizationCodeGrant()
-        .accessTokenResponseClient(accessTokenResponseClient);
-return http.build();
+    protected void configure(HttpSecurity http) throws Exception {
+        OAuth2AccessTokenResponseClient<OAuth2AuthorizationCodeGrantRequest> accessTokenResponseClient = accessTokenResponseClient();
+
+        http.authorizeRequests((requests) -> requests
+                        .antMatchers("/foo/bar")
+                        .hasAnyAuthority("ROLE_ANONYMOUS", "SCOPE_userinfo")
+                        .anyRequest().authenticated())
+                .oauth2Login().authorizationEndpoint()
+                .and()
+                .tokenEndpoint().accessTokenResponseClient(accessTokenResponseClient);
+        http.oauth2Client()
+                .authorizationCodeGrant()
+                .accessTokenResponseClient(accessTokenResponseClient);
+        return http.build();
+    }
 }
 
 /**
@@ -541,24 +545,29 @@ public class JwkResolver {
 3. 发送认证请求：
 
 ```java
-String clientId = "8000000014";
-String clientSecret = "a5a0ddb27da70b41d31954d0c51419d8";
-SecretKeySpec secretKeySpec = new SecretKeySpec(clientSecret.getBytes(StandardCharsets.UTF_8), "HmacSHA256");
+public class JWTTest {
 
-JWSSigner signer = new MACSigner(secretKeySpec);
-JWTClaimsSet claimsSet = new JWTClaimsSet.Builder()
-	.subject(clientId)
-	.issuer(clientId)
-	.claim("username", "19000000000")
-	.claim("password", "abc@123")
-	.audience("http://auth-server:9000")
-	.expirationTime(new Date(new Date().getTime() + 60 * 60 * 60 * 1000))
-	.build();
+    public void test() {
+        String clientId = "8000000014";
+        String clientSecret = "a5a0ddb27da70b41d31954d0c51419d8";
+        SecretKeySpec secretKeySpec = new SecretKeySpec(clientSecret.getBytes(StandardCharsets.UTF_8), "HmacSHA256");
 
-SignedJWT signedJWT = new SignedJWT(new JWSHeader(JWSAlgorithm.HS256), claimsSet);
-signedJWT.sign(signer);
+        JWSSigner signer = new MACSigner(secretKeySpec);
+        JWTClaimsSet claimsSet = new JWTClaimsSet.Builder()
+                .subject(clientId)
+                .issuer(clientId)
+                .claim("username", "19000000000")
+                .claim("password", "abc@123")
+                .audience("http://auth-server:9000")
+                .expirationTime(new Date(new Date().getTime() + 60 * 60 * 60 * 1000))
+                .build();
 
-String token = signedJWT.serialize();
+        SignedJWT signedJWT = new SignedJWT(new JWSHeader(JWSAlgorithm.HS256), claimsSet);
+        signedJWT.sign(signer);
+
+        String token = signedJWT.serialize();
+    }
+}
 ```
 
 ```http
@@ -585,19 +594,23 @@ scope = server
 2. 配置 OAuth2AccessTokenResponseClient
 
 ```java
-  OAuth2AccessTokenResponseClient<OAuth2AuthorizationCodeGrantRequest> accessTokenResponseClient = accessTokenResponseClient();
-  http.authorizeRequests((requests) -> requests
-                  .antMatchers("/foo/bar","/oauth2/jwks")
-                  .hasAnyAuthority("ROLE_ANONYMOUS","SCOPE_userinfo")
-                  .anyRequest().authenticated())
-          .oauth2Login().authorizationEndpoint()
-          .and()
-          // 获取token端点配置  比如根据code 获取 token
-          .tokenEndpoint().accessTokenResponseClient(accessTokenResponseClient);
-  http.oauth2Client()
-          .authorizationCodeGrant()
-          .accessTokenResponseClient(accessTokenResponseClient);
-  return http.build();
+public class SecurityConfig {
+
+    protected void configure(HttpSecurity http) throws Exception {
+        OAuth2AccessTokenResponseClient<OAuth2AuthorizationCodeGrantRequest> accessTokenResponseClient = accessTokenResponseClient();
+        http.authorizeRequests((requests) -> requests
+                        .antMatchers("/foo/bar", "/oauth2/jwks")
+                        .hasAnyAuthority("ROLE_ANONYMOUS", "SCOPE_userinfo")
+                        .anyRequest().authenticated())
+                .oauth2Login().authorizationEndpoint()
+                .and()
+                // 获取token端点配置  比如根据code 获取 token
+                .tokenEndpoint().accessTokenResponseClient(accessTokenResponseClient);
+        http.oauth2Client()
+                .authorizationCodeGrant()
+                .accessTokenResponseClient(accessTokenResponseClient);
+        return http.build();
+    }
 }
 
 

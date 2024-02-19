@@ -243,16 +243,17 @@ public class SpringBootConfig implements WebMvcConfigurer {
    }
 }
 
-//获取不同路径片段中的参数
-// 请求URI为 /Demo2/66;color=red;year=2020/pets/77;color=blue;year=2019
-@RequestMapping(path="/Demo2/{id1}/pets/{id2}", method=RequestMethod.GET)
-public String test3(
-  @PathVariable String id1,
-  @MatrixVariable(name="color", pathVar="id1") String color1, @MatrixVariable(name="year", pathVar="id1") String year1,
-  @PathVariable String id2,
-  @MatrixVariable(name="color", pathVar="id2") String color2, @MatrixVariable(name="year", pathVar="id2") String year2){
-
-  }
+public class MatrixVariableTest {
+    //获取不同路径片段中的参数
+    // 请求URI为 /Demo2/66;color=red;year=2020/pets/77;color=blue;year=2019
+    @RequestMapping(path = "/Demo2/{id1}/pets/{id2}", method = RequestMethod.GET)
+    public String test3(
+            @PathVariable String id1,
+            @MatrixVariable(name = "color", pathVar = "id1") String color1, @MatrixVariable(name = "year", pathVar = "id1") String year1,
+            @PathVariable String id2,
+            @MatrixVariable(name = "color", pathVar = "id2") String color2, @MatrixVariable(name = "year", pathVar = "id2") String year2) {
+    }
+}
 ```
 
 参数校验：
@@ -291,32 +292,40 @@ spring.servlet.multipart.max-file-size=10MB
 接收参数可使用 MultipartFile(依赖于org.springframework.web.multipart.commons.CommonsMultipartResolver) 或 Part 来接收。
 
 ```java
- // 单文件上传
- @PostMapping("/upload")
- @ResponseBody
- public String upload(@RequestParam("file") MultipartFile file) {
- }
- // 多文件上传
- @PostMapping("/multiUpload")
- @ResponseBody
- public String multiUpload(HttpServletRequest request) {
-    List<MultipartFile> files = ((MultipartHttpServletRequest) request).getFiles("file");
- }
- @PostMapping("/multiUpload")
- @ResponseBody
- public String multiUpload(@RequestParam("file") MultipartFile[] files) {
+public class UploadTest {
+    // 单文件上传
+    @PostMapping("/upload")
+    @ResponseBody
+    public String upload(@RequestParam("file") MultipartFile file) {
+    }
 
- }
+    // 多文件上传
+    @PostMapping("/multiUpload")
+    @ResponseBody
+    public String multiUpload(HttpServletRequest request) {
+        List<MultipartFile> files = ((MultipartHttpServletRequest) request).getFiles("file");
+    }
+
+    @PostMapping("/multiUpload")
+    @ResponseBody
+    public String multiUpload(@RequestParam("file") MultipartFile[] files) {
+
+    }
+}
 ```
 
 ## 下载文件
 
 ```java
-// 设置http头
-response.setContentType(MediaType.APPLICATION_OCTET_STREAM_VALUE);
-response.setContentType(StandardCharsets.UTF_8.name());
-String fileName = URLEncoder.encode(fileName, StandardCharsets.UTF_8.name()).replaceAll("\\+","%20");
-response.setHeader(HttpHeaders.CONTENT_DISPOSITION,String.format("attachment;filename=%s.xlsx",fileName));
+public class DownloadTest {
+    public void test() {
+        // 设置http头
+        response.setContentType(MediaType.APPLICATION_OCTET_STREAM_VALUE);
+        response.setContentType(StandardCharsets.UTF_8.name());
+        String fileName = URLEncoder.encode(fileName, StandardCharsets.UTF_8.name()).replaceAll("\\+", "%20");
+        response.setHeader(HttpHeaders.CONTENT_DISPOSITION, String.format("attachment;filename=%s.xlsx", fileName));
+    }
+}
 ```
 
 ## 异常处理

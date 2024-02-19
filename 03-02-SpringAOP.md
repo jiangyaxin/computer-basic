@@ -106,10 +106,10 @@ public class UserManagerImpl implements UserManager {
 // 3. 实现 InvocationHandler 代理逻辑
 // 4. 使用 Proxy.newProxyInstance 生成代理类
 public class JdkProxy implements InvocationHandler {
-​
+ 
     //需要代理的目标对象
     private Object target;
-​
+ 
     @Override
     public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
         System.out.println("JDK动态代理，监听开始！");
@@ -117,7 +117,7 @@ public class JdkProxy implements InvocationHandler {
         System.out.println("JDK动态代理，监听结束！");
         return result;
     }
-​
+ 
     //定义获取代理对象方法
     private Object getJDKProxy(Object targetObject) {
         //为目标对象target赋值
@@ -126,7 +126,7 @@ public class JdkProxy implements InvocationHandler {
         System.out.println(this.getClass());
         return Proxy.newProxyInstance(targetObject.getClass().getClassLoader(), targetObject.getClass().getInterfaces(), this);
     }
-​
+ 
     public static void main(String[] args) {
         JdkProxy jdkProxy = new JdkProxy();
         UserManager user = (UserManager) jdkProxy.getJDKProxy(new UserManagerImpl());
@@ -143,7 +143,7 @@ public class CglibProxy implements MethodInterceptor {
 
     //需要代理的目标对象
     private Object target;
-​
+ 
     @Override
     public Object intercept(Object obj, Method method, Object[] arr, MethodProxy proxy) throws Throwable {
         System.out.println("Cglib动态代理，监听开始！");
@@ -163,7 +163,7 @@ public class CglibProxy implements MethodInterceptor {
 
         return result;
     }
-​
+ 
     public static void main(String[] args) {
         CglibProxy cglib = new CglibProxy();
         UserManager user =  (UserManager) cglib.getCglibProxy(new UserManagerImpl());

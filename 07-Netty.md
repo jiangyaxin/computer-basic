@@ -3,42 +3,51 @@
 读写一个socket会返回相应的文件描述符，描述符就是一个数字，指向内核的一个结构体(文件路径、数据区等)。
 
 1. 阻塞与非阻塞：用于描述调用者在等待返回结果时的状态。
+
 * 阻塞：调用者发起请求后，会一直等待返回结果，这期间当前线程会被挂起（阻塞）。
 * 非阻塞：调用者发起请求后，会立刻返回，当前线程也不会阻塞。该调用不会立刻得到结果，调用者需要定时轮询查看处理状态。
 
 2. 同步与异步：用于描述调用结果的返回机制（或者叫通信机制）。
+
 * 同步：调用者发起请求后，会一直等待返回结果，即由调用者主动等待这个调用结果。
 * 异步：调用者发起请求后，会立刻返回，但不会立刻得到这个结果，而是由被调者在执行结束后主动通知（如 Callback）调用者。
 
 五种 IO 模型：
 
-1. 阻塞式 IO 模型：默认情况下，所有文件操作都是阻塞的，应用进程从发起 IO 系统调用，至内核返回，这整个期间是处于阻塞状态的，可能数据包被正确复制到应用进程缓存区成功返回，也可能发生错误返回。
+1. 阻塞式 IO 模型：默认情况下，所有文件操作都是阻塞的，应用进程从发起 IO
+   系统调用，至内核返回，这整个期间是处于阻塞状态的，可能数据包被正确复制到应用进程缓存区成功返回，也可能发生错误返回。
 
-  ![233](assets/233.png)
+![233](assets/233.png)
 
-2. 非阻塞式 IO 模型：应用进程可以将 Socket 设置为非阻塞，在发起 IO 系统调用后，如果缓冲区没有数据，就直接返回 EWOULDBLOCK 错误标识，否则返回成功标识，应用进程需要轮询调用 recvfrom 系统调用。
+2. 非阻塞式 IO 模型：应用进程可以将 Socket 设置为非阻塞，在发起 IO 系统调用后，如果缓冲区没有数据，就直接返回 EWOULDBLOCK
+   错误标识，否则返回成功标识，应用进程需要轮询调用 recvfrom 系统调用。
 
-  ![234](assets/234.png)
+![234](assets/234.png)
 
-3. IO 多路复用模型：Linux 提供 select/poll 系统调用，进程通过将多个socket 的多个 fd 传递给 select/poll 调用，调用 select/poll 的进程会阻塞等待 select/poll 顺序扫描 fd 是否就绪，当就绪时，立即返回回调函数，再调用 recvfrom 系统调用完成数据读取。出于效率的考量，单进程打开的fd 受到限制，默认 1024 。另外 linux 还提供 epoll 系统调用使用事件驱动代替顺序扫描，性能更高。
+3. IO 多路复用模型：Linux 提供 select/poll 系统调用，进程通过将多个socket 的多个 fd 传递给 select/poll 调用，调用
+   select/poll 的进程会阻塞等待 select/poll 顺序扫描 fd 是否就绪，当就绪时，立即返回回调函数，再调用 recvfrom
+   系统调用完成数据读取。出于效率的考量，单进程打开的fd 受到限制，默认 1024 。另外 linux 还提供 epoll 系统调用使用事件驱动代替顺序扫描，性能更高。
 
-  epoll 优势：
+epoll 优势：
 
-  * 支持一个进程打开的 socket描述符 不受限制。
-  * IO效率不会随fd 数目增加而线性下降。
-  * epoll 使用 mmap 加速内核和用户空间的消息传递：内核需要把 fd 消息通知到用户空间。
+* 支持一个进程打开的 socket描述符 不受限制。
+* IO效率不会随fd 数目增加而线性下降。
+* epoll 使用 mmap 加速内核和用户空间的消息传递：内核需要把 fd 消息通知到用户空间。
 
-  ![235](assets/235.png)
+![235](assets/235.png)
 
-4. 信号驱动 IO 模型： 可以为 Socket 开启信号驱动 IO 功能，应用进程需向内核注册一个信号处理程序（通过sigaction 系统调用），该操作并立即返回。当内核中有数据准备好，会发送一个信号给应用进程，应用进程便可以在信号处理程序中发起 IO 系统调用，来完成数据读取。主要用于UDP套接字，TCP信号产生过于频繁，并且信号没有告诉发送了什么事情。
+4. 信号驱动 IO 模型： 可以为 Socket 开启信号驱动 IO 功能，应用进程需向内核注册一个信号处理程序（通过sigaction
+   系统调用），该操作并立即返回。当内核中有数据准备好，会发送一个信号给应用进程，应用进程便可以在信号处理程序中发起 IO
+   系统调用，来完成数据读取。主要用于UDP套接字，TCP信号产生过于频繁，并且信号没有告诉发送了什么事情。
 
-  ![236](assets/236.png)
+![236](assets/236.png)
 
 5. 异步 IO 模型：应用进程发起 IO 系统调用后，会立即返回。当内核中数据完全准备后，并且也复制到了用户空间，会产生一个信号来通知应用进程。
 
-  ![237](assets/237.png)
+![237](assets/237.png)
 
 应用进程对内核发起 IO 系统调用后，内核会经过两个阶段来完成数据的传输：
+
 * 第一阶段：等待数据。即应用进程发起 IO 系统调用后，会一直等待数据；当有数据传入服务器，会将数据放入内核空间，此时数据准备好。
 * 第二阶段：将数据从内核空间复制到用户空间，并返回给应用程序成功标识。
 
@@ -46,7 +55,8 @@
 
 # JAVA NIO
 
-传统IO基于字节流和字符流操作，NIO 基于 Channel 和 Buffer 操作，数据总是从 Channel 读取到 Buffer 中，或者从  Buffer 写入到 Channel 中。
+传统IO基于字节流和字符流操作，NIO 基于 Channel 和 Buffer 操作，数据总是从 Channel 读取到 Buffer 中，或者从 Buffer 写入到
+Channel 中。
 
 ## Channel
 
@@ -57,53 +67,69 @@ Channel 是 IO操作 的载体，全双工的，即可以读取也可以写入�
 * FileChannel
 * SocketChannel、ServerSocketChannel、DatagramChannel
 
-都继承于 SeekableByteChannel（负责在任意位置进行读写），GatheringByteChannel （负责顺序将多个缓存区写入Channel，即一个缓冲区数组），ScatteringByteChannel （负责从Channel 读取数据依次填满多个缓存区，即一个缓冲区数组），例如
+都继承于 SeekableByteChannel（负责在任意位置进行读写），GatheringByteChannel
+（负责顺序将多个缓存区写入Channel，即一个缓冲区数组），ScatteringByteChannel （负责从Channel 读取数据依次填满多个缓存区，即一个缓冲区数组），例如
 
 ```java
 // SeekableByteChannel
 
 Path filePath = Paths.get("D://error.log");
 ByteBuffer buffer = ByteBuffer.allocate(1024);
-buffer.put("111111".getBytes());
-buffer.flip();
-try {
-    FileChannel channel = FileChannel.open(filePath, StandardOpenOption.WRITE);
-    channel.position(80);    // 覆盖此处的内容为111111
-    channel.write(buffer);
-    channel.close();
+buffer.
 
-    buffer = ByteBuffer.allocate(1024);
-    channel = FileChannel.open(filePath, StandardOpenOption.READ);
-    channel.position(100);    // 读取此处的内容
-    channel.read(buffer, 10);
-    buffer.flip();
-    System.out.println(buffer);
+put("111111".getBytes());
+        buffer.
 
-    Charset charset = Charset.forName("utf-8");
-    CharsetDecoder decoder = charset.newDecoder();
-    CharBuffer charBuffer = decoder.decode(buffer);
-    System.out.println(charBuffer);
-} catch (IOException e) {
-    e.printStackTrace();
-}
+flip();
+try{
+FileChannel channel = FileChannel.open(filePath, StandardOpenOption.WRITE);
+    channel.
+
+position(80);    // 覆盖此处的内容为111111
+    channel.
+
+write(buffer);
+    channel.
+
+close();
+
+buffer =ByteBuffer.
+
+allocate(1024);
+
+channel =FileChannel.open(filePath,StandardOpenOption.READ);
+        channel.position(100);    // 读取此处的内容
+        channel.read(buffer,10);
+        buffer.flip();
+        System.out.println(buffer);
+
+        Charset charset=Charset.forName("utf-8");
+        CharsetDecoder decoder=charset.newDecoder();
+        CharBuffer charBuffer=decoder.decode(buffer);
+        System.out.println(charBuffer);
+        }catch(IOException e){
+        e.printStackTrace();
+        }
 ```
 
 ```java
 // ScatteringByteChannel
 
-ByteBuffer header = ByteBuffer.allocateDirect (10);
-ByteBuffer body = ByteBuffer.allocateDirect (80);
-ByteBuffer [] buffers = { header, body };
-int bytesRead = channel.read (buffers);
+ByteBuffer header = ByteBuffer.allocateDirect(10);
+ByteBuffer body = ByteBuffer.allocateDirect(80);
+ByteBuffer[] buffers = {header, body};
+int bytesRead = channel.read(buffers);
 ```
 
 ```java
 // GatheringByteChannel
 
-ByteBuffer header = ByteBuffer.allocateDirect (10);
-ByteBuffer body = ByteBuffer.allocateDirect (80);
-ByteBuffer [] buffers = { header, body };
-channel.write(bufferArray);
+ByteBuffer header = ByteBuffer.allocateDirect(10);
+ByteBuffer body = ByteBuffer.allocateDirect(80);
+ByteBuffer[] buffers = {header, body};
+channel.
+
+write(bufferArray);
 ```
 
 scatter / gather经常用于需要将传输的数据分开处理的场合，例如传输一个由消息头和消息体组成的消息，你可能会将消息体和消息头分散到不同的buffer中，这样你可以方便的处理消息头和消息体。
@@ -117,36 +143,36 @@ scatter / gather经常用于需要将传输的数据分开处理的场合，例�
   ```java
   public static FileChannel open(Path path, OpenOption... options) throws IOException
 
-  public static FileChannel open(Path path, Set<? extends OpenOption> options, FileAttribute<?>... attrs) throws IOException
+public static FileChannel open(Path path, Set<? extends OpenOption> options, FileAttribute<?>... attrs) throws IOException
   ```
 
 2. 通过FileInputStream/FileOutputStream 获取
 
   ```java
   FileInputStream inputStream = new FileInputStream("D:/test.txt");
-  FileChannel channel = inputStream.getChannel();
+FileChannel channel = inputStream.getChannel();
 
-  FileOutputStream outputStream = new FileOutputStream("D:/test.txt");
-  FileChannel channel1 = outputStream.getChannel();
+FileOutputStream outputStream = new FileOutputStream("D:/test.txt");
+FileChannel channel1 = outputStream.getChannel();
   ```
 
 3. 通过RandomAccessFile获取
 
   ```java
   RandomAccessFile randomAccessFile = new RandomAccessFile("./test.txt", "rw");
-  FileChannel channel2 = randomAccessFile.getChannel();
+FileChannel channel2 = randomAccessFile.getChannel();
   ```
 
 api：
 
-| 接口                    | 描述                                                   |
-| ----------------------- | ------------------------------------------------------ |
-| open                    | 创建FileChannel                                        |
-| read/write              | 基于FileChannel读写                                    |
-| force                   | 强制将FileChannel中的数据刷入文件中                    |
+| 接口                      | 描述                                           |
+|-------------------------|----------------------------------------------|
+| open                    | 创建FileChannel                                |
+| read/write              | 基于FileChannel读写                              |
+| force                   | 强制将FileChannel中的数据刷入文件中                      |
 | map                     | 使用 mmap 技术直接映射内核内存到用户内存，返回  MappedByteBuffer |
-| transferTo/transferFrom | 将通道中的字节传输到其他通道                           |
-| lock/tryLock            | 获取文件锁                                             |
+| transferTo/transferFrom | 将通道中的字节传输到其他通道                               |
+| lock/tryLock            | 获取文件锁                                        |
 
 read/write：
 
@@ -157,14 +183,22 @@ int count = channel2.read(byteBuffer);
 
 ByteBuffer byteBuffer = ByteBuffer.allocate(16);
 byte[] bs = "s".getBytes();
-byteBuffer.put(bs);
-byteBuffer.flip();
-channel2.write(byteBuffer);
+byteBuffer.
+
+put(bs);
+byteBuffer.
+
+flip();
+channel2.
+
+write(byteBuffer);
 ```
 
-force：强制将 Channel 中的内容写入文件，参数false 表示将文件内容写入文件，true 表示将 文件内容 和 元数据（比如权限信息，文件修改时间）一起写入到文件，可能需要至少一次IO操作，取决于底层操作系统。不能保证对 MappedByteBuffer 的修改也写入，可以调用 MappedByteBuffer#force 来保证。
+force：强制将 Channel 中的内容写入文件，参数false 表示将文件内容写入文件，true 表示将 文件内容 和
+元数据（比如权限信息，文件修改时间）一起写入到文件，可能需要至少一次IO操作，取决于底层操作系统。不能保证对 MappedByteBuffer
+的修改也写入，可以调用 MappedByteBuffer#force 来保证。
 
-map：使用 mmap 技术直接映射内核内存，返回  MappedByteBuffer。
+map：使用 mmap 技术直接映射内核内存，返回 MappedByteBuffer。
 
 * READ_ONLY：以只读的方式映射，如果发生修改，则抛出ReadOnlyBufferException
 * READ_WRITE：读写方式
@@ -177,7 +211,9 @@ Path path = FileSystems.getDefault().getPath("./test.txt");
 FileChannel channel = FileChannel.open(path, StandardOpenOption.READ, StandardOpenOption.WRITE);
 MappedByteBuffer mappedByteBuffer = channel.map(MapMode.READ_ONLY, 0, 100000);
 byte[] bs = new byte[100];
-mappedByteBuffer.get(bs);
+mappedByteBuffer.
+
+get(bs);
 ```
 
 transferTo/transferFrom：底层调用 sendfile系统调用(windows 不支持) 或者使用 mmap技术写入，实现零拷贝。
@@ -185,30 +221,33 @@ transferTo/transferFrom：底层调用 sendfile系统调用(windows 不支持) �
 ```java
 // FileChannel
 public long transferTo(long position, long count,
-                        WritableByteChannel target)
-     throws IOException
- {
-     //omit..
-     long n;
-     //尝试不同方式
-     // Attempt a direct transfer, if the kernel supports it 使用 sendfile
-     if ((n = transferToDirectly(position, icount, target)) >= 0)
-         return n;
-     // Attempt a mapped transfer, but only to trusted channel types 使用mmap
-     if ((n = transferToTrustedChannel(position, icount, target)) >= 0)
-         return n;
-     // Slow path for untrusted targets
-     return transferToArbitraryChannel(position, icount, target);
- }
+                       WritableByteChannel target)
+        throws IOException {
+    //omit..
+    long n;
+    //尝试不同方式
+    // Attempt a direct transfer, if the kernel supports it 使用 sendfile
+    if ((n = transferToDirectly(position, icount, target)) >= 0)
+        return n;
+    // Attempt a mapped transfer, but only to trusted channel types 使用mmap
+    if ((n = transferToTrustedChannel(position, icount, target)) >= 0)
+        return n;
+    // Slow path for untrusted targets
+    return transferToArbitraryChannel(position, icount, target);
+}
 ```
 
 ```java
-srcChannel.transferTo(0, Integer.MAX_VALUE, dstChannel);
-srcChannel.transferFrom(fromChannel, 0, Integer.MAX_VALUE);
+srcChannel.transferTo(0,Integer.MAX_VALUE, dstChannel);
+srcChannel.
+
+transferFrom(fromChannel, 0,Integer.MAX_VALUE);
 ```
 
 lock/tryLock：
-* 被JVM持有，进程级别，不可用于多线程安全控制同步工具。如果统一进程内，线程1获取了文件锁FileLock（共享或者独占），线程2再来请求获取该文件的文件锁，则会抛出OverlappingFileLockException 。
+
+*
+被JVM持有，进程级别，不可用于多线程安全控制同步工具。如果统一进程内，线程1获取了文件锁FileLock（共享或者独占），线程2再来请求获取该文件的文件锁，则会抛出OverlappingFileLockException 。
 * 一个程序获取到FileLock后，是否会阻止另一个程序访问相同文件具重叠内容的部分取决于操作系统的实现，具有不确定性。FileLock的实现依赖于底层操作系统实现的本地文件锁设施。
 
 ![239](assets/239.png)
@@ -217,13 +256,24 @@ lock/tryLock：
 
 SocketOption：配置 Socket 连接，定义在 StandardSocketOptions 中。
 
-* SO_BROADCAST：允许使用IPv4的广播地址发送数据报，默认禁用
-* SO_KEEPALIVE：在连接空闲时操作系统定期探测连接的另一端，一般时空闲2小时后，发送第一个探测分组，如果没收到回应每隔75秒发送一个探测分组，最多重复发送9次。
-* SO_SNDBUF：套接字发送缓冲区的大小，单位是字节，如果是使用UDP，发送缓冲区可能会限制UDP的发送的数据报大小。
-* SO_RCVBUF：套接字接收缓冲区的大小，单位是字节，如果是使用UDP，接收缓冲区可能会限制UDP的接收的数据报大小。
-* TCP_NODELAY：禁用Nagle算法，当我们只要发送1字节的数据，却需要40字节的TCP/IP头部时，浪费会非常大，Nagle算法是通过合并短段并提高网络效率。
+SocketChannel、ServerSocketChannel 参数：
+* TCP_NODELAY: 默认开启（false），禁用Nagle算法，当我们只要发送1字节的数据，却需要40字节的TCP/IP头部时，浪费会非常大，Nagle算法是通过合并短段并提高网络效率。
+* SO_RCVBUF: 接收缓冲区，不建议我们手动进行设置，因为操作系统会根据当前占用，进行自动的调整。
+* SO_KEEPALIVE：推荐为true，在连接空闲时操作系统定期探测连接的另一端，一般时空闲2小时后，发送第一个探测分组，如果没收到回应每隔75秒发送一个探测分组，最多重复发送9次。
+* SO_REUSEADDR: 推荐为true，连接被关闭后，处于TIME_WAIT状态时，端口是否被重用，TIME_WAIT 将持续 2MSL ，总共 4 min。
+* ALLOCATOR: 使用 PooledByteBufAllocator.DEFAULT
+* WRITE_BUFFER_WATER_MARK: 默认64k，可设置为 1M 到 6M。
+
+ServerSocketChannel 参数：
+* SO_BACKLOG: 握手队列长度
+
+SocketChannel 参数：
+* CONNECT_TIMEOUT_MILLIS：客户端建立连接时，如果超过指定的时间仍未连接，则抛出timeout异常。
+* SO_SNDBUF: 发送缓冲区，不建议我们手动进行设置，因为操作系统会根据当前占用，进行自动的调整。
+* RCVBUF_ALLOCATOR: 该参数使用默认值
 
 Nagle算法的规则：
+
 * 如果包长度达到MSS(Maximum Segment Size 1460字节)，则允许发送
 * 如果该包含有FIN，则允许发送
 * 设置了TCP_NODELAY选项，则允许发送
@@ -262,34 +312,42 @@ private int capacity;
  * mark = position 当前position标记
  */
 public final Buffer mark();
+
 /**
  * position = mark 重置到mark
  */
 public final Buffer reset();
+
 /**
  *  position = 0;limit = capacity;mark = -1; 清空缓冲
  */
 public final Buffer clear();
+
 /**
  * limit = position;position = 0;mark = -1; 写 -> 读
  */
 public final Buffer flip();
+
 /**
  * position = 0;mark = -1; 重新读取
  */
 public final Buffer rewind();
+
 /**
  * limit - position; 返回limit和position之间相对位置差
  */
 public final int remaining();
+
 /**
  * 是否由可访问的数组支持,数组属于java对象，存在于堆中，如果为true说明是 HeapByteBuffer，如果为false说明时 DirectByteBuffer
  */
 public final boolean hasArray();
+
 /**
  * hasArray() == true 时，获取 支撑数组
  */
 public abstract Object array();
+
 /**
  * 第一个元素在缓冲区中的偏移量，一般情况为 0 ， 当 使用 slice 时 则 不为 0 。
  */
@@ -305,22 +363,27 @@ public abstract int arrayOffset();
  * 创建一个 HeapByteBuffer
  */
 public static ByteBuffer allocate(int capacity);
+
 /**
  * 创建一个 DirectByteBuffer
  */
 public static ByteBuffer allocateDirect(int capacity);
+
 /**
  * 创建一个 HeapByteBuffer 包装byte[]，HeapByteBuffer 或者 array 改变都会导致互相改变。
  */
 public static ByteBuffer wrap(byte[] array)
+
 /**
  * 创建一个新的 ByteBuffer 视图，可以操作 position -> limit 数据，和原ByteBuffer 共用一个数组， 新 ByteBuffer  position = 0 , limit = 原length，offset = 原position
  */
 public abstract ByteBuffer slice();
+
 /**
  * 创建一个一样新的 ByteBuffer 视图，和原ByteBuffer 共用一个数组
  */
 public abstract ByteBuffer duplicate()
+
 /**
  * 清除position前的数据，position -> limit 复制到数组起始位置
  */
@@ -348,12 +411,21 @@ public abstract byte get();
 * 先拷贝到堆外，再由JVM拷贝至堆内，JVM是清楚自己的内存空间的。
 
 区别：
+
 * HeapByteBuffer 基于数组实现，内存分配在堆内。
-* DirectByteBuffer 通过 Unsafe#allocateMemory +  Unsafe#setMemory 分配堆外内存，引用对象在堆内，在 GC 时会回收掉不可达的  DirectByteBuffer ，并回收堆外内存，但由于 DirectByteBuffer 存在时间一般较长，所以大部分都会晋升到老年代，那么只能等到 Major GC 时才能回收，可通过 -XX:MaxDirectMemorySize 限制大小。
-* MappedByteBuffer 是 DirectByteBuffer 的父类，DirectByteBuffer有两种类型，一直是由DirectByteBuffer实现，一种由 MappedByteBuffer 实现，都是分配在堆外，不同的是 MappedByteBuffer 实现的堆外内存使用mmap技术映射了内核内存，这时内核内存和用户堆外内存共享，操作堆外内存等于直接操作内核内存，避免了数据的复制，FileChannel#transferTo 就是使用的这种内存。
+* DirectByteBuffer 通过 Unsafe#allocateMemory + Unsafe#setMemory 分配堆外内存，引用对象在堆内，在 GC 时会回收掉不可达的
+  DirectByteBuffer ，并回收堆外内存，但由于 DirectByteBuffer 存在时间一般较长，所以大部分都会晋升到老年代，那么只能等到
+  Major GC 时才能回收，可通过 -XX:MaxDirectMemorySize 限制大小。
+* MappedByteBuffer 是 DirectByteBuffer 的父类，DirectByteBuffer有两种类型，一直是由DirectByteBuffer实现，一种由
+  MappedByteBuffer 实现，都是分配在堆外，不同的是 MappedByteBuffer
+  实现的堆外内存使用mmap技术映射了内核内存，这时内核内存和用户堆外内存共享，操作堆外内存等于直接操作内核内存，避免了数据的复制，FileChannel#transferTo
+  就是使用的这种内存。
 * MappedByteBuffer 由 FileChannel#map 创建，DirectByteBuffer & HeapByteBuffer 通过 ByteBuffer 创建。
 
-FileChannel、SocketChannel等在通过 IOUtil 进行 非DirectBuffer IO读写操作时，底层会使用一个临时的 IOVecWrapper 来和系统进行真正的IO交互，IOVecWrapper 本质上也是一个 堆外直接内存，使用完后这个临时的 IOVecWrapper 会被缓存到ThreadLocal，当直接使用 IOUtil 操作非DirectBuffer 的线程数较多或者 IO 操作的数据量较大时，会导致临时的DirectByteBuffer 占用大量堆外内存造成内存泄露。可通过 -Djdk.nio.maxCachedBufferSize 限制单个线程直接内存缓存，超过这个限制 不会被缓存到 ThreadLocal。
+FileChannel、SocketChannel等在通过 IOUtil 进行 非DirectBuffer IO读写操作时，底层会使用一个临时的 IOVecWrapper
+来和系统进行真正的IO交互，IOVecWrapper 本质上也是一个 堆外直接内存，使用完后这个临时的 IOVecWrapper 会被缓存到ThreadLocal，当直接使用
+IOUtil 操作非DirectBuffer 的线程数较多或者 IO 操作的数据量较大时，会导致临时的DirectByteBuffer 占用大量堆外内存造成内存泄露。可通过
+-Djdk.nio.maxCachedBufferSize 限制单个线程直接内存缓存，超过这个限制 不会被缓存到 ThreadLocal。
 
 MappedByteBuffer 释放：高版本jdk Cleaner 已经迁移到 jdk.internal.ref.Cleaner
 
@@ -378,7 +450,7 @@ public class MappedByteBufferUtil {
         AccessController.doPrivileged((PrivilegedAction<Object>) () -> {
             try {
                 Class<? extends MappedByteBuffer> clazz = mappedByteBuffer.getClass();
-                Method cleanerMethod = ReflectionUtils.findMethod(clazz,"cleaner");
+                Method cleanerMethod = ReflectionUtils.findMethod(clazz, "cleaner");
                 if (cleanerMethod == null) {
                     throw new SerializableException(String.format("Get method %s#cleaner() failed.", clazz.getName()));
                 }
@@ -390,7 +462,7 @@ public class MappedByteBufferUtil {
                 }
 
                 Class<?> cleanerClazz = cleaner.getClass();
-                Method cleanMethod = ReflectionUtils.findMethod(cleanerClazz,"clean");
+                Method cleanMethod = ReflectionUtils.findMethod(cleanerClazz, "clean");
                 if (cleanerMethod == null) {
                     throw new SerializableException(String.format("Get method %s#clean() failed.", cleanerClazz.getName()));
                 }
@@ -408,36 +480,45 @@ public class MappedByteBufferUtil {
 ```
 
 堆外内存的优势：
+
 * 保持一个较小的堆内内存，以减少垃圾收集对应用的影响。
 * 在某些场景下可以提升程序I/O操纵的性能，减少去了将数据从堆内内存拷贝到堆外内存的步骤。
 
 什么情况下使用堆外内存？
+
 * 堆外内存适用于生命周期中等或较长的对象。
 * 直接的文件拷贝操作，或者I/O操作。
 * 使用 池+堆外内存 的组合方式，来对生命周期较短，但涉及到I/O操作的对象进行堆外内存的再使用。
 
 ### 分析堆外内存
 
-1. 启动时添加 -XX:NativeMemoryTracking=detail 参数，会有性能损耗，生产环境不宜使用，`-XX:+UnlockDiagnosticVMOptions -XX:+PrintNMTStatistics` 在 NMT 启用的情况下，在 JVM 退出时输出最后的内存使用数据。
+1. 启动时添加 -XX:NativeMemoryTracking=detail
+   参数，会有性能损耗，生产环境不宜使用，`-XX:+UnlockDiagnosticVMOptions -XX:+PrintNMTStatistics` 在 NMT 启用的情况下，在
+   JVM 退出时输出最后的内存使用数据。
 2. 使用 `jcmd <pid> VM.native_memory detail scale=MB` 打印JVM内存占用。
-   * 使用 `jcmd <pid> VM.native_memory baseline` 设置基准值，再使用 `jcmd <pid> VM.native_memory scale=MB detail.diff` 查看增长值。
+    * 使用 `jcmd <pid> VM.native_memory baseline` 设置基准值，再使用 `jcmd <pid> VM.native_memory scale=MB detail.diff`
+      查看增长值。
 
-    ![241](assets/241.png)
+   ![241](assets/241.png)
 
-    其中 reserved 向操作系统申请的内存， committed 已经使用的内存， mmap，malloc 是两种不同的内存申请分配方式，arena 是通过 malloc 方式分配的内存但是代码执行完并不释放，放入 arena chunk 中之后还会继续使用。
-     * Java Heap：堆空间
-     * Class：保存类的元数据，其实就是 metaspace，包含两部分： 一是 metadata，被-XX:MaxMetaspaceSize限制最大大小，另外是 class space，被-XX:CompressedClassSpaceSize限制最大大小。
-     * Thread：线程栈占用，每个线程栈占用大小受-Xss限制。
-     * Code：JIT 的代码缓存，为了在不同平台运行JVM字节码，需要将其转换成机器指令。程序运行时，JIT编译器负责这个编译工作，并将编译后的指令存在 Code Cache 区域。
-     * GC：gc算法使用的空间。
-     * Compiler：编译器自身操作使用。
-     * Internal：命令行解析，JVMTI 使用的内存。
-     * Other：尚未归类的。
-     * Symbol ：常量池、符号表引用占用，常量池占用的大小，字符串常量池受-XX:StringTableSize个数限制。
-     * Native Memory Tracking：NMT内存采集本身占用的内存大小。
-     * Arena Chunk：所有通过 arena 方式分配的内存。
-   并未统计 Direct Buffer 、MMap Buffer 内存。
-3. 对应直接内存可通过 Jprofile 查看 MBeans 的 java.nio.BufferPool 监控，单位是字节，也可使用 JVisualVM 安装 VisualVM-BufferMonitor 监控
+   其中 reserved 向操作系统申请的内存， committed 已经使用的内存， mmap，malloc 是两种不同的内存申请分配方式，arena 是通过
+   malloc 方式分配的内存但是代码执行完并不释放，放入 arena chunk 中之后还会继续使用。
+    * Java Heap：堆空间
+    * Class：保存类的元数据，其实就是 metaspace，包含两部分： 一是 metadata，被-XX:MaxMetaspaceSize限制最大大小，另外是 class
+      space，被-XX:CompressedClassSpaceSize限制最大大小。
+    * Thread：线程栈占用，每个线程栈占用大小受-Xss限制。
+    * Code：JIT 的代码缓存，为了在不同平台运行JVM字节码，需要将其转换成机器指令。程序运行时，JIT编译器负责这个编译工作，并将编译后的指令存在
+      Code Cache 区域。
+    * GC：gc算法使用的空间。
+    * Compiler：编译器自身操作使用。
+    * Internal：命令行解析，JVMTI 使用的内存。
+    * Other：尚未归类的。
+    * Symbol ：常量池、符号表引用占用，常量池占用的大小，字符串常量池受-XX:StringTableSize个数限制。
+    * Native Memory Tracking：NMT内存采集本身占用的内存大小。
+    * Arena Chunk：所有通过 arena 方式分配的内存。
+      并未统计 Direct Buffer 、MMap Buffer 内存。
+3. 对应直接内存可通过 Jprofile 查看 MBeans 的 java.nio.BufferPool 监控，单位是字节，也可使用 JVisualVM 安装
+   VisualVM-BufferMonitor 监控
 
 ## Selector
 
@@ -453,34 +534,52 @@ Selector selector = Selector.open();
 
 ```java
 channel.configureBlocking(false);
+
 SelectionKey key = channel.register(selector, SelectionKey.OP_READ | SelectionKey.OP_WRITE)
 ```
+
 响应事件：select() 会阻塞方法，直到有事件就绪时才返回，就绪事件会添加到 selectedKeys() 方法，注意处理完就绪事件需要 remove 。
 
 ```java
 Selector selector = Selector.open();
-channel.configureBlocking(false);
+channel.
+
+configureBlocking(false);
+
 SelectionKey key = channel.register(selector, SelectionKey.OP_READ);
-while(true) {
-  int readyChannels = selector.select();
-  if(readyChannels == 0) continue;
-  Set selectedKeys = selector.selectedKeys();
-  Iterator keyIterator = selectedKeys.iterator();
-  while(keyIterator.hasNext()) {
-    SelectionKey key = keyIterator.next();
-    if(key.isAcceptable()) {
+while(true){
+int readyChannels = selector.select();
+  if(readyChannels ==0)continue;
+Set selectedKeys = selector.selectedKeys();
+Iterator keyIterator = selectedKeys.iterator();
+  while(keyIterator.
+
+hasNext()){
+SelectionKey key = keyIterator.next();
+    if(key.
+
+isAcceptable()){
         // a connection was accepted by a ServerSocketChannel.
-    } else if (key.isConnectable()) {
+        }else if(key.
+
+isConnectable()){
         // a connection was established with a remote server.
-    } else if (key.isReadable()) {
+        }else if(key.
+
+isReadable()){
         // a channel is ready for reading
-    } else if (key.isWritable()) {
+        }else if(key.
+
+isWritable()){
         // a channel is ready for writing
-    }
-    keyIterator.remove();
+        }
+        keyIterator.
+
+remove();
   }
-}
+          }
 ```
+
 ### SelectionKey
 
 ```java
@@ -488,13 +587,15 @@ while(true) {
 int interestSet = key.interestOps();
 
 // 也可通过interestSet判断其中包含的事件
-boolean isInterestedInAccept  = interestSet & SelectionKey.OP_ACCEPT;
+boolean isInterestedInAccept = interestSet & SelectionKey.OP_ACCEPT;
 boolean isInterestedInConnect = interestSet & SelectionKey.OP_CONNECT;
-boolean isInterestedInRead    = interestSet & SelectionKey.OP_READ;
-boolean isInterestedInWrite   = interestSet & SelectionKey.OP_WRITE;
+boolean isInterestedInRead = interestSet & SelectionKey.OP_READ;
+boolean isInterestedInWrite = interestSet & SelectionKey.OP_WRITE;
 
 // 可以通过interestOps(int ops)方法修改事件列表
-key.interestOps(interestSet | SelectionKey.OP_WRITE);
+key.
+
+interestOps(interestSet |SelectionKey.OP_WRITE);
 
 // 返回当前事件关联的通道，可转换的选项包括:`ServerSocketChannel`和`SocketChannel`
 Channel channel = key.channel();
@@ -519,6 +620,7 @@ Netty是 一个异步事件驱动的网络应用程序框架，用于快速开�
 8. 安全，完整支持 SSL/TLS 协议。
 
 高性能的原因：
+
 1. 基于 NIO 的高性能的多线程 Reactor 模型。
 2. 事件驱动模型，减少空轮询的资源浪费。
 3. 内存池减少对象的创建和销毁。
@@ -530,33 +632,40 @@ Netty是 一个异步事件驱动的网络应用程序框架，用于快速开�
 
 ### Channel
 
-Channel 是 Netty 抽象的网络IO读写的接口，不是 JDK NIO 的 Channel，采用Facade模式进行统一封装，为SocketChannel和ServerSocketChannel提供统一的视图，采用聚合而非包含的方式将相关的功能类聚合，由Channel统一负责分配和调度，功能实现灵活。
+Channel 是 Netty 抽象的网络IO读写的接口，不是 JDK NIO 的
+Channel，采用Facade模式进行统一封装，为SocketChannel和ServerSocketChannel提供统一的视图，采用聚合而非包含的方式将相关的功能类聚合，由Channel统一负责分配和调度，功能实现灵活。
 
 为什么新开发 Channel ？
 
 * JDK的SocketChannel和ServerSocketChannel没有提供统一的操作接口，使用起来不方便。
 * JDK的SocketChannel和ServerSocketChannel是SPI类接口，由具体的虚拟机厂家来提供适应不同的操作系统，不方便扩展。
-* Netty的channel需要能跟Netty整体框架融合在一起，比如IO模型、基于ChannelPipie的定制模型，以及基于元数据描述配置化的TCP参数等，JDK的SocketChannel和ServerSocketChannel都没有提供。
+*
+Netty的channel需要能跟Netty整体框架融合在一起，比如IO模型、基于ChannelPipie的定制模型，以及基于元数据描述配置化的TCP参数等，JDK的SocketChannel和ServerSocketChannel都没有提供。
 
-Channel 继承 ChannelOutboundInvoker 、 AttributeMap 、Comparable，其中 ChannelOutboundInvoker 负责 网络的连接断开、读写等操作，AttributeMap 提供 Channel 上传输数据的能力。另外Chanel 自己提供一些 聚合 框架其他部分的功能，例如 获取该Channel的EventLoop、获取ByteBuf分配器ByteBufAllocator、获取Pipeline 等。
+Channel 继承 ChannelOutboundInvoker 、 AttributeMap 、Comparable，其中 ChannelOutboundInvoker 负责
+网络的连接断开、读写等操作，AttributeMap 提供 Channel 上传输数据的能力。另外Chanel 自己提供一些 聚合 框架其他部分的功能，例如
+获取该Channel的EventLoop、获取ByteBuf分配器ByteBufAllocator、获取Pipeline 等。
 
 Channel 所有的IO操作都是异步的，使用 ChannelFuture 占位。
 
 Server端启动主流程：
+
 * ServerSocketChannel 注册到 BossEventLoop
 * ServerSocketChannel 绑定端口（并注册ACCPET事件）
 * 调用 AbstractNioMessageChannel.NioMessageUnsafe#read() （由BossEventLoop select 获取到ACCPET事件后调用）
 * 从ServerSocketChannel获取SocketChannel并创建NioSocketChannel（read()方法调用NioServerSocketChannel#doReadMessages ）
 * pipeline.fireChannelRead(NioSocketChannel Pipeline)
 * ServerBootstrap.ServerBootstrapAcceptor#channelRead() 将 ChannelInitializer 添加到 NioSocketChannel Pipeline
-* 将NioSocketChannel 注册到 WorkEventLoop，触发 ChannelInitializer#initChannel 添加 自定义 ChannelHandler，并移除ChannelInitializer
+* 将NioSocketChannel 注册到 WorkEventLoop，触发 ChannelInitializer#initChannel 添加 自定义
+  ChannelHandler，并移除ChannelInitializer
 * WorkEventLoop select 获取到 READ 事件 调用 AbstractNioByteChannel.NioByteUnsafe#read()
 * 使用NioSocketChannel#doReadBytes 循环读取数据，并触发 pipeline.fireChannelRead(byteBuf)，
 * 读取完成后调用 pipeline.fireChannelReadComplete()
 
 #### AbstractChannel
 
-负责聚合Channel所使用的功能，例如 Pipeline、EventLoop、Unsafe 等，实现 ChannelOutboundInvoker 接口功能，即直接通知 Pipeline，经过 pipeline 异步调用，除此之外还实现调用 Unsafe 获取 localAddress 、 remoteAddress 的模板方法。
+负责聚合Channel所使用的功能，例如 Pipeline、EventLoop、Unsafe 等，实现 ChannelOutboundInvoker 接口功能，即直接通知
+Pipeline，经过 pipeline 异步调用，除此之外还实现调用 Unsafe 获取 localAddress 、 remoteAddress 的模板方法。
 
 属性：
 
@@ -591,92 +700,97 @@ private String strVal;
 
 ##### register
 
-ServerSocketChannel注册流程： AbstractChannel#doRegister() -> pipeline.invokeHandlerAddedIfNeeded()（即 ChannelHandler#handlerAdded） ->  pipeline.fireChannelRegistered();
+ServerSocketChannel注册流程： AbstractChannel#doRegister() -> pipeline.invokeHandlerAddedIfNeeded()（即
+ChannelHandler#handlerAdded） ->  pipeline.fireChannelRegistered();
 
-SocketChannel注册流程： AbstractChannel#doRegister() -> pipeline.invokeHandlerAddedIfNeeded()（即 ChannelHandler#handlerAdded） ->  pipeline.fireChannelRegistered() -> ChannelInitializer#channelRegistered -> ChannelInitializer#initChannel（添加自定义ChannelHandler，然后移除 ChannelInitializer）  -> pipeline.fireChannelActive() -> beginRead() ->  AbstractChannel#doBeginRead() ->  AbstractNioChannel覆盖doBeginRead方法注册 READ 事件
+SocketChannel注册流程： AbstractChannel#doRegister() -> pipeline.invokeHandlerAddedIfNeeded()（即
+ChannelHandler#handlerAdded） ->  pipeline.fireChannelRegistered() -> ChannelInitializer#channelRegistered ->
+ChannelInitializer#initChannel（添加自定义ChannelHandler，然后移除 ChannelInitializer） -> pipeline.fireChannelActive() ->
+beginRead() ->  AbstractChannel#doBeginRead() ->  AbstractNioChannel覆盖doBeginRead方法注册 READ 事件
 
 ```java
+
 @Override
- public final void register(EventLoop eventLoop, final ChannelPromise promise) {
-     ObjectUtil.checkNotNull(eventLoop, "eventLoop");
-     if (isRegistered()) {
-         promise.setFailure(new IllegalStateException("registered to an event loop already"));
-         return;
-     }
+public final void register(EventLoop eventLoop, final ChannelPromise promise) {
+    ObjectUtil.checkNotNull(eventLoop, "eventLoop");
+    if (isRegistered()) {
+        promise.setFailure(new IllegalStateException("registered to an event loop already"));
+        return;
+    }
 
-     // 判断 Channel 和 EventLoop 是否匹配，eventLoop分很多种类型，有NIO的，还有Epoll的
-     if (!isCompatible(eventLoop)) {
-         promise.setFailure(
-                 new IllegalStateException("incompatible event loop type: " + eventLoop.getClass().getName()));
-         return;
-     }
+    // 判断 Channel 和 EventLoop 是否匹配，eventLoop分很多种类型，有NIO的，还有Epoll的
+    if (!isCompatible(eventLoop)) {
+        promise.setFailure(
+                new IllegalStateException("incompatible event loop type: " + eventLoop.getClass().getName()));
+        return;
+    }
 
-     // Channel 持有注册到的 EventLoop 的引用，给后续使用，为了使 一个 Channel 的生命周期只由一个 EventLoop 完成。
-     AbstractChannel.this.eventLoop = eventLoop;
+    // Channel 持有注册到的 EventLoop 的引用，给后续使用，为了使 一个 Channel 的生命周期只由一个 EventLoop 完成。
+    AbstractChannel.this.eventLoop = eventLoop;
 
-     // 该方法可能由任何线程调用，如果直接调用 register0 ，不符合 一个 Channel 的生命周期只由一个 EventLoop 完成 的设计。
-     // 如果调用 register 的线程和 EventLoop 中的线程是同一个线程，直接执行 register0。
-     // 如果不是同一个线程，则提交到 EventLoop 的任务队列中，等待它执行。
-     if (eventLoop.inEventLoop()) {
-         register0(promise);
-     } else {
-         try {
-             eventLoop.execute(new Runnable() {
-                 @Override
-                 public void run() {
-                     register0(promise);
-                 }
-             });
-         } catch (Throwable t) {
-             logger.warn(
-                     "Force-closing a channel whose registration task was not accepted by an event loop: {}",
-                     AbstractChannel.this, t);
-             closeForcibly();
-             closeFuture.setClosed();
-             safeSetFailure(promise, t);
-         }
-     }
- }
+    // 该方法可能由任何线程调用，如果直接调用 register0 ，不符合 一个 Channel 的生命周期只由一个 EventLoop 完成 的设计。
+    // 如果调用 register 的线程和 EventLoop 中的线程是同一个线程，直接执行 register0。
+    // 如果不是同一个线程，则提交到 EventLoop 的任务队列中，等待它执行。
+    if (eventLoop.inEventLoop()) {
+        register0(promise);
+    } else {
+        try {
+            eventLoop.execute(new Runnable() {
+                @Override
+                public void run() {
+                    register0(promise);
+                }
+            });
+        } catch (Throwable t) {
+            logger.warn(
+                    "Force-closing a channel whose registration task was not accepted by an event loop: {}",
+                    AbstractChannel.this, t);
+            closeForcibly();
+            closeFuture.setClosed();
+            safeSetFailure(promise, t);
+        }
+    }
+}
 
- private void register0(ChannelPromise promise) {
-     try {
-         if (!promise.setUncancellable() || !ensureOpen(promise)) {
-             return;
-         }
-         boolean firstRegistration = neverRegistered;
-         // 模板方法
-         doRegister();
-         neverRegistered = false;
-         registered = true;
+private void register0(ChannelPromise promise) {
+    try {
+        if (!promise.setUncancellable() || !ensureOpen(promise)) {
+            return;
+        }
+        boolean firstRegistration = neverRegistered;
+        // 模板方法
+        doRegister();
+        neverRegistered = false;
+        registered = true;
 
-         // 在通知 promise 之前调用，调用ChannelHandler#handlerAdded，如果失败则调用 ChannelHandler#handlerRemoved，例如 ChannelInitializer#handlerAdded 就是在这里被调用，将自定义的 Handler 添加进来。
-         pipeline.invokeHandlerAddedIfNeeded();
+        // 在通知 promise 之前调用，调用ChannelHandler#handlerAdded，如果失败则调用 ChannelHandler#handlerRemoved，例如 ChannelInitializer#handlerAdded 就是在这里被调用，将自定义的 Handler 添加进来。
+        pipeline.invokeHandlerAddedIfNeeded();
 
-         // 观察者模式，通过设置 promise ，通知监听 promise 的 listener， 暂时理解ChannelHandler 是观察者
-         safeSetSuccess(promise);
+        // 观察者模式，通过设置 promise ，通知监听 promise 的 listener， 暂时理解ChannelHandler 是观察者
+        safeSetSuccess(promise);
 
-         // 传播 fireChannelRegistered 事件。
-         pipeline.fireChannelRegistered();
-         // 对于服务端:  javaChannel().socket().isBound(); 即  当Channel绑定上了端口   isActive()才会返回true
-         // 对于客户端的连接 ch.isOpen() && ch.isConnected(); 返回true , 就是说, Channel是open的 打开状态的就是true
-         // ServerSocketChannel 不会触发这里，还没有完成绑定
-         if (isActive()) {
-             if (firstRegistration) {
-                 pipeline.fireChannelActive();
-             } else if (config().isAutoRead()) {
-                 // 将 readInterestOp 注册到 SelectionKey
-                 beginRead();
-             }
-         }
-     } catch (Throwable t) {
-         // Close the channel directly to avoid FD leak.
-         closeForcibly();
-         closeFuture.setClosed();
-         safeSetFailure(promise, t);
-     }
- }
+        // 传播 fireChannelRegistered 事件。
+        pipeline.fireChannelRegistered();
+        // 对于服务端:  javaChannel().socket().isBound(); 即  当Channel绑定上了端口   isActive()才会返回true
+        // 对于客户端的连接 ch.isOpen() && ch.isConnected(); 返回true , 就是说, Channel是open的 打开状态的就是true
+        // ServerSocketChannel 不会触发这里，还没有完成绑定
+        if (isActive()) {
+            if (firstRegistration) {
+                pipeline.fireChannelActive();
+            } else if (config().isAutoRead()) {
+                // 将 readInterestOp 注册到 SelectionKey
+                beginRead();
+            }
+        }
+    } catch (Throwable t) {
+        // Close the channel directly to avoid FD leak.
+        closeForcibly();
+        closeFuture.setClosed();
+        safeSetFailure(promise, t);
+    }
+}
 
- @Override
+@Override
 public final void beginRead() {
     assertEventLoop();
 
@@ -706,7 +820,9 @@ ServerSocketChannel 的 Pipeline 为 HeadContext -> ServerBootstrap.ServerBootst
 
 SocketChannel 的 Pipeline 为 HeadContext -> 自定义ChannelHandler -> TailContext
 
-流程：AbstractChannel#doBind -> pipeline.fireChannelActive() -> HeadContext#channelActive -> channel#read -> pipeline#read -> AbstractChannel.AbstractUnsafe#beginRead() ->  AbstractChannel#doBeginRead() ->  AbstractNioChannel覆盖doBeginRead方法注册 ACCEPT 事件。
+流程：AbstractChannel#doBind -> pipeline.fireChannelActive() -> HeadContext#channelActive -> channel#read ->
+pipeline#read -> AbstractChannel.AbstractUnsafe#beginRead() ->  AbstractChannel#doBeginRead() ->
+AbstractNioChannel覆盖doBeginRead方法注册 ACCEPT 事件。
 
 ```java
 public final void bind(final SocketAddress localAddress, final ChannelPromise promise) {
@@ -717,13 +833,13 @@ public final void bind(final SocketAddress localAddress, final ChannelPromise pr
     }
 
     if (Boolean.TRUE.equals(config().getOption(ChannelOption.SO_BROADCAST)) &&
-        localAddress instanceof InetSocketAddress &&
-        !((InetSocketAddress) localAddress).getAddress().isAnyLocalAddress() &&
-        !PlatformDependent.isWindows() && !PlatformDependent.maybeSuperUser()) {
+            localAddress instanceof InetSocketAddress &&
+            !((InetSocketAddress) localAddress).getAddress().isAnyLocalAddress() &&
+            !PlatformDependent.isWindows() && !PlatformDependent.maybeSuperUser()) {
         logger.warn(
                 "A non-root user can't receive a broadcast packet if the socket " +
-                "is not bound to a wildcard address; binding to a non-wildcard " +
-                "address (" + localAddress + ") anyway as requested.");
+                        "is not bound to a wildcard address; binding to a non-wildcard " +
+                        "address (" + localAddress + ") anyway as requested.");
     }
 
     //  由于端口的绑定未完成，所以 wasActive是 false
@@ -756,13 +872,15 @@ public final void bind(final SocketAddress localAddress, final ChannelPromise pr
 
 1. 将 SelectableChannel 注册到 EventLoop 中的 Selector。
 
-调用顺序: Channel使用Unsafe -> 调用 AbstractChannel.AbstractUnsafe#register -> 调用 AbstractChannel.AbstractUnsafe#register0 -> 调用 AbstractChannel#doRegister -> AbstractNioChannel覆盖doRegister方法
+调用顺序: Channel使用Unsafe -> 调用 AbstractChannel.AbstractUnsafe#register -> 调用
+AbstractChannel.AbstractUnsafe#register0 -> 调用 AbstractChannel#doRegister -> AbstractNioChannel覆盖doRegister方法
 
 ```java
+
 @Override
 protected void doRegister() throws Exception {
     boolean selected = false;
-    for (;;) {
+    for (; ; ) {
         try {
             // 注册事件为 0 ，表示对任何事件都不感兴趣。
             // 将 Channel 当成附件，方便 SelectionKey 快速匹配到 Channel 供后面使用。
@@ -784,9 +902,11 @@ protected void doRegister() throws Exception {
 
 2. 向 Selector 注册 readInterestOp。
 
-流程： AbstractChannel.AbstractUnsafe#beginRead() -> AbstractChannel#doBeginRead() -> 由覆盖AbstractNioChannel#doBeginRead()
+流程： AbstractChannel.AbstractUnsafe#beginRead() -> AbstractChannel#doBeginRead() ->
+由覆盖AbstractNioChannel#doBeginRead()
 
 ```java
+
 @Override
 protected void doBeginRead() throws Exception {
     final SelectionKey selectionKey = this.selectionKey;
@@ -824,7 +944,7 @@ public void read() {
     try {
         try {
             do {
-               // readBuf 保存新连接的 SocketChannel
+                // readBuf 保存新连接的 SocketChannel
                 int localRead = doReadMessages(readBuf);
                 if (localRead == 0) {
                     break;
@@ -841,7 +961,7 @@ public void read() {
         }
 
         int size = readBuf.size();
-        for (int i = 0; i < size; i ++) {
+        for (int i = 0; i < size; i++) {
             readPending = false;
             //调用 ServerBootstrapAcceptor#channelRead() 将 SocketChannel 交给 WorkEventLoop 处理
             pipeline.fireChannelRead(readBuf.get(i));
@@ -875,56 +995,57 @@ public void read() {
 负责 SocketChannel#read() 的 READ 事件。
 
 ```java
+
 @Override
- public final void read() {
-     final ChannelConfig config = config();
-     if (shouldBreakReadReady(config)) {
-         clearReadPending();
-         return;
-     }
-     final ChannelPipeline pipeline = pipeline();
-     final ByteBufAllocator allocator = config.getAllocator();
-     final RecvByteBufAllocator.Handle allocHandle = recvBufAllocHandle();
-     allocHandle.reset(config);
+public final void read() {
+    final ChannelConfig config = config();
+    if (shouldBreakReadReady(config)) {
+        clearReadPending();
+        return;
+    }
+    final ChannelPipeline pipeline = pipeline();
+    final ByteBufAllocator allocator = config.getAllocator();
+    final RecvByteBufAllocator.Handle allocHandle = recvBufAllocHandle();
+    allocHandle.reset(config);
 
-     ByteBuf byteBuf = null;
-     boolean close = false;
-     try {
-         do {
-             byteBuf = allocHandle.allocate(allocator);
-             // 读取 SocketChannel 的数据流
-             allocHandle.lastBytesRead(doReadBytes(byteBuf));
-             if (allocHandle.lastBytesRead() <= 0) {
-                 byteBuf.release();
-                 byteBuf = null;
-                 close = allocHandle.lastBytesRead() < 0;
-                 if (close) {
-                     readPending = false;
-                 }
-                 break;
-             }
+    ByteBuf byteBuf = null;
+    boolean close = false;
+    try {
+        do {
+            byteBuf = allocHandle.allocate(allocator);
+            // 读取 SocketChannel 的数据流
+            allocHandle.lastBytesRead(doReadBytes(byteBuf));
+            if (allocHandle.lastBytesRead() <= 0) {
+                byteBuf.release();
+                byteBuf = null;
+                close = allocHandle.lastBytesRead() < 0;
+                if (close) {
+                    readPending = false;
+                }
+                break;
+            }
 
-             allocHandle.incMessagesRead(1);
-             readPending = false;
-             // 调用用户自定义 ChannelHandler
-             pipeline.fireChannelRead(byteBuf);
-             byteBuf = null;
-         } while (allocHandle.continueReading());
+            allocHandle.incMessagesRead(1);
+            readPending = false;
+            // 调用用户自定义 ChannelHandler
+            pipeline.fireChannelRead(byteBuf);
+            byteBuf = null;
+        } while (allocHandle.continueReading());
 
-         allocHandle.readComplete();
-         pipeline.fireChannelReadComplete();
+        allocHandle.readComplete();
+        pipeline.fireChannelReadComplete();
 
-         if (close) {
-             closeOnRead(pipeline);
-         }
-     } catch (Throwable t) {
-         handleReadException(pipeline, byteBuf, t, close, allocHandle);
-     } finally {
-         if (!readPending && !config.isAutoRead()) {
-             removeReadOp();
-         }
-     }
- }
+        if (close) {
+            closeOnRead(pipeline);
+        }
+    } catch (Throwable t) {
+        handleReadException(pipeline, byteBuf, t, close, allocHandle);
+    } finally {
+        if (!readPending && !config.isAutoRead()) {
+            removeReadOp();
+        }
+    }
+}
 ```
 
 #### ChannelId
@@ -958,24 +1079,35 @@ public void read() {
 ![251](assets/251.png)
 
 几个概念:
-* EventExecutor：主要负责任务的提交、线程的管理，任务分为 普通任务、调度任务、定时任务，调用 execute(Runnable task) 方法时会启动线程，循环调用 EventLoop#run 和 任务。
+
+* EventExecutor：主要负责任务的提交、线程的管理，任务分为 普通任务、调度任务、定时任务，调用 execute(Runnable task)
+  方法时会启动线程，循环调用 EventLoop#run 和 任务。
 * EventLoop：继承 EventExecutor ，主要负责实现 Channel 的注册，以及select操作，处理IO请求。
-* EventExecutorGroup：负责管理多个EventExecutor，当任务提交时，使用 DefaultEventExecutorChooserFactory 选择一个EventExecutor，然后调用 EventExecutor 的提交方法。
-* NioEventLoopGroup：负责管理多个EventLoop：继承，当注册时，使用 DefaultEventExecutorChooserFactory 选择一个EventLoop，然后调用 EventExecutor 的组成方法。
+* EventExecutorGroup：负责管理多个EventExecutor，当任务提交时，使用 DefaultEventExecutorChooserFactory
+  选择一个EventExecutor，然后调用 EventExecutor 的提交方法。
+* NioEventLoopGroup：负责管理多个EventLoop：继承，当注册时，使用 DefaultEventExecutorChooserFactory 选择一个EventLoop，然后调用
+  EventExecutor 的组成方法。
 
 EventLoop 有2类工作：
+
 1. 处理由自己实现的 IO 读写。
 2. 处理 EventExecutor 的实现的任务,任务又分为两类：
-* 系统任务：通过 execute(Runnable task) 提交，当 IO 线程 和 用户线程同时操作网络资源时，通过 inEventLoop 判断，将用户线程的操作转换成Task放入队列，然后由IO线程从队列中取出执行，从而实现局部无锁化，减少并发的锁竞争。
+
+* 系统任务：通过 execute(Runnable task) 提交，当 IO 线程 和 用户线程同时操作网络资源时，通过 inEventLoop
+  判断，将用户线程的操作转换成Task放入队列，然后由IO线程从队列中取出执行，从而实现局部无锁化，减少并发的锁竞争。
 * 定时任务：通过 schedule(Runnable command,long delay,TimeUnit unit) 提交。
 
 IO任务 和 普通任务根据 ioRatio 进行分配执行时间，默认 50%。
 
-SelectedKey 的优化：通过反射 SelectorImpl 将 Set<SelectionKey> selectedKeys 转换成 SelectedSelectionKeySet，SelectedSelectionKeySet 使用 数组 存储 SelectionKey ，相比 Set<SelectionKey> 底层使用 HashMap 存储读写性能更高。
+SelectedKey 的优化：通过反射 SelectorImpl 将 Set<SelectionKey> selectedKeys 转换成
+SelectedSelectionKeySet，SelectedSelectionKeySet 使用 数组 存储 SelectionKey ，相比 Set<SelectionKey> 底层使用 HashMap
+存储读写性能更高。
 
-select() bug 规避：在一个周期内使用 selectCnt 对空轮询进行计数，如果达到阀值，判断 JDK 发生 Selector CPU 100% bug，然后从重建 Selector 。
+select() bug 规避：在一个周期内使用 selectCnt 对空轮询进行计数，如果达到阀值，判断 JDK 发生 Selector CPU 100% bug，然后从重建
+Selector 。
 
 使用：
+
 * 使用 BossEventLoopGroup 和 WorkEventLoopGroup ，BossEventLoopGroup数量大小通常设置为 1。
 * 尽量不在 ChannelHandler 中启动用户线程，属于 NIO 线程。
 * 解码放在解码Handler 中进行，不要切换到用户线程中完成消息解码。
@@ -999,12 +1131,15 @@ IO操作 在一个线程池中完成，其中一个线程用于处理 ACCEPT 事
 
 ![254](assets/254.png)
 
-ACCEPT 事件使用一个线程池处理， READ 、WRITE 事件 使用另一个线程池处理。Acceptor线程池仅仅只用于客户端的登陆、握手和安全认证，一旦链路建立成功，就将链路注册到后端subReactor线程池的IO线程上，负责后续的IO操作。
+ACCEPT 事件使用一个线程池处理， READ 、WRITE 事件
+使用另一个线程池处理。Acceptor线程池仅仅只用于客户端的登陆、握手和安全认证，一旦链路建立成功，就将链路注册到后端subReactor线程池的IO线程上，负责后续的IO操作。
 
 ### ChannelFuture & Promise
 
-* ChannelFuture：未来节点、异步操作的占位符，相对于原生Future 扩展 获取异常、监听回调、阻塞等待等功能，常用的实现有 FailedChannelFuture、SucceededChannelFuture、FailedFuture、SucceededFuture。
-* Promise：一个特殊的 Futrue ，可以修改 它的状态，常用于传入I/O业务代码中，用于I/O结束后设置成功（或失败）状态，并回调方法，常用的实现有 DefaultChannelPromise、DefaultPromise,底层使用 AtomicReferenceFieldUpdater + volatile 更新 result。
+* ChannelFuture：未来节点、异步操作的占位符，相对于原生Future 扩展 获取异常、监听回调、阻塞等待等功能，常用的实现有
+  FailedChannelFuture、SucceededChannelFuture、FailedFuture、SucceededFuture。
+* Promise：一个特殊的 Futrue ，可以修改 它的状态，常用于传入I/O业务代码中，用于I/O结束后设置成功（或失败）状态，并回调方法，常用的实现有
+  DefaultChannelPromise、DefaultPromise,底层使用 AtomicReferenceFieldUpdater + volatile 更新 result。
 
 ChannelFuture 的状态：
 
@@ -1029,32 +1164,49 @@ ChannelFuture 的状态：
  */
 
 ChannelFuture f = b.connect(...);
-f.awaitUninterruptibly();
+        f.
+
+awaitUninterruptibly();
 
 // Now we are sure the future is completed.
-assert f.isDone();
+assert f.
 
-if (f.isCancelled()) {
-  // Connection attempt cancelled by user
-} else if (!f.isSuccess()) {
-  f.cause().printStackTrace();
-} else {
-  // Connection established successfully
-}
+isDone();
+
+if(f.
+
+isCancelled()){
+        // Connection attempt cancelled by user
+        }else if(!f.
+
+isSuccess()){
+        f.
+
+cause().
+
+printStackTrace();
+}else{
+        // Connection established successfully
+        }
 ```
 
 ChannelFuture方法：
+
 1. Java原生
 
 ```java
 // 尝试取消执行
 boolean cancel(boolean mayInterruptIfRunning);
+
 // 是否已经被取消执行
 boolean isCancelled();
+
 // 是否已经执行完毕
 boolean isDone();
+
 // 阻塞获取执行结果
 V get() throws InterruptedException, ExecutionException;
+
 // 阻塞获取执行结果或超时后返回
 V get(long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException;
 ```
@@ -1064,6 +1216,7 @@ V get(long timeout, TimeUnit unit) throws InterruptedException, ExecutionExcepti
 ```java
 // 判断是否执行成功
 boolean isSuccess();
+
 // 判断是否可以取消执行
 boolean isCancellable();
 ```
@@ -1079,10 +1232,13 @@ Throwable cause();
 ```java
 // 增加回调方法
 Future<V> addListener(GenericFutureListener<? extends Future<? super V>> listener);
+
 // 增加多个回调方法
 Future<V> addListeners(GenericFutureListener<? extends Future<? super V>>... listeners);
+
 // 删除回调方法
 Future<V> removeListener(GenericFutureListener<? extends Future<? super V>> listener);
+
 // 删除多个回调方法
 Future<V> removeListeners(GenericFutureListener<? extends Future<? super V>>... listeners);
 ```
@@ -1092,11 +1248,13 @@ Future<V> removeListeners(GenericFutureListener<? extends Future<? super V>>... 
 ```java
 // 阻塞等待，且如果失败抛出异常
 Future<V> sync() throws InterruptedException;
+
 // 同上，区别是不可中断阻塞等待过程
 Future<V> syncUninterruptibly();
 
 // 阻塞等待
 Future<V> await() throws InterruptedException;
+
 // 同上，区别是不可中断阻塞等待过程
 Future<V> awaitUninterruptibly();
 ```
@@ -1106,10 +1264,14 @@ Promise方法：
 ```java
 // 设置成功状态并回调
 Promise<V> setSuccess(V result);
+
 boolean trySuccess(V result);
+
 // 设置失败状态并回调
 Promise<V> setFailure(Throwable cause);
+
 boolean tryFailure(Throwable cause);
+
 // 设置为不可取消状态
 boolean setUncancellable();
 ```
@@ -1120,81 +1282,112 @@ boolean setUncancellable();
 
 ```java
 // io.netty.bootstrap.AbstractBootstrap.java
-else {
-    final PendingRegistrationPromise promise = new PendingRegistrationPromise(channel);
-    regFuture.addListener(new ChannelFutureListener() {
-        @Override
-        public void operationComplete(ChannelFuture future) throws Exception {
-            Throwable cause = future.cause();
-            if (cause != null) {
-                promise.setFailure(cause);
-            } else {
-                promise.registered();
+else{
+final PendingRegistrationPromise promise = new PendingRegistrationPromise(channel);
+    regFuture.
 
-                doBind0(regFuture, channel, localAddress, promise);
-            }
+addListener(new ChannelFutureListener() {
+    @Override
+    public void operationComplete (ChannelFuture future) throws Exception {
+        Throwable cause = future.cause();
+        if (cause != null) {
+            promise.setFailure(cause);
+        } else {
+            promise.registered();
+
+            doBind0(regFuture, channel, localAddress, promise);
         }
-    });
-    return promise;
+    }
+});
+        return promise;
 }
 ```
 
 ### ChannelPipeline & ChannelHandlerContext & ChannelHandler
 
-  ![255](assets/255.png)
+![255](assets/255.png)
 
-* ChannelPipeline：通过链表实现过滤器模式，负责管理链表节点，接受IO事件的触发，并在管道上传播，每个 Channel 都有自己独立的 Pipeline，默认的实现类为 DefaultChannelPipeline 。
-* ChannelHandlerContext：ChannelPipeline 的 链表节点，包含 ChannelHandler 及相关上下文信息，负责将 IO 事件传递给下一个节点，常用的实现类为 DefaultChannelHandlerContext、HeadContext、TailContext。
+* ChannelPipeline：通过链表实现过滤器模式，负责管理链表节点，接受IO事件的触发，并在管道上传播，每个 Channel 都有自己独立的
+  Pipeline，默认的实现类为 DefaultChannelPipeline 。
+* ChannelHandlerContext：ChannelPipeline 的 链表节点，包含 ChannelHandler 及相关上下文信息，负责将 IO 事件传递给下一个节点，常用的实现类为
+  DefaultChannelHandlerContext、HeadContext、TailContext。
 * ChannelHandler：处理出站入站的处理器。
 
 * ServerSocketChannel 的 Pipeline 为 HeadContext -> ServerBootstrap.ServerBootstrapAcceptor -> TailContext
 * SocketChannel 的 Pipeline 为 HeadContext -> 自定义ChannelHandler -> TailContext
 
 ```java
-                                              I/O Request
-                                              via Channel or
-                                              ChannelHandlerContext
+                                              I/
+O Request
+via Channel
+or
+        ChannelHandlerContext
                                                     |
-+---------------------------------------------------+---------------+
-|                           ChannelPipeline         |               |
-|                                                  \|/              |
-|    +---------------------+            +-----------+----------+    |
-|    | Inbound Handler  N  |            | Outbound Handler  1  |    |
-|    +----------+----------+            +-----------+----------+    |
-|              /|\                                  |               |
-|               |                                  \|/              |
-|    +----------+----------+            +-----------+----------+    |
-|    | Inbound Handler N-1 |            | Outbound Handler  2  |    |
-|    +----------+----------+            +-----------+----------+    |
-|              /|\                                  .               |
-|               .                                   .               |
-| ChannelHandlerContext.fireIN_EVT() ChannelHandlerContext.OUT_EVT()|
-|        [ method call]                       [method call]         |
-|               .                                   .               |
-|               .                                  \|/              |
-|    +----------+----------+            +-----------+----------+    |
-|    | Inbound Handler  2  |            | Outbound Handler M-1 |    |
-|    +----------+----------+            +-----------+----------+    |
-|              /|\                                  |               |
-|               |                                  \|/              |
-|    +----------+----------+            +-----------+----------+    |
-|    | Inbound Handler  1  |            | Outbound Handler  M  |    |
-|    +----------+----------+            +-----------+----------+    |
-|              /|\                                  |               |
-+---------------+-----------------------------------+---------------+
-                |                                  \|/
-+---------------+-----------------------------------+---------------+
-|               |                                   |               |
-|       [ Socket.read() ]                    [ Socket.write() ]     |
-|                                                                   |
-|  Netty Internal I/O Threads (Transport Implementation)            |
-+-------------------------------------------------------------------+
+                                                            +---------------------------------------------------+---------------+
+                                                            |ChannelPipeline         | |
+        |                                                  \|/|
+        |+---------------------+ +-----------+----------+|
+        | |
+Inbound Handler
+N  | |
+Outbound Handler  1| |
+        |+----------+----------+ +-----------+----------+|
+        |/|\                                  | |
+        | |                                  \|/|
+        |+----------+----------+ +-----------+----------+|
+        | |
+Inbound Handler
+N-1| |
+Outbound Handler  2| |
+        |+----------+----------+ +-----------+----------+|
+        |/|\                                  .|
+        |..|
+        |ChannelHandlerContext.
+
+fireIN_EVT() ChannelHandlerContext.
+
+OUT_EVT()|
+        |[
+method call][
+method call]|
+        |..|
+        |.                                  \|/|
+        |+----------+----------+ +-----------+----------+|
+        | |
+Inbound Handler  2| |
+Outbound Handler
+M-1| |
+        |+----------+----------+ +-----------+----------+|
+        |/|\                                  | |
+        | |                                  \|/|
+        |+----------+----------+ +-----------+----------+|
+        | |
+Inbound Handler  1| |
+Outbound Handler
+M  | |
+        |+----------+----------+ +-----------+----------+|
+        |/|\                                  | |
+        +---------------+-----------------------------------+---------------+
+        |                                  \|/
+        +---------------+-----------------------------------+---------------+
+        | | | |
+        |[Socket.
+
+read() ][Socket.
+
+write() ]|
+        | |
+        |
+Netty Internal
+I/
+
+O Threads(Transport Implementation)            |
+        +-------------------------------------------------------------------+
 ```
 
 * 入站（read）从 HeadContext -> TailContext。
 * 出站（write）从 TailContext -> HeadContext。
 * ChannelPipeline#addLast是直接将 Chandler 添加到 HeadContext 后面。
-
 
 ChannelHandler 的生命周期：
 
@@ -1203,16 +1396,20 @@ ChannelHandler 的生命周期：
 * exceptionCaught：当 ChannelHandler 在处理数据的过程中发生异常时会调用此方法，当发生异常，ChannelHandlerContext 不会再向下传播。
 
 ChannelInboundHandler：处理入站操作。
+
 * ChannelRegistered：当Channel被注册到EventLoop且能够处理IO事件时会调用此方法
 * ChannelUnregistered：当Channel从EventLoop注销且无法处理任何IO事件时会调用此方法
 * ChannelActive：当Channel已经连接到远程节点(或者已绑定本地address)且处于活动状态时会调用此方法
 * ChannelInactive：当Channel与远程节点断开，不再处于活动状态时调用此方法
 * ChannelReadComplete：当Channel的某一个读操作完成时调用此方法
 * ChannelRead：当Channel有数据可读时调用此方法
-* ChannelWritabilityChanged：当Channel的可写状态发生改变时调用此方法，可以调用Channel的isWritable方法检测Channel的可写性，还可以通过ChannelConfig来配置write操作相关的属性。例如 对方 Socket 接收很慢，ChannelOutboundBuffer 就会积累很多的数据，一旦超过默认的高水位阈值，Channel的可写状态将会改变，同时调用该方法。
+*
+ChannelWritabilityChanged：当Channel的可写状态发生改变时调用此方法，可以调用Channel的isWritable方法检测Channel的可写性，还可以通过ChannelConfig来配置write操作相关的属性。例如
+对方 Socket 接收很慢，ChannelOutboundBuffer 就会积累很多的数据，一旦超过默认的高水位阈值，Channel的可写状态将会改变，同时调用该方法。
 * userEventTriggered：当ChannelInboundHandler的fireUserEventTriggered方法被调用时才调用此方法。
 
 ChannelOutboundHandler：处理出站操作。
+
 * bind：当Channel绑定到本地address时会调用此方法
 * connect：当Channel连接到远程节点时会调用此方法
 * disconnect：当Channel和远程节点断开时会调用此方法
@@ -1222,15 +1419,18 @@ ChannelOutboundHandler：处理出站操作。
 * flush：当Channel将数据冲刷到远程节点时调用此方法
 * write：当通过Channel将数据写入到远程节点时调用此方法
 
-通常我们实现 ChannelHandler 时，会选择继承 ChannelInboundHandlerAdapter 、 ChannelOutboundHandlerAdapter 、ChannelDuplexHandler，或者更为推荐的 SimpleChannelInboundHandler 。
+通常我们实现 ChannelHandler 时，会选择继承 ChannelInboundHandlerAdapter 、 ChannelOutboundHandlerAdapter
+、ChannelDuplexHandler，或者更为推荐的 SimpleChannelInboundHandler 。
 
-如果 ChannelHandler 是线程安全的，可以使用 @Sharable 注解标识，这样可以让多个ChannelPipeline 使用同一个ChannelHandler。 被 @Skip 注解的方法会直接跳过。
+如果 ChannelHandler 是线程安全的，可以使用 @Sharable 注解标识，这样可以让多个ChannelPipeline 使用同一个ChannelHandler。 被
+@Skip 注解的方法会直接跳过。
 
 ChannelHandler 一定不能阻塞。
 
 #### ChannelInitializer
 
-一个特殊的 ChannelInboundHandlerAdapter ，在 SocketChannel 创建时被触发 channelRegistered ，由它来添加自定义的 ChannelHandler ，并再添加完将自己移除。
+一个特殊的 ChannelInboundHandlerAdapter ，在 SocketChannel 创建时被触发 channelRegistered ，由它来添加自定义的
+ChannelHandler ，并再添加完将自己移除。
 
 #### Decoder & Encoder
 
@@ -1240,36 +1440,41 @@ ChannelHandler 一定不能阻塞。
 
 ByteToMessageDecoder有几个重点：
 
-* decode(ctx, in, out) 中 in 不用担心释放，只需使用 skipByte 即可，父类通过 MERGE_CUMULATOR 将 in 剩余未读字节 和 新从socket读取字节 复制到一个新 ByteBuf ，并释放 in。
-* ByteBuf.readBytes(int) 等一些返回 ByteBuf 的方法如果没有添加到 out list 需要主动释放，可以使用  ByteBuf.readSlice(int) 来避免这种问题，或者使用 getXX ，但要注意 index 位置，防止 超出边界值。
+* decode(ctx, in, out) 中 in 不用担心释放，只需使用 skipByte 即可，父类通过 MERGE_CUMULATOR 将 in 剩余未读字节 和
+  新从socket读取字节 复制到一个新 ByteBuf ，并释放 in。
+* ByteBuf.readBytes(int) 等一些返回 ByteBuf 的方法如果没有添加到 out list 需要主动释放，可以使用 ByteBuf.readSlice(int)
+  来避免这种问题，或者使用 getXX ，但要注意 index 位置，防止 超出边界值。
 * 不得使用 @Sharable 注解。
 * out 会在 channelRead 最后回收。
 
 ReplayingDecoder：遇到半包时通过抛出 ReplayingDecoder.REPLAY 异常，进入结束解码，等待下一次读取数据。
 
 常用的 ByteToMessageDecoder：
+
 * FixedLengthFrameDecoder：定长帧解码器。
 * DelimiterBasedFrameDecoder：分割符解码器。
 * LineBasedFrameDecoder：换行符解码器，`\r\n`、`\n`都视为换行符。
 * LengthFieldBasedFrameDecoder：
-  * maxFrameLength：最大帧长度，如果超过，此次数据会被丢弃。
-  * lengthFieldOffset：长度域偏移。如果数据开始的几个字节可能不是表示数据长度，所以需要后移几个字节才是长度域。
-  * lengthFieldLength：长度域字节数。用几个字节来表示数据长度。
-  * lengthAdjustment：长度域后实际长度 - 长度域长度，因为长度域长度可能包含 head 长度，需要 减去
-  * initialBytesToStrip：将本帧跳过几个字节，添加到 out。
+    * maxFrameLength：最大帧长度，如果超过，此次数据会被丢弃。
+    * lengthFieldOffset：长度域偏移。如果数据开始的几个字节可能不是表示数据长度，所以需要后移几个字节才是长度域。
+    * lengthFieldLength：长度域字节数。用几个字节来表示数据长度。
+    * lengthAdjustment：长度域后实际长度 - 长度域长度，因为长度域长度可能包含 head 长度，需要 减去
+    * initialBytesToStrip：将本帧跳过几个字节，添加到 out。
 
 常用 MessageToByteEncoder：
+
 * LengthFieldPrepender：
-  * byteOrder：表示Length字段本身占用的字节数使用的是大端还是小端编码
-  * lengthFieldLength：表示Length字段本身占用的字节数,只可以指定 1, 2, 3, 4, 或 8。
-  * lengthAdjustment：表示Length字段调整值。
-  * lengthIncludesLengthFieldLength：表示Length字段本身占用的字节数是否包含在Length字段表示的值中。
+    * byteOrder：表示Length字段本身占用的字节数使用的是大端还是小端编码
+    * lengthFieldLength：表示Length字段本身占用的字节数,只可以指定 1, 2, 3, 4, 或 8。
+    * lengthAdjustment：表示Length字段调整值。
+    * lengthIncludesLengthFieldLength：表示Length字段本身占用的字节数是否包含在Length字段表示的值中。
 
 Http常用编解码器：HttpServerCodec、HttpClientCodec、HttpObjectAggregator、HttpContentCompressor、HttpContentDecompressor、SslHandler
 
 Websocket常用编解码器：HttpServerCodec、HttpObjectAggregator、WebSocketServerProtocolHandler、TextFrameHandler、BinaryFrameHandler、ContinuationFrameHandler
 
 空闲和超时：
+
 * IdleStateHandler （空闲时间太长，触发 IdleStateEvent，通过 userEventTriggered 接收）
 * ReadTimeoutHandler （抛出 ReadTimeoutException，通过 exceptionCaught 接收）
 * WriteTimeoutHandler （抛出 WriteTimeouException，通过 exceptionCaught 接收 ）
@@ -1291,6 +1496,7 @@ ServerBootStrap中option()设置 SeverSocketChannel,childOption() 设置 SocketC
 ### ByteBuf
 
 优点：
+
 1. 支持池化。
 2. 支持引用计数。
 3. 读写使用不同索引，不同使用 flip 转换。
@@ -1298,99 +1504,100 @@ ServerBootStrap中option()设置 SeverSocketChannel,childOption() 设置 SocketC
 5. 复合缓冲区实现多个ByteBuf合并时，不用拷贝。
 
 类型：
+
 1. 内存类型：堆内存和直接内存，例如 PooledHeapByteBuf、PooledDirectByteBuf。
 2. 分配模式：分为池化与非池化，例如 PooledHeapByteBuf、UnpooledHeapByteBuf。
-3. 操作类型：分为Unsafe与非Unsafe，例如  PooledHeapByteBuf、PooledUnsafeHeapByteBuf。
+3. 操作类型：分为Unsafe与非Unsafe，例如 PooledHeapByteBuf、PooledUnsafeHeapByteBuf。
 
 常用方法：
 
 1. 读操作
 
-| 操作                                          | 说明                                                         |
-| --------------------------------------------- | ------------------------------------------------------------ |
-| readBoolean()                                 | 返回当前readIndex的Boolean值，readIndex增加1                 |
-| readByte()                                    | 返回当前readIndex处的字节值，readIndex增加1                  |
+| 操作                                            | 说明                                            |
+|-----------------------------------------------|-----------------------------------------------|
+| readBoolean()                                 | 返回当前readIndex的Boolean值，readIndex增加1           |
+| readByte()                                    | 返回当前readIndex处的字节值，readIndex增加1               |
 | readUnsignedByte()                            | 返回当前readIndex处的无符号字节值，readIndex增加1            |
-| readShort()                                   | 返回当前readIndex处的无符号short值，readIndex增加2           |
-| readShortLE()                                 | 使用小端计算返回 Short 值，readIndex增加2                    |
-| readUnsignedShort()                           | 返回当前readIndex处的short值，readIndex增加2                 |
-| readMedium()                                  | 读取 3 个字节24位转换为 int，readIndex增加3                  |
-| readInt()                                     | 返回当前readIndex处的int值，readIndex增加4                   |
-| readIntLE()                                   | 使用小端计算返回int值，readIndex增加4                        |
+| readShort()                                   | 返回当前readIndex处的无符号short值，readIndex增加2         |
+| readShortLE()                                 | 使用小端计算返回 Short 值，readIndex增加2                 |
+| readUnsignedShort()                           | 返回当前readIndex处的short值，readIndex增加2            |
+| readMedium()                                  | 读取 3 个字节24位转换为 int，readIndex增加3               |
+| readInt()                                     | 返回当前readIndex处的int值，readIndex增加4              |
+| readIntLE()                                   | 使用小端计算返回int值，readIndex增加4                     |
 | readUnsignedInt()                             | 返回当前readIndex处的无符号int值,返回类型为long，readIndex增加4 |
-| readLong()                                    | 返回当前readIndex处的long值，readIndex增加8                  |
-| readBytes(ByteBuf dst, int length)            | 读取 length 长度写入到 dst，readIndex增加length              |
-| readCharSequence(int length, Charset charset) | 读取 length 长度返回 CharSequence，readIndex增加length       |
+| readLong()                                    | 返回当前readIndex处的long值，readIndex增加8             |
+| readBytes(ByteBuf dst, int length)            | 读取 length 长度写入到 dst，readIndex增加length         |
+| readCharSequence(int length, Charset charset) | 读取 length 长度返回 CharSequence，readIndex增加length |
 
 2. 写操作
 
-| 操作                                                      | 说明                                                         |
-| --------------------------------------------------------- | ------------------------------------------------------------ |
-| writeBoolean(boolean value)                               | 在当前writeIndex处写入一个boolean值，并将writeIndex增加1     |
-| writeByte(int value)                                      | 在当前writeIndex处写入一个int值，忽略高位24位，并将writeIndex增加1，应当小于等于255，否则会被截断 |
-| writeShort(int value)                                     | 在当前writeIndex处写入一个int值，忽略高位16位，并将writeIndex增加2，应当小于等于65535，否则会被截断 |
-| writeShortLE(int value)                                   | 在当前writeIndex处写入一个int值，使用小端字节序，忽略高位16位，并将writeIndex增加2，应当小于等于65535，否则会被截断 |
-| writeMedium(int value)                                    | 在当前writeIndex处写入一个int值，忽略高位8位，并将writeIndex增加3，应当小于等于65535*255，否则会被截断 |
+| 操作                                                        | 说明                                                                           |
+|-----------------------------------------------------------|------------------------------------------------------------------------------|
+| writeBoolean(boolean value)                               | 在当前writeIndex处写入一个boolean值，并将writeIndex增加1                                   |
+| writeByte(int value)                                      | 在当前writeIndex处写入一个int值，忽略高位24位，并将writeIndex增加1，应当小于等于255，否则会被截断              |
+| writeShort(int value)                                     | 在当前writeIndex处写入一个int值，忽略高位16位，并将writeIndex增加2，应当小于等于65535，否则会被截断            |
+| writeShortLE(int value)                                   | 在当前writeIndex处写入一个int值，使用小端字节序，忽略高位16位，并将writeIndex增加2，应当小于等于65535，否则会被截断    |
+| writeMedium(int value)                                    | 在当前writeIndex处写入一个int值，忽略高位8位，并将writeIndex增加3，应当小于等于65535*255，否则会被截断         |
 | writeMediumLE(int value)                                  | 在当前writeIndex处写入一个int值，使用小端字节序，忽略高位8位，并将writeIndex增加3，应当小于等于65535*255，否则会被截断 |
-| writeInt(int value)                                       | 在当前writeIndex处写入一个int值，并将writeIndex增加4         |
-| writeIntLE(int value)                                     | 在当前writeIndex处写入一个int值，使用小端字节序，并将writeIndex增加4 |
-| writeLong(long value)                                     | 在当前writeIndex处写入一个long值，并将writeIndex增加8        |
-| writeLongLE(long value)                                   | 在当前writeIndex处写入一个long值，使用小端字节序，并将writeIndex增加8 |
-| writeChar(int value)                                      | 在当前writeIndex处写入一个int值，忽略高位16位，并将writeIndex增加2，低2位字节视为 2字节 UTF-8 字符 |
-| writeFloat(float value)                                   | 在当前writeIndex处写入一个float值，并将writeIndex增加4       |
-| writeDouble(double value)                                 | 在当前writeIndex处写入一个double值，并将writeIndex增加8      |
-| writeBytes(ByteBuf src)                                   | 在当前writeIndex处写入 readableBytes ，并将writeIndex增加 readableBytes |
-| writeZero(int length)                                     | 填充 length 长度 0x00                                        |
-| writeCharSequence(CharSequence sequence, Charset charset) | 写入 CharSequence ，writeIndex 增加长度跟编码有关，UTF-8 位 长度的2倍 |
+| writeInt(int value)                                       | 在当前writeIndex处写入一个int值，并将writeIndex增加4                                       |
+| writeIntLE(int value)                                     | 在当前writeIndex处写入一个int值，使用小端字节序，并将writeIndex增加4                               |
+| writeLong(long value)                                     | 在当前writeIndex处写入一个long值，并将writeIndex增加8                                      |
+| writeLongLE(long value)                                   | 在当前writeIndex处写入一个long值，使用小端字节序，并将writeIndex增加8                              |
+| writeChar(int value)                                      | 在当前writeIndex处写入一个int值，忽略高位16位，并将writeIndex增加2，低2位字节视为 2字节 UTF-8 字符          |
+| writeFloat(float value)                                   | 在当前writeIndex处写入一个float值，并将writeIndex增加4                                     |
+| writeDouble(double value)                                 | 在当前writeIndex处写入一个double值，并将writeIndex增加8                                    |
+| writeBytes(ByteBuf src)                                   | 在当前writeIndex处写入 readableBytes ，并将writeIndex增加 readableBytes                 |
+| writeZero(int length)                                     | 填充 length 长度 0x00                                                            |
+| writeCharSequence(CharSequence sequence, Charset charset) | 写入 CharSequence ，writeIndex 增加长度跟编码有关，UTF-8 位 长度的2倍                          |
 
 3. 随机读取：getXXXX，和 readXXXX 方法相似，readIndex 不变
 4. 随机写入：setXXXX，和 writeXXXX 方法相似，writeIndex 不变
 
 5. 可读字节：
 
-| 操作                   | 说明                                                         |
-| ---------------------- | ------------------------------------------------------------ |
-| readableBytes()              | 可读取字节，writerIndex - readerIndex |
-| isReadable() | 可读字节是否大于0               |
+| 操作              | 说明                              |
+|-----------------|---------------------------------|
+| readableBytes() | 可读取字节，writerIndex - readerIndex |
+| isReadable()    | 可读字节是否大于0                       |
 
 6. 可写字节：
 
-| 操作                                                | 说明                             |
-| --------------------------------------------------- | -------------------------------- |
+| 操作                                                  | 说明                          |
+|-----------------------------------------------------|-----------------------------|
 | writableBytes()                                     | 可写字节，capacity - writerIndex |
-| isWritable(int size)                                | 可写字节是否大于size             |
-| ensureWritable(int minWritableBytes, boolean force) | 可写入多大内容，是否扩容         |
+| isWritable(int size)                                | 可写字节是否大于size                |
+| ensureWritable(int minWritableBytes, boolean force) | 可写入多大内容，是否扩容                |
 
 7. 索引操作：
 
-| 操作                   | 说明                                                         |
-| ---------------------- | ------------------------------------------------------------ |
-| clear()                | 丢弃所有字节，writeIndex = readIndex = 0                     |
-| discardReadBytes()     | 丢弃已读字节，将未读字节复制到 索引 0                        |
+| 操作                     | 说明                                                                   |
+|------------------------|----------------------------------------------------------------------|
+| clear()                | 丢弃所有字节，writeIndex = readIndex = 0                                    |
+| discardReadBytes()     | 丢弃已读字节，将未读字节复制到 索引 0                                                 |
 | discardSomeReadBytes() | 当 writeIndex == readIndex ，丢弃所有字节，当 readIndex 大于容量一半，丢弃已读字节，否则不丢弃字节。 |
-| markReaderIndex()      | 标记 readerIndex                                             |
-| resetReaderIndex()     | 重置到 readerIndex                                           |
-| markWriterIndex()      | 标记 writerIndex                                             |
-| resetWriterIndex       | 重置到 writerIndex                                           |
-| skipBytes(int length)  | 跳过 length 字节                                             |
+| markReaderIndex()      | 标记 readerIndex                                                       |
+| resetReaderIndex()     | 重置到 readerIndex                                                      |
+| markWriterIndex()      | 标记 writerIndex                                                       |
+| resetWriterIndex       | 重置到 writerIndex                                                      |
+| skipBytes(int length)  | 跳过 length 字节                                                         |
 
 8. 查找操作：
 
-| 操作                                            | 说明                                                         |
-| ----------------------------------------------- | ------------------------------------------------------------ |
+| 操作                                              | 说明                                                                    |
+|-------------------------------------------------|-----------------------------------------------------------------------|
 | indexOf(int fromIndex, int toIndex, byte value) | 1. from>to,从from到to查找第一个值，包含from<br />2. from<to,从to到from查找第一个值，包含 to |
-| bytesBefore(byte value)                         | 查找第一个值索引 - readerIndex                               |
-| bytesBefore(int length, byte value)             | 在指定length查找第一个值索引 - readerIndex                   |
-| bytesBefore(int index, int length, byte value)  | 从指定索引搜索，而不是 readerIndex                           |
-| forEachByte(ByteProcessor processor)            | 指定byte匹配规则，返回一个查找的值                           |
+| bytesBefore(byte value)                         | 查找第一个值索引 - readerIndex                                                |
+| bytesBefore(int length, byte value)             | 在指定length查找第一个值索引 - readerIndex                                       |
+| bytesBefore(int index, int length, byte value)  | 从指定索引搜索，而不是 readerIndex                                               |
+| forEachByte(ByteProcessor processor)            | 指定byte匹配规则，返回一个查找的值                                                   |
 
 9. 派生缓冲区：返回新的ByteBuf，具有自己的读索引、写索引和标记索引，但是内部储存和原ByteBuf使用同一个，任何一个修改数据都可以修改所有视图。
 
-| 操作        | 说明                                                         |
-| ----------- | ------------------------------------------------------------ |
+| 操作          | 说明                                     |
+|-------------|----------------------------------------|
 | slice()     | 返回可读字节视图，最大长度为可读字节长度，与原ByteBuf使用一个引用计数 |
-| duplicate() | 返回新视图，最大长度与之前一样，与原ByteBuf使用一个引用计数  |
-| copy()      | 深复制一个新的ByteBuf                                        |
+| duplicate() | 返回新视图，最大长度与之前一样，与原ByteBuf使用一个引用计数      |
+| copy()      | 深复制一个新的ByteBuf                         |
 
 10. 引用计数：retain() 引用计数加1 ， release() 引用计数减1
 
@@ -1400,7 +1607,7 @@ ServerBootStrap中option()设置 SeverSocketChannel,childOption() 设置 SocketC
 
 ```java
 // static，所有bytebuf公用，用来检测内存泄漏问题
-static final ResourceLeakDetector<ByteBuf> leakDetector =      ResourceLeakDetectorFactory.instance().newResourceLeakDetector(ByteBuf.class);
+static final ResourceLeakDetector<ByteBuf> leakDetector = ResourceLeakDetectorFactory.instance().newResourceLeakDetector(ByteBuf.class);
 // 读指针，下一个可以读取的索引
 int readerIndex;
 // 写指针，下一个可以写入的索引
@@ -1426,7 +1633,8 @@ private int maxCapacity;
 
 #### AbstractReferenceCountedByteBuf
 
-通过 volatile + CAS 修改 refCnt,refCnt 初始化为 2，采用位运算， retain() 左移一位 ,release() 右移一位，当调用 release() 等于 1 时，开始释放对象，在实际实现中不是采用是否等于1来判断，而是使用 refCnt  & 1 判断奇偶数来判断，偶数表示引用还存在，奇数表示对象被释放。
+通过 volatile + CAS 修改 refCnt,refCnt 初始化为 2，采用位运算， retain() 左移一位 ,release() 右移一位，当调用 release() 等于
+1 时，开始释放对象，在实际实现中不是采用是否等于1来判断，而是使用 refCnt & 1 判断奇偶数来判断，偶数表示引用还存在，奇数表示对象被释放。
 
 #### UnpooledHeapByteBuf & UnpooledUnsafeHeapByteBuf
 
@@ -1442,7 +1650,8 @@ private ByteBuffer tmpNioBuf;
 
 扩容时使用 System.copyarray() 复制到新数组。
 
-UnpooledHeapByteBuf 使用字节数组的索引即array[index]访问，UnpooledUnsafeHeapByteBuf 使用 baseAddress + Index的得到字节的地址，然后从该地址取得字节，以提高性能。
+UnpooledHeapByteBuf 使用字节数组的索引即array[index]访问，UnpooledUnsafeHeapByteBuf 使用 baseAddress +
+Index的得到字节的地址，然后从该地址取得字节，以提高性能。
 
 #### UnpooledDirectByteBuf & UnpooledUnsafeDirectByteBuf
 
@@ -1458,7 +1667,7 @@ private boolean doNotFree;
 
 扩容时创建一个新的 ByteBuffer ，使用 ByteBuffer#put 将 原ByteBuffer 复制过去，再将 原ByteBuffer 释放内存。
 
-UnpooledDirectByteBuf  使用 DirectByteBuffer API 访问，UnpooledUnsafeHeapByteBuf 使用 memoryAddress + Index 地址访问，速度更快。
+UnpooledDirectByteBuf 使用 DirectByteBuffer API 访问，UnpooledUnsafeHeapByteBuf 使用 memoryAddress + Index 地址访问，速度更快。
 
 #### PooledByteBuf
 
@@ -1482,17 +1691,19 @@ private ByteBufAllocator allocator;
 
 * 先将内存分为多个Chunk，16MB
 
-* 按使用率将 Chunk 归类为多个  PoolChunkList，PoolChunkList有 QINIT 、 Q0 、 Q25 、 Q50 、Q75 、Q100 6种，代表不同的使用率,使用链表组织数据结构：
+* 按使用率将 Chunk 归类为多个 PoolChunkList，PoolChunkList有 QINIT 、 Q0 、 Q25 、 Q50 、Q75 、Q100 6种，代表不同的使用率,使用链表组织数据结构：
 
   ![257](assets/257.png)
 
-* 一个Chunk分为切分为 2048 块 Page ,8KB，储存在 PriorityQueue数组（runsAvail），其中PriorityQueue存放的是handle，handle可以理解为一个句柄，维护一个内存块的信息，内存标识符。
+* 一个Chunk分为切分为 2048 块 Page ,8KB，储存在
+  PriorityQueue数组（runsAvail），其中PriorityQueue存放的是handle，handle可以理解为一个句柄，维护一个内存块的信息，内存标识符。
 
-* runsAvail数组默认长度为40，每个位置index上放的handle代表了存在一个可用内存块，并且可分配大小 大于等于当前的pageSize，小于下一页的pageSize。
+* runsAvail数组默认长度为40，每个位置index上放的handle代表了存在一个可用内存块，并且可分配大小
+  大于等于当前的pageSize，小于下一页的pageSize。
 
 * 分配时分为 Small内存块 、Normal内存块 分开分配。
 
-*  Small内存块使用 PoolSubpage  。
+* Small内存块使用 PoolSubpage 。
 
 * Normal内存块 直接从 PriorityQueue 中划分 page。
 
@@ -1510,14 +1721,14 @@ private ByteBufAllocator allocator;
 
 常用api:
 
-| 操作                    | 说明                                                 |
-| ----------------------- | ---------------------------------------------------- |
+| 操作                      | 说明                                       |
+|-------------------------|------------------------------------------|
 | buffer()                | 根据directByDefault字段，决定 buffer 类型，默认false |
-| heapBuffer()            | 初始大小256，最大容量 Integer.MAX_VALUE              |
-| directBuffer()          | 初始大小256，最大容量 Integer.MAX_VALUE              |
+| heapBuffer()            | 初始大小256，最大容量 Integer.MAX_VALUE           |
+| directBuffer()          | 初始大小256，最大容量 Integer.MAX_VALUE           |
 | compositeBuffer()       | 根据directByDefault字段，决定 buffer 类型，默认false |
-| compositeHeapBuffer()   | 最大组件数量为16                                     |
-| compositeDirectBuffer() | 最大组件数量为16                                     |
+| compositeHeapBuffer()   | 最大组件数量为16                                |
+| compositeDirectBuffer() | 最大组件数量为16                                |
 
 #### ByteBufUtil & HeapByteBufUtil & UnsafeByteBufUtil
 
@@ -1532,7 +1743,7 @@ private ByteBufAllocator allocator;
 * buffer()：创建堆缓存区。
 * directBuffer()：创建直接缓存区。
 * wrappedBuffer()：和入参使用相同的 byte[],不需要复制。
-* copiedBuffer()：深拷贝一个 ByteBuf，会复制一个新的  byte[]。
+* copiedBuffer()：深拷贝一个 ByteBuf，会复制一个新的 byte[]。
 
 ### FileRegion
 
@@ -1540,15 +1751,19 @@ private ByteBufAllocator allocator;
 
 ```java
 FileInputStream in = new FileInputStream(file);
-FileRegion region = new DefaultFileRegion(in.getChannel,0,file.length);
-channel.writeAndFlush(region).addListener(
+FileRegion region = new DefaultFileRegion(in.getChannel, 0, file.length);
+channel.
+
+writeAndFlush(region).
+
+addListener(
     new ChannelFutureListener() {
-      public void operationComplete(ChannelFuture future) throw Exception{
-         if(!future.isSuccess()){
-           Throwable cause = future.cause();
-         }
-      }
+    public void operationComplete (ChannelFuture future)throw Exception {
+        if (!future.isSuccess()) {
+            Throwable cause = future.cause();
+        }
     }
+}
 )
 ```
 
@@ -1557,18 +1772,21 @@ channel.writeAndFlush(region).addListener(
 1. 链路建立：需要IP地址或者号段的黑白名单安全认证机制，或者 SSL 认证。
 2. 链路关闭：读写过程发生IO异常、心跳超时、编码异常等，主动关闭连接。
 3. 可靠性设计：
-  * 心跳：客户端间隔时间T发送心跳，统计心跳未响应次数，当次数达到阀值断开链路，间隔一段时间发起重连。服务端空闲时间T后，统计次数加1，只要接收到消息即清零，达到阀值关闭链路。
-  * 重连：重连由客户端发起，需要间隔一段时间，并打印重连日志。
-  * 重复登录保护：服务端接收客户端握手请求消息后，对IP进行校验，在缓存的地址表中查看是否已经登录，如果已经登录则拒绝重复登录，并且通过 服务端心跳检测筛除无效连接，清空该连接的缓存信息，防止重复登录保护机制拒绝。
-  * 消息缓存重发，在链路恢复前，缓存在消息队列中的消息不能丢失。
+
+* 心跳：客户端间隔时间T发送心跳，统计心跳未响应次数，当次数达到阀值断开链路，间隔一段时间发起重连。服务端空闲时间T后，统计次数加1，只要接收到消息即清零，达到阀值关闭链路。
+* 重连：重连由客户端发起，需要间隔一段时间，并打印重连日志。
+* 重复登录保护：服务端接收客户端握手请求消息后，对IP进行校验，在缓存的地址表中查看是否已经登录，如果已经登录则拒绝重复登录，并且通过
+  服务端心跳检测筛除无效连接，清空该连接的缓存信息，防止重复登录保护机制拒绝。
+* 消息缓存重发，在链路恢复前，缓存在消息队列中的消息不能丢失。
+
 4. 安全性设计：使用认证机制。
 5. 扩展性设计：
 
-  ![258](assets/258.png)
+![258](assets/258.png)
 
 协议示例：
 
-  [协议示例](assets/协议示例.doc)
+[协议示例](assets/协议示例.doc)
 
 测试检测指标：
 
@@ -1580,33 +1798,43 @@ channel.writeAndFlush(region).addListener(
 
 通过 EmbeddedChannel 测试 Pipeline 的出站、入站。
 
-| 操作          | 说明                                                                                                       |
-| ------------- | ---------------------------------------------------------------------------------------------------------- |
-| writeInbound  | 将入站消息写到EmbeddedChannel中。如果可以通过readInbound方法从EmbeddedChannel中读取数据，则返回true        |
-| readInbound   | 从EmbeddedChannel中读取入站消息。任何返回东西都经过整个ChannelPipeline。如果没有任何可供读取的，则返回null |
-| writeOutbound | 将出站消息写到EmbeddedChannel中，如果现在可以通过readOutbound从EmbeddedChannel中读取到东西，则返回true     |
-| readOutbound  | 从EmbeddedChannel中读取出站消息。任何返回东西都经过整个ChannelPipeline。如果没有任何可供读取的，则返回null |
+| 操作            | 说明                                                                         |
+|---------------|----------------------------------------------------------------------------|
+| writeInbound  | 将入站消息写到EmbeddedChannel中。如果可以通过readInbound方法从EmbeddedChannel中读取数据，则返回true   |
+| readInbound   | 从EmbeddedChannel中读取入站消息。任何返回东西都经过整个ChannelPipeline。如果没有任何可供读取的，则返回null     |
+| writeOutbound | 将出站消息写到EmbeddedChannel中，如果现在可以通过readOutbound从EmbeddedChannel中读取到东西，则返回true |
+| readOutbound  | 从EmbeddedChannel中读取出站消息。任何返回东西都经过整个ChannelPipeline。如果没有任何可供读取的，则返回null     |
 
 ```java
 EmbeddedChannel channel = new EmbeddedChannel(new FixedLengthFrameDecoder(3));
-channel.writeInbound(input.retain());
-channel.finish();
+channel.
+
+writeInbound(input.retain());
+        channel.
+
+finish();
 
 ByteBuf read = channel.readInbound();
 ```
 
 ```java
 EmbeddedChannel channel = new EmbeddedChannel(new AbsIntegerEncoder());
-channel.writeOutbound(buf);
-channel.finish();
+channel.
 
-channel.readOutbound();
+writeOutbound(buf);
+channel.
+
+finish();
+
+channel.
+
+readOutbound();
 ```
-
 
 ## TCP粘包、拆包
 
-TCP 是面向流的协议，是一串没有界限的数据， TCP 也不知道上层业务数据的具体含义，所以在数据分片时并不会按照上层业务数据的逻辑进行分片，而是根据实际情况大小进行分片，这样在业务上的一个完整数据可能被划分到多个分片里面，多个数据也可能被分到一个片里面，所以服务端一次读取到的字节数时不确定的。
+TCP 是面向流的协议，是一串没有界限的数据， TCP
+也不知道上层业务数据的具体含义，所以在数据分片时并不会按照上层业务数据的逻辑进行分片，而是根据实际情况大小进行分片，这样在业务上的一个完整数据可能被划分到多个分片里面，多个数据也可能被分到一个片里面，所以服务端一次读取到的字节数时不确定的。
 
 如果客户端发送两个数据包 D1 和 D2 ，服务端读取到数据有以下情况：
 
@@ -1620,6 +1848,7 @@ TCP 是面向流的协议，是一串没有界限的数据， TCP 也不知道�
 TCP 分片的依据是 在三次握手的时候，在两端主机之间被计算得出的 最大消息长度（MSS）。
 
 解决方案：
+
 1. 消息定长，不够长使用填充。
 2. 在包尾使用固定的分隔符分割，例如 换行符。
 3. 将消息分为头部和消息体，头部中保存整个消息的长度，只有读取到足够长度的消息之后才算是读到了一个完整的消息。
@@ -1631,26 +1860,30 @@ TCP 分片的依据是 在三次握手的时候，在两端主机之间被计算
 ![245](assets/245.png)
 
 1. 操作系统零拷贝：
-  * mmap/write：三次数据复制（其中只有一次 CPU COPY）以及4次上下文切换(因为需要两个系统调用)，mmap 就是将不同的虚拟地址映射到同一个物理地址上。
 
-    ![244](assets/244.png)
+* mmap/write：三次数据复制（其中只有一次 CPU COPY）以及4次上下文切换(因为需要两个系统调用)，mmap 就是将不同的虚拟地址映射到同一个物理地址上。
 
-  * sendfile：三次数据复制（其中只有一次 CPU COPY）以及2次上下文切换。
+  ![244](assets/244.png)
 
-    ![243](assets/243.png)
+* sendfile：三次数据复制（其中只有一次 CPU COPY）以及2次上下文切换。
 
-  * 带有 scatter/gather 的 sendfile：只有两次数据复制（都是 DMA COPY）及 2 次上下文切换，直接将 Read Buffer 的内存地址、偏移量记录到相应的 Socket Buffer 中，本质是上就是使用相同的虚拟地址
+  ![243](assets/243.png)
 
-    ![246](assets/246.png)
+* 带有 scatter/gather 的 sendfile：只有两次数据复制（都是 DMA COPY）及 2 次上下文切换，直接将 Read Buffer 的内存地址、偏移量记录到相应的
+  Socket Buffer 中，本质是上就是使用相同的虚拟地址
+
+  ![246](assets/246.png)
 
 2. java 零拷贝：
-  * FileChannel#transferTo：优先使用 sendfile ，如果操作系统不支持再使用 MappedByteBuffer 。
-  * MappedByteBuffer：使用 mmap 技术映射到堆外内存。
-  * DirectByteBuffer：使用堆外内存，减少堆内外的数据拷贝。
+
+* FileChannel#transferTo：优先使用 sendfile ，如果操作系统不支持再使用 MappedByteBuffer 。
+* MappedByteBuffer：使用 mmap 技术映射到堆外内存。
+* DirectByteBuffer：使用堆外内存，减少堆内外的数据拷贝。
 
 3. Netty 零拷贝：
 
-  * Netty 提供了CompositeByteBuf 类, 它可以将多个 ByteBuf 合并为一个逻辑上的 ByteBuf, 避免合并多个ByteBuf 时各个 ByteBuf 之间的拷贝。
-  * 通过 wrap 操作, 我们可以将 byte[] 数组、ByteBuf、ByteBuffer等包装成一个 Netty ByteBuf 对象, 避免通过write api 产生的拷贝操作。
-  * ByteBuf支持slice操作, 因此可以将 ByteBuf 分解为多个共享同一个存储区域的 ByteBuf, 避免内存的拷贝。
-  * 通过 FileRegion 包装的FileChannel.tranferTo 实现文件传输。
+* Netty 提供了CompositeByteBuf 类, 它可以将多个 ByteBuf 合并为一个逻辑上的 ByteBuf, 避免合并多个ByteBuf 时各个 ByteBuf
+  之间的拷贝。
+* 通过 wrap 操作, 我们可以将 byte[] 数组、ByteBuf、ByteBuffer等包装成一个 Netty ByteBuf 对象, 避免通过write api 产生的拷贝操作。
+* ByteBuf支持slice操作, 因此可以将 ByteBuf 分解为多个共享同一个存储区域的 ByteBuf, 避免内存的拷贝。
+* 通过 FileRegion 包装的FileChannel.tranferTo 实现文件传输。

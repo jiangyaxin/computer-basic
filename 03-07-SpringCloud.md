@@ -2811,10 +2811,17 @@ SpringbootAdmin 分为 服务端和客户端：
 1. 引入依赖
 
 ```xml
-<dependency>
-   <groupId>de.codecentric</groupId>
-   <artifactId>spring-boot-admin-starter-server</artifactId>
-</dependency>
+<dependencies>
+  <dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-web</artifactId>
+  </dependency>
+
+  <dependency>
+    <groupId>de.codecentric</groupId>
+    <artifactId>spring-boot-admin-starter-server</artifactId>
+  </dependency>
+</dependencies>
 ```
 
 2. 使用 @EnableAdminServer 开启服务。
@@ -2824,10 +2831,17 @@ SpringbootAdmin 分为 服务端和客户端：
 1. 引入依赖
 
 ```xml
-<dependency>
-   <groupId>de.codecentric</groupId>
-   <artifactId>spring-boot-admin-starter-client</artifactId>
-</dependency>
+<dependencies>
+  <dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-web</artifactId>
+  </dependency>
+  
+  <dependency>
+     <groupId>de.codecentric</groupId>
+     <artifactId>spring-boot-admin-starter-client</artifactId>
+  </dependency>
+</dependencies>
 ```
 
 2. 添加配置

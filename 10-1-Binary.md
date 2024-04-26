@@ -281,7 +281,7 @@ In mathematics, modular arithmetic is a system of arithmetic for integers, where
 
 3）判断n是否是2的倍数
 
-```java
+```text
 (n > 0) && (n & -n) == n
 ```
 
@@ -346,7 +346,7 @@ static final int tableSizeFor(int cap) {
 
 那我们一块内存中到底能储存多少数据？例如：
 
-```java
+```text
 4GB的内存，4G=4*1024M=4*1024*1024kb=4*1024*1024*1024byte，即2的32次方个8bit单位。
 ```
 

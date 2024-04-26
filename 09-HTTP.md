@@ -119,7 +119,7 @@ HTTPS 使用混合加密方式，握手期间使用非对称加密，通信期�
 
 X.509 证书结构：
 
-```java
+```text
 Certificate
   // 版本号
   Version Number

@@ -1023,7 +1023,7 @@ START_HOURS_RANGE=3-22    # 延迟多少个小时内应该要执行的任务时�
 
 /etc/logrotate.conf :
 
-```java
+```text
 // 按周轮询
 weekly
 // 保留 4个文件
@@ -1040,7 +1040,7 @@ include /etc/logrotate.d
 
 /etc/logrotate.d/xxxx :
 
-```java
+```text
 // 针对 /var/log/wtmp
 /var/log/wtmp {
     // 按月轮询

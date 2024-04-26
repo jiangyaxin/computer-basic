@@ -280,21 +280,25 @@ compression.type
 发送并忘记(fire-and-forget)：消息发送给服务器后不关心它是否正常到达，大多数时候，消息会正常到达，因为 Kafka 是高可用的，而且生产者会自动尝试重发，不过这种方式有时候会丢失一些消息。
 
 ```java
-try{
-    producer.send(record);
-} catch (Exception e){
-    log.error("",e);
+public void test() {
+    try {
+        producer.send(record);
+    } catch (Exception e) {
+        log.error("", e);
+    }
 }
 ```
 
 同步发送：使用 send() 方法发送消息，它会返回一个 Future 对象，调用 get() 方法进行等待。
 
 ```java
-try{
-	// get() 会得到一个 RecordMetadata
-    producer.send(record).get();
-} catch (Exception e){
-    log.error("",e);
+public void test() {
+    try {
+        // get() 会得到一个 RecordMetadata
+        producer.send(record).get();
+    } catch (Exception e) {
+        log.error("", e);
+    }
 }
 ```
 
@@ -302,14 +306,16 @@ try{
 
 ```java
 public class ProducerCallback implements Callback {
-     public void onCompletion(RecordMetadata recordMetadata,Exception e){
-     }
+    public void onCompletion(RecordMetadata recordMetadata, Exception e) {
+    }
 }
 
-try{
-    producer.send(record,new ProducerCallback());
-} catch (Exception e){
-    log.error("",e);
+public void test() {
+    try {
+        producer.send(record, new ProducerCallback());
+    } catch (Exception e) {
+        log.error("", e);
+    }
 }
 ```
 
@@ -421,8 +427,10 @@ onCommit会在提交完偏移量后调用，可以使用这个方法来跟踪所
 ### 订阅
 
 ```java
-// 该方法接受正则表达式
-comsumer.subscribe(Collections.singletonList("xxxx"));
+public void test() {
+    // 该方法接受正则表达式
+   comsumer.subscribe(Collections.singletonList("xxxx"));
+}
 ```
 
 没有群组的消费者需要使用 ` consumer.assign(Collection<TopicPartition> partitions)` 给自己分配分区，可以使用 `consumer.partitionsFor("topics")`来获取分区信息，新增分区需要重新获取。

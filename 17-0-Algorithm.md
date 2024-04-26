@@ -2,7 +2,7 @@
 
 动态规划四个关键点：状态、选择、状态转移、Base Case
 
-```java
+```text
 dp[0][0][...] = base case
 # 进行状态转移
 for 状态1 in 状态1的所有取值：
@@ -21,7 +21,7 @@ for 状态1 in 状态1的所有取值：
 
 3、结束条件：也就是到达决策树底层，无法再做选择的条件，当前节点没有可以到达的节点。
 
-```java
+```text
 result = []
 def backtrack(路径, 选择列表):
     if 满足结束条件:
@@ -38,7 +38,7 @@ def backtrack(路径, 选择列表):
 
 用来计算从 start 到 target 的最短距离。
 
-```java
+```text
 int BFS(Node start, Node target) {
     Queue<Node> q; // 核心数据结构
     Set<Node> visited; // 避免走回头路
@@ -83,7 +83,7 @@ void traverse(int[] arr) {
 
 ### 滑动窗口
 
-```java
+```text
 void slidingWindow(String s) {
     // 用合适的数据结构记录窗口中的数据
     Map<Character, Integer> window = new HashMap<Character, Integer>();

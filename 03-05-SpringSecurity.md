@@ -793,7 +793,7 @@ public class SecurityTest {
 
 ```java
 public class BasicAuthenticationFilter extends OncePerRequestFilter {
-......
+    // ......
 	@Override
 	protected void doFilterInternal(HttpServletRequest request,
 			HttpServletResponse response, FilterChain chain)
@@ -857,7 +857,7 @@ public class BasicAuthenticationFilter extends OncePerRequestFilter {
 		chain.doFilter(request, response);
 	}
 
-   ......
+    // ......
 }
 ```
 
@@ -967,22 +967,25 @@ public interface RememberMeServices {
 实例:
 
 ```xml
-<bean id="rememberMeFilter" class=
-"org.springframework.security.web.authentication.rememberme.RememberMeAuthenticationFilter">
-<property name="rememberMeServices" ref="rememberMeServices"/>
-<property name="authenticationManager" ref="theAuthenticationManager" />
-</bean>
 
-<bean id="rememberMeServices" class=
-"org.springframework.security.web.authentication.rememberme.TokenBasedRememberMeServices">
-<property name="userDetailsService" ref="myUserDetailsService"/>
-<property name="key" value="springRocks"/>
-</bean>
+<beans>
+    <bean id="rememberMeFilter" class=
+            "org.springframework.security.web.authentication.rememberme.RememberMeAuthenticationFilter">
+        <property name="rememberMeServices" ref="rememberMeServices"/>
+        <property name="authenticationManager" ref="theAuthenticationManager"/>
+    </bean>
 
-<bean id="rememberMeAuthenticationProvider" class=
-"org.springframework.security.authentication.RememberMeAuthenticationProvider">
-<property name="key" value="springRocks"/>
-</bean>
+    <bean id="rememberMeServices" class=
+            "org.springframework.security.web.authentication.rememberme.TokenBasedRememberMeServices">
+        <property name="userDetailsService" ref="myUserDetailsService"/>
+        <property name="key" value="springRocks"/>
+    </bean>
+
+    <bean id="rememberMeAuthenticationProvider" class=
+            "org.springframework.security.authentication.RememberMeAuthenticationProvider">
+        <property name="key" value="springRocks"/>
+    </bean>
+</beans>
 ```
 
 **除此之外还需要将完成`UsernamePasswordAuthenticationFilter.setRememberMeServices()`、`AuthenticationManager.setProviders() `、`RememberMeAuthenticationFilter `添加到`FilterChainProxy`（通常在`UsernamePasswordAuthenticationFilter` 之后）。**
@@ -1004,16 +1007,20 @@ public interface RememberMeServices {
 示例：
 
 ```xml
-<bean id="anonymousAuthFilter"
-	class="org.springframework.security.web.authentication.AnonymousAuthenticationFilter">
-<property name="key" value="foobar"/>
-<property name="userAttribute" value="anonymousUser,ROLE_ANONYMOUS"/>
-</bean>
 
-<bean id="anonymousAuthenticationProvider"
-	class="org.springframework.security.authentication.AnonymousAuthenticationProvider">
-<property name="key" value="foobar"/>
-</bean>
+<beans>
+    <bean id="anonymousAuthFilter"
+          class="org.springframework.security.web.authentication.AnonymousAuthenticationFilter">
+        <property name="key" value="foobar"/>
+        <property name="userAttribute" value="anonymousUser,ROLE_ANONYMOUS"/>
+    </bean>
+
+    <bean id="anonymousAuthenticationProvider"
+          class="org.springframework.security.authentication.AnonymousAuthenticationProvider">
+        <property name="key" value="foobar"/>
+    </bean>
+</beans>
+
 ```
 
 ```xml
@@ -1087,7 +1094,7 @@ public class AuthenticationConfig {
                         .addLogoutHandler(logoutHandler)
                         // 删除名为 cookieNamesToClear 的cookie，这是CookieClearingLogoutHandler的简单设置方式。
                         .deleteCookies(cookieNamesToClear)
-                )
+                );
         
     }
 }
@@ -1415,19 +1422,22 @@ public class AuthenticatedVoter {
 例如：
 
 ```xml
-<bean id="roleVoter" class="org.springframework.security.access.vote.RoleHierarchyVoter">
-	<constructor-arg ref="roleHierarchy" />
-</bean>
-<bean id="roleHierarchy"
-		class="org.springframework.security.access.hierarchicalroles.RoleHierarchyImpl">
-	<property name="hierarchy">
-		<value>
-			ROLE_ADMIN > ROLE_STAFF
-			ROLE_STAFF > ROLE_USER
-			ROLE_USER > ROLE_GUEST
-		</value>
-	</property>
-</bean>
+
+<beans>
+    <bean id="roleVoter" class="org.springframework.security.access.vote.RoleHierarchyVoter">
+        <constructor-arg ref="roleHierarchy"/>
+    </bean>
+    <bean id="roleHierarchy"
+          class="org.springframework.security.access.hierarchicalroles.RoleHierarchyImpl">
+        <property name="hierarchy">
+            <value>
+                ROLE_ADMIN > ROLE_STAFF
+                ROLE_STAFF > ROLE_USER
+                ROLE_USER > ROLE_GUEST
+            </value>
+        </property>
+    </bean>
+</beans>
 ```
 
 # Authorize HttpServletRequest with FilterSecurityInterceptor
@@ -1505,7 +1515,7 @@ public class SecurityConfig {
 //首先
 public class WebSecurity {
 		public boolean check(Authentication authentication, HttpServletRequest request) {
-				...
+				//...
 		}
 }
 
@@ -1627,14 +1637,17 @@ public interface PermissionEvaluator extends AopInfrastructureBean {
 ```
 
 ```xml
-<security:global-method-security pre-post-annotations="enabled">
-<security:expression-handler ref="expressionHandler"/>
-</security:global-method-security>
 
-<bean id="expressionHandler" class=
-"org.springframework.security.access.expression.method.DefaultMethodSecurityExpressionHandler">
-	<property name="permissionEvaluator" ref="myPermissionEvaluator"/>
-</bean>
+<beans>
+    <security:global-method-security pre-post-annotations="enabled">
+        <security:expression-handler ref="expressionHandler"/>
+    </security:global-method-security>
+
+    <bean id="expressionHandler" class=
+            "org.springframework.security.access.expression.method.DefaultMethodSecurityExpressionHandler">
+        <property name="permissionEvaluator" ref="myPermissionEvaluator"/>
+    </bean>
+</beans>
 ```
 
 自定义权限计算器：

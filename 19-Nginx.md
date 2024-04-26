@@ -12,7 +12,7 @@
 
 示例：
 
-```properties
+```text
 #-------servers配置--------------------
 location / {
     echo $uri    #回显请求的uri
@@ -85,7 +85,7 @@ done
 
 示例：
 
-```properties
+```text
 http {
     limit_req_zone $binary_remote_addr zone=one:10m rate=1r/s; 
     server {
@@ -101,7 +101,7 @@ http {
 
 示例：
 
-```properties
+```text
 limit_conn_zone $binary_remote_addr zone=perip:10m;
 limit_conn_zone $server_name zone=perserver:10m;
 
@@ -122,7 +122,7 @@ server {
 
 使用  `ngx_http_geo_module` 和 `ngx_http_map_module` 两个工具模块即可搞定。
 
-```properties
+```text
 geo $limit {
     default 1;
     10.0.0.0/8 0;

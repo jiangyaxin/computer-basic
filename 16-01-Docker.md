@@ -14,7 +14,8 @@ Base 镜像：
 
 Linux操作系统由内核空间和用户空间组成，用户空间的文件系统是rootfs，对于Base镜像使用的是宿主机的Kernel，只需要提供rootfs，所以文件大小远小于操作系统。
 
-镜像分层:Docker 通过现有镜像创建新的镜像，镜像是分层结构的，这样可以让每一层的镜像共享。当某个容器修改了基础镜像的内容并不会影响其他镜像，因为使用了 CopyOnWrite 特性，修改被限制在单个容器。
+镜像分层:Docker 通过现有镜像创建新的镜像，镜像是分层结构的，这样可以让每一层的镜像共享。当某个容器修改了基础镜像的内容并不会影响其他镜像，因为使用了
+CopyOnWrite 特性，修改被限制在单个容器。
 
 可写容器层：当容器启动时，一个新的可写层被加载到镜像层的顶部，只有容器层是可写的，容器层下的所有镜像层都是只读的，无论添加、删除、修改文件都只会发生在容器层。
 
@@ -27,7 +28,8 @@ Linux操作系统由内核空间和用户空间组成，用户空间的文件系
 
 ## 构建镜像
 
-将现有容器保存为新镜像：`docker commit <container-id> <new-image-id>`,不推荐使用，推荐 Dockerfile 构建，底层也是 docker commit 一层层构建的。
+将现有容器保存为新镜像：`docker commit <container-id> <new-image-id>`,不推荐使用，推荐 Dockerfile 构建，底层也是 docker
+commit 一层层构建的。
 
 ### Dockerfile
 
@@ -68,7 +70,8 @@ ENV CLASSPATH $JAVA_HOME/lib/dt.jar:$JAVA_HOME/lib/tools.jar:$JRE_HOME/lib:$CLAS
 ENV PATH $JAVA_HOME/bin:$PATH
 ```
 
-5. 根据`Dockerfile`创建镜像。注意后面的空格和点不要省略,点表示 上下文环境为当前目录，docker 会从上下文环境中查找 Dockerfile。
+5. 根据`Dockerfile`创建镜像。注意后面的空格和点不要省略,点表示 上下文环境为当前目录，docker 会从上下文环境中查找
+   Dockerfile。
 
 ```bash
 docker build -t='jdk1.8:latest' .
@@ -91,18 +94,25 @@ dockerfile 构建时某个中间节点失败，这个节点之前构建的中间
 * ADD ： 将文件从 build context 复制到镜像，如果src是归档文件(tar、zip、tgz、xz)等，会自动解压。
 * ENV ： 设置环境变量，环境变量可以被后面的指令使用。
 * EXPOSE ：声明容器中的进程会监听某个端口，不会自动在宿主机进行端口映射，可以使用 docker run -P 自动随机映射该端口。
-* VOLUME : 声明匿名挂载卷，无法指定对应的宿主机目录，会自动生成，可以使用 `docker run  -it -v <宿主机路径>:<容器路径> <image-id>`指定明确的宿主机路径进行覆盖
+* VOLUME :
+  声明匿名挂载卷，无法指定对应的宿主机目录，会自动生成，可以使用 `docker run -it -v <宿主机路径>:<容器路径> <image-id>`
+  指定明确的宿主机路径进行覆盖
 * WORKDIR ：为后面的 RUN 、CMD 、ENTRYPOINT 、ADD 、COPY 设置镜像中的当前工作目录。
 * RUN ：容器中运行指定的命令，执行命令并创建新的镜像层，常常用于安装软件包。
-* CMD : 容器是进程，CMD是容器启动时运行的程序和参数，dockerfile 中可以有多个 CMD 指令，但只有最后一个生效，CMD 可以被 docker run 后面的参数替换，如: ubuntu 镜像默认的 CMD 是 /bin/bash ，可以使用docker run -it ubuntu cat /etc/os-release 将 CMD 替换成 cat /etc/os-release 。
-* ENTRYPOINT ：dockerfile 中可以有多个 ENTRYPOINT 指令，但只有最后一个生效，当指定了 ENTRYPOINT 后，CMD 的含义就发生了改变，不再是直接的运行其命令，而是将 CMD 的内容作为参数传给 ENTRYPOINT 指令,实际变为 `ENTRYPOINT "<CMD>"`,例如：
+* CMD : 容器是进程，CMD是容器启动时运行的程序和参数，dockerfile 中可以有多个 CMD 指令，但只有最后一个生效，CMD 可以被 docker
+  run 后面的参数替换，如: ubuntu 镜像默认的 CMD 是 /bin/bash ，可以使用docker run -it ubuntu cat /etc/os-release 将 CMD
+  替换成 cat /etc/os-release 。
+* ENTRYPOINT ：dockerfile 中可以有多个 ENTRYPOINT 指令，但只有最后一个生效，当指定了 ENTRYPOINT 后，CMD
+  的含义就发生了改变，不再是直接的运行其命令，而是将 CMD 的内容作为参数传给 ENTRYPOINT 指令,实际变为 `ENTRYPOINT "<CMD>"`
+  ,例如：
 
   ```dockerfile
   ENTRYPOINT ["/bin/chamber", "exec", "production", "--"]
   CMD ["/bin/service", "-d"]
   ```
 
-  实际会变为 `["/bin/chamber", "exec", "production", "--", "/bin/service", "-d"]`，docker run 后面如果还有参数，会将 CMD 替换后拼接在后面。
+  实际会变为 `["/bin/chamber", "exec", "production", "--", "/bin/service", "-d"]`，docker run 后面如果还有参数，会将 CMD
+  替换后拼接在后面。
 
   Shell 格式：`<instruction> <command>` 实际调用 `/bin/sh -c <command>`。
 
@@ -122,9 +132,12 @@ none网络：不需要网络
 
 host网络：与宿主机在同一个网络中，但没有独立IP地址，使用宿主机的IP和端口
 
-bridge网络：docker 安装时会创建名为 docker0 的网桥，如果不指定 --network,容器中的虚拟网卡默认会挂到 docker0 ，容器中网络的网关即为docker0，所以多个容器在同一个网段下面，可以互相访问，可以通过 `docker network inspect <network-name>`查看。
+bridge网络：docker 安装时会创建名为 docker0 的网桥，如果不指定 --network,容器中的虚拟网卡默认会挂到 docker0
+，容器中网络的网关即为docker0，所以多个容器在同一个网段下面，可以互相访问，可以通过 `docker network inspect <network-name>`
+查看。
 
-自定义网络：通过 `docker network create <network-name>`创建网络，--driver 选择驱动，驱动有 bridge、overly、macvlan，--subnet和--gateway 自定义网关和子网。
+自定义网络：通过 `docker network create <network-name>`创建网络，--driver 选择驱动，驱动有
+bridge、overly、macvlan，--subnet和--gateway 自定义网关和子网。
 
 网络通信：
 
@@ -144,18 +157,23 @@ bridge网络：docker 安装时会创建名为 docker0 的网桥，如果不指�
 
 容器访问外网：
 
-docker 会在 iptable 规则表中添加 POSTROUTING 规则`iptables -t nat -A POSTROUTING -o docker0 -s 192.168.1.0/24 -j MASQUERADE`，表示所有来自 192.168.1.0/24 子网，流出 docker0 的数据包源地址交由系统伪装。
+docker 会在 iptable 规则表中添加 POSTROUTING
+规则`iptables -t nat -A POSTROUTING -o docker0 -s 192.168.1.0/24 -j MASQUERADE`，表示所有来自 192.168.1.0/24 子网，流出
+docker0 的数据包源地址交由系统伪装。
 
 外网访问容器：
 
-docker 会在 iptable 规则表中添加 PREROUTING 规则`iptables -t nat -I PREROUTING -i eth0 -p tcp -m tcp --dport 7001 -j DNAT --to-destination 172.20.0.7:7001`，表示所有从eth0进入目的端口为7001的数据包都发送到 172.20.0.7:7001 去处理。
+docker 会在 iptable 规则表中添加 PREROUTING
+规则`iptables -t nat -I PREROUTING -i eth0 -p tcp -m tcp --dport 7001 -j DNAT --to-destination 172.20.0.7:7001`
+，表示所有从eth0进入目的端口为7001的数据包都发送到 172.20.0.7:7001 去处理。
 
 多主机网络共享：
 
 overlay方式：
 
 1. 在 host1 创建一个 overlay 类型网络，`docker network create -d verlay <network-name>`
-2. 在 host1 创建连接到 overlay 网络的容器，`docker run -d --network <network-name> <image-id>`,这时docker 会创建 docker_gwbridge 的网络，为所有连接到 overlay 网络的容器提供访问外网能力。
+2. 在 host1 创建连接到 overlay 网络的容器，`docker run -d --network <network-name> <image-id>`,这时docker 会创建
+   docker_gwbridge 的网络，为所有连接到 overlay 网络的容器提供访问外网能力。
 3. 在 host2 创建连接到 overlay 网络的容器，可通过 host1 中容器名 访问 host1 中连接到 overlay网络的容器。
 
 不同名称的overlay网络互相隔离，可以通过`docker network connect <network-name> bbox3`来加入网络。
@@ -166,13 +184,16 @@ overlay方式：
 
 1. 由 storage driver 管理的镜像层和容器层，不同的文件系统使用不同的驱动，docker会选择合适的驱动使用。
 2. Data Volume：
-   * 是宿主机的目录或者文件，被 mount 到容器的文件系统，不是没有格式化的磁盘(块设备)。
-   * volume 可以被容器读写，容器销毁后也可以永久保存。
+    * 是宿主机的目录或者文件，被 mount 到容器的文件系统，不是没有格式化的磁盘(块设备)。
+    * volume 可以被容器读写，容器销毁后也可以永久保存。
 
 使用方法：
 
-1. docker run 时添加参数 `-v <host-path>:<container-path>`,可以挂载文件和目录，会隐藏`<container-path>`中的文件，使用`<host-path>`目录中的文件。
-2. docker run 时添加参数 `-v <container-path>`，可以挂载目录，会自动挂载到宿主机 `/var/lib/docker/volumes/<container-id>/_data`,会将`<container-path>`中的文件复制到该路径，这点与上面挂载不相同，可通过 `docker inspect <container-id>`查看
+1. docker run 时添加参数 `-v <host-path>:<container-path>`,可以挂载文件和目录，会隐藏`<container-path>`
+   中的文件，使用`<host-path>`目录中的文件。
+2. docker run 时添加参数 `-v <container-path>`
+   ，可以挂载目录，会自动挂载到宿主机 `/var/lib/docker/volumes/<container-id>/_data`,会将`<container-path>`
+   中的文件复制到该路径，这点与上面挂载不相同，可通过 `docker inspect <container-id>`查看
 
 删除没有使用的volume：`docker volume rm ${docker volume ls -q}`
 
@@ -189,10 +210,13 @@ overlay方式：
 
 文件目录为：/etc/docker/daemon.json
 
+添加镜像仓库：
+
 ```json
 {
-  // 添加镜像仓库
-  "registry-mirrors": ["https://registry.docker-cn.com"]
+  "registry-mirrors": [
+    "https://registry.docker-cn.com"
+  ]
 }
 ```
 
@@ -519,7 +543,7 @@ services:
     deploy:
       mode: replicated
       replicas: 1
-      labels: [APP=VOTING]
+      labels: [ APP=VOTING ]
       restart_policy:
         condition: on-failure
         delay: 10s
@@ -553,7 +577,8 @@ volumes:
 
 前面目录结构中是通过 image 这个配置，这个相对简单，给出能在镜像仓库中找到镜像的名称即可。
 
-另外一种指定镜像的方式就是直接采用 Dockerfile 来构建镜像，通过 build 这个配置我们能够定义构建的环境目录，与 `docker build` 中的环境目录是同一个含义。
+另外一种指定镜像的方式就是直接采用 Dockerfile 来构建镜像，通过 build 这个配置我们能够定义构建的环境目录，与 `docker build`
+中的环境目录是同一个含义。
 
 如果我们通过这种方式指定镜像，那么 Docker Compose 先会帮助我们执行镜像的构建，之后再通过这个镜像启动容器。
 
@@ -647,28 +672,32 @@ services:
 - 一个使用 web 配置的容器会被创建，它以 `web` 的名字加入了 `myapp_default` 这个网络；
 - 一个使用 db 配置的容器会被创建，它以 `db` 的名字加入了 `myapp_default` 网络；
 
-现在，每个容器都可以查找主机名 web 或 db，并获取相应容器的 IP 地址。例如，web 应用的代码可以使用 URL postgres://db:5432 连接数据库并使用它。
+现在，每个容器都可以查找主机名 web 或 db，并获取相应容器的 IP 地址。例如，web 应用的代码可以使用 URL postgres://db:5432
+连接数据库并使用它。
 
 - 重要的是要注意 HOST_PORT 和 CONTAINER_PORT 之间的区别。前者是指的是宿主机的端口，后者指的是容器中的端口。
 - 容器网络中的服务间使用的是 CONTAINER_PORT 通信。
-- HOST_PORT 定义了是为了容器网络外被调用的。所以，前面才使用的是 postgres://db:5432 而不是 postgres://db:8001。因为他们属于同一个容器网络中。
+- HOST_PORT 定义了是为了容器网络外被调用的。所以，前面才使用的是 postgres://db:5432 而不是 postgres://db:
+  8001。因为他们属于同一个容器网络中。
 
-另外值得注意的是：**services 下级的服务中 networks 指定的网络不是指要创建的网络，而是这个服务要加入的网络，如果网络不存在会出现`ERROR: Service "mongodb" uses an undefined network "mogo_net"`**,不过可以通过 top-level 的 networks 定义一下网络，运行时，会自动创建网络，例如：
+另外值得注意的是：**services 下级的服务中 networks
+指定的网络不是指要创建的网络，而是这个服务要加入的网络，如果网络不存在会出现`ERROR: Service "mongodb" uses an undefined network "mogo_net"`
+**,不过可以通过 top-level 的 networks 定义一下网络，运行时，会自动创建网络，例如：
 
 ```yaml
 version: "2"
 services:
-    mongodb:
-        image: mongo:4
-        container_name: devops-mongo # 容器名
-        ports:
-            - "27017:27017"
-        volumes:
-            - "/data/docker_local/mongo/configdb:/data/configdb"
-            - "/data/docker_local/mongo/data/db:/data/db"
-        command: --auth # 开启授权验证
-        networks:
-            - mongo_net
+  mongodb:
+    image: mongo:4
+    container_name: devops-mongo # 容器名
+    ports:
+      - "27017:27017"
+    volumes:
+      - "/data/docker_local/mongo/configdb:/data/configdb"
+      - "/data/docker_local/mongo/data/db:/data/db"
+    command: --auth # 开启授权验证
+    networks:
+      - mongo_net
 networks:
   mongo_net:
     name: mongo_net
@@ -685,7 +714,7 @@ command: bundle exec thin -p 3000
 或
 
 ```yaml
-command: ["bundle", "exec", "thin", "-p", "3000"]
+command: [ "bundle", "exec", "thin", "-p", "3000" ]
 ```
 
 #### depends_on
@@ -712,7 +741,8 @@ services:
     image: postgres
 ```
 
-启动时会先启动db和redis，最后才启动web。在使用docker-compose up web启动web时，也会启动db和redis，因为在web服务中指定了依赖关系。在停止时也在web之前先停止db和redis。
+启动时会先启动db和redis，最后才启动web。在使用docker-compose up
+web启动web时，也会启动db和redis，因为在web服务中指定了依赖关系。在停止时也在web之前先停止db和redis。
 
 #### dns
 
@@ -720,6 +750,9 @@ services:
 
 ```yaml
 dns: 8.8.8.8
+```
+
+```yaml
 dns:
   - 8.8.8.8
   - 9.9.9.9
@@ -736,7 +769,7 @@ entrypoint: /code/entrypoint.sh
 也可以写成JSON数组形式，例如：
 
 ```yaml
-entrypoint: ["php", "-d", "memory_limit=-1", "vendor/bin/phpunit"]
+entrypoint: [ "php", "-d", "memory_limit=-1", "vendor/bin/phpunit" ]
 ```
 
 #### environment
@@ -748,6 +781,9 @@ environment:
   RACK_ENV: development
   SHOW: 'true'
   SESSION_SECRET:
+```
+
+```yaml
 environment:
   - RACK_ENV=development
   - SHOW=true
@@ -775,7 +811,7 @@ extra_hosts:
 
 设置网络模式
 
-```yaml
+```text
 network_mode: "bridge"
 network_mode: "host"
 network_mode: "none"

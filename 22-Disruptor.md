@@ -206,7 +206,7 @@ SequenceBarrier 由 AbstractSequencer 产生。
 ```java
 public abstract class AbstractSequencer implements Sequencer
 {
-    private static fin###al AtomicReferenceFieldUpdater<AbstractSequencer, Sequence[]> SEQUENCE_UPDATER =
+    private static final AtomicReferenceFieldUpdater<AbstractSequencer, Sequence[]> SEQUENCE_UPDATER =
         AtomicReferenceFieldUpdater.newUpdater(AbstractSequencer.class, Sequence[].class, "gatingSequences");
 
     protected final int bufferSize;

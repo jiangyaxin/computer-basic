@@ -1,8 +1,12 @@
 # Spring扩展点：
 
-* BeanFactoryPostProcessor#postProcessBeanFactory(ConfigurableListableBeanFactory beanFactory)：负责修改 BeanFactory 属性，例如继承CustomEditorConfigurer 自定义Editor 时自动将其注入到 BeanFactory、PropertyPlaceholderConfigurer 、ConfigurationClassPostProcessor扫描 @configuration 注解等。
-* BeanDefinitionRegistryPostProcessor#postProcessBeanDefinitionRegistry(BeanDefinitionRegistry registry) ：可以直接注入 BeanDefinition，例如 mybatis 中 MapperScannerConfigurer。
-* BeanPostProcessor#postProcessAfterInitialization(Object bean, String beanName)：负责修改Bean，例如生成代理，注入 xxxAware、注入ApplicationListener等。
+* BeanFactoryPostProcessor#postProcessBeanFactory(ConfigurableListableBeanFactory beanFactory)：负责修改 BeanFactory
+  属性，例如继承CustomEditorConfigurer 自定义Editor 时自动将其注入到 BeanFactory、PropertyPlaceholderConfigurer
+  、ConfigurationClassPostProcessor扫描 @configuration 注解等。
+* BeanDefinitionRegistryPostProcessor#postProcessBeanDefinitionRegistry(BeanDefinitionRegistry registry) ：可以直接注入
+  BeanDefinition，例如 mybatis 中 MapperScannerConfigurer。
+* BeanPostProcessor#postProcessAfterInitialization(Object bean, String beanName)：负责修改Bean，例如生成代理，注入
+  xxxAware、注入ApplicationListener等。
 * xxxAware
 * InitializingBean
 * DisposableBean
@@ -12,53 +16,76 @@
 
 ![105](assets/105.png)
 
-1. 从spring.factories配置文件中加载EventPublishingRunListener对象，该对象拥有SimpleApplicationEventMulticaster属性，即在SpringBoot启动过程的不同阶段用来发射内置的生命周期事件。
+1.
+
+从spring.factories配置文件中加载EventPublishingRunListener对象，该对象拥有SimpleApplicationEventMulticaster属性，即在SpringBoot启动过程的不同阶段用来发射内置的生命周期事件。
+
 2. 准备环境变量，包括系统变量，环境变量，命令行参数，默认变量，servlet相关配置变量，随机值以及配置文件（比如application.properties）等。
 3. 控制台打印SpringBoot的bannner标志。
 4. 根据不同类型环境创建不同类型的applicationcontext容器，因为这里是servlet环境，所以创建的是AnnotationConfigServletWebServerApplicationContext容器对象；
 5. 从spring.factories配置文件中加载FailureAnalyzers对象,用来报告SpringBoot启动过程中的异常。
 6. 为刚创建的容器对象做一些初始化工作，准备一些容器属性值等，对ApplicationContext应用一些相关的后置处理和调用各个ApplicationContextInitializer的初始化方法来执行一些初始化逻辑等。
-7. 刷新容器，这一步至关重要。比如调用bean factory的后置处理器，注册BeanPostProcessor后置处理器，初始化事件广播器且广播事件，初始化剩下的单例bean和SpringBoot创建内嵌的Tomcat服务器等等重要且复杂的逻辑都在这里实现。
+7. 刷新容器，这一步至关重要。比如调用bean
+   factory的后置处理器，注册BeanPostProcessor后置处理器，初始化事件广播器且广播事件，初始化剩下的单例bean和SpringBoot创建内嵌的Tomcat服务器等等重要且复杂的逻辑都在这里实现。
 8. 执行刷新容器后的后置处理逻辑，注意这里为空方法。
 9. 调用ApplicationRunner和CommandLineRunner的run方法，我们实现这两个接口可以在spring容器启动后需要的一些东西比如加载一些业务数据等。
 10. 报告启动异常，即若启动过程中抛出异常，此时用FailureAnalyzers来报告异常。
 
 ## SpringBoot扩展点
 
-* org.springframework.context.ApplicationContextInitializer：这时候容器刚刚创建，还未load、refresh，例如 ConfigFileApplicationContextInitializer 在这时候初始化属性。
+* org.springframework.context.ApplicationContextInitializer：这时候容器刚刚创建，还未load、refresh，例如
+  ConfigFileApplicationContextInitializer 在这时候初始化属性。
   生效办法：
-  1. 启动类中加入 springApplication.addInitializers(new TestApplicationContextInitializer())
-  2. 配置文件中加入， 例如 context.initializer.classes=com.example.demo.TestApplicationContextInitializer
-  3. Spring SPI扩展，在spring.factories中加入，例如 org.springframework.context.ApplicationContextInitializer=com.example.demo.TestApplicationContextInitializer
+    1. 启动类中加入 springApplication.addInitializers(new TestApplicationContextInitializer())
+    2. 配置文件中加入， 例如 context.initializer.classes=com.example.demo.TestApplicationContextInitializer
+    3. Spring SPI扩展，在spring.factories中加入，例如
+       org.springframework.context.ApplicationContextInitializer=com.example.demo.TestApplicationContextInitializer
 * org.springframework.beans.factory.support.BeanDefinitionRegistryPostProcessor
 * org.springframework.beans.factory.config.BeanFactoryPostProcessor：Springboot扫描注解就是通过这种方式。
 * org.springframework.beans.factory.config.InstantiationAwareBeanPostProcessor：继承于 BeanPostProcessor，除此之外还存在额外的3个方法：
-  1. postProcessBeforeInstantiation：未创建实例，默认返回为null，当不为null，会用该对象替换 Bean默认的实例化过程，后续会执行 postProcessAfterInitialization，不会执行 postProcessAfterInstantiation、postProcessProperties，例如 AnnotationAwareAspectJAutoProxyCreator 实现的 AOP。
-  2. postProcessAfterInstantiation：Bean默认的实例化后，属性还没有被赋值；它的返回值是决定要不要调用 postProcessProperties 方法，默认为 true 。
-  3. postProcessProperties：对属性值进行修改，如果该方法返回的为null，则继续使用原来的 PropertyValues 对象，如果返回的不为null，则替换掉原有的 PropertyValues 对象。
+    1. postProcessBeforeInstantiation：未创建实例，默认返回为null，当不为null，会用该对象替换 Bean默认的实例化过程，后续会执行
+       postProcessAfterInitialization，不会执行 postProcessAfterInstantiation、postProcessProperties，例如
+       AnnotationAwareAspectJAutoProxyCreator 实现的 AOP。
+    2. postProcessAfterInstantiation：Bean默认的实例化后，属性还没有被赋值；它的返回值是决定要不要调用
+       postProcessProperties 方法，默认为 true 。
+    3. postProcessProperties：对属性值进行修改，如果该方法返回的为null，则继续使用原来的 PropertyValues
+       对象，如果返回的不为null，则替换掉原有的 PropertyValues 对象。
 * org.springframework.beans.factory.config.BeanPostProcessor：用于扩展 实例化后初始化前后的操作。
-* org.springframework.beans.factory.config.SmartInstantiationAwareBeanPostProcessor：继承于 InstantiationAwareBeanPostProcessor，除此之外还存在额外的3个方法：
-  1. predictBeanType：触发点发生在postProcessBeforeInstantiation之前，预测Bean的类型，返回第一个预测成功的Class类型，如果不能预测返回null。主要当调用BeanFactory.getType(name)时BeanDefinition无法确定Bean类型的时候调用该方法来确定类型。
-  2. determineCandidateConstructors：在postProcessBeforeInstantiation方法和postProcessAfterInstantiation方法之间调用，如果postProcessBeforeInstantiation方法返回了一个新的实例代替了原本该生成的实例，那么该方法会被忽略，用于确定该bean的构造函数之用，返回的是该bean的所有构造函数列表。如果返回null，会执行下一个PostProcessor的determineCandidateConstructors方法；否则选取该PostProcessor选择的构造器。
-  3. getEarlyBeanReference：主要用于解决循环引用问题，提前暴露的ObjectFactory就是通过该方法得到。
+* org.springframework.beans.factory.config.SmartInstantiationAwareBeanPostProcessor：继承于
+  InstantiationAwareBeanPostProcessor，除此之外还存在额外的3个方法：
+    1.
+  predictBeanType：触发点发生在postProcessBeforeInstantiation之前，预测Bean的类型，返回第一个预测成功的Class类型，如果不能预测返回null。主要当调用BeanFactory.getType(
+  name)时BeanDefinition无法确定Bean类型的时候调用该方法来确定类型。
+    2.
+  determineCandidateConstructors：在postProcessBeforeInstantiation方法和postProcessAfterInstantiation方法之间调用，如果postProcessBeforeInstantiation方法返回了一个新的实例代替了原本该生成的实例，那么该方法会被忽略，用于确定该bean的构造函数之用，返回的是该bean的所有构造函数列表。如果返回null，会执行下一个PostProcessor的determineCandidateConstructors方法；否则选取该PostProcessor选择的构造器。
+    3. getEarlyBeanReference：主要用于解决循环引用问题，提前暴露的ObjectFactory就是通过该方法得到。
 * BeanFactoryAware、BeanNameAware、BeanClassLoaderAware：填充属性之后，postProcessBeforeInitialization之前。
-* EnvironmentAware、EmbeddedValueResolverAware、ResourceLoaderAware、ApplicationEventPublisherAware、MessageSourceAware、ApplicationContextAware：属性填充之后，在postProcessBeforeInitialization中执行。
+*
+
+EnvironmentAware、EmbeddedValueResolverAware、ResourceLoaderAware、ApplicationEventPublisherAware、MessageSourceAware、ApplicationContextAware：属性填充之后，在postProcessBeforeInitialization中执行。
+
 * javax.annotation.PostConstruct：在postProcessBeforeInitialization中执行，存在于InitDestroyAnnotationBeanPostProcessor中。
-* org.springframework.beans.factory.InitializingBean：postProcessBeforeInitialization 之后，postProcessAfterInitialization之前，init-method 会在随后执行。
+* org.springframework.beans.factory.InitializingBean：postProcessBeforeInitialization
+  之后，postProcessAfterInitialization之前，init-method 会在随后执行。
 * org.springframework.beans.factory.FactoryBean：用来构建复杂的bean。
-* org.springframework.beans.factory.SmartInitializingSingleton：Spring容器管理的所有单例对象（非懒加载对象）初始化完成之后调用，触发时机在postProcessAfterInitialization之后。
-* org.springframework.boot.ApplicationRunner、org.springframework.boot.CommandLineRunner：容器启动之后，顺序由 @Order 决定，区别是参数不同。
+*
+
+org.springframework.beans.factory.SmartInitializingSingleton：Spring容器管理的所有单例对象（非懒加载对象）初始化完成之后调用，触发时机在postProcessAfterInitialization之后。
+
+* org.springframework.boot.ApplicationRunner、org.springframework.boot.CommandLineRunner：容器启动之后，顺序由 @Order
+  决定，区别是参数不同。
 * org.springframework.beans.factory.DisposableBean：对象销毁时执行。
 * org.springframework.context.ApplicationListener：2种方式调用，可以实现 ApplicationListener 或者 使用 @EventListener。
   Springboot 启动过程中事件：
-  1. ApplicationStartingEvent：Environment 未创建。
-  2. ApplicationEnvironmentPreparedEvent：Environment 已创建，环境变量、JVM参数、ServletContext 已加载。
-  3. ApplicationContextInitializedEvent：容器刚刚创建，ApplicationContextInitializer执行之后，还未load、refresh。
-  4. ApplicationPreparedEvent：已经完成load，BeanPostProcessor，入口类已完成加载，注解未完成扫描。
-  5. ContextRefreshedEvent：在refresh方法最后， refresh() 被调用时发生，所有的Bean被成功装载，后处理Bean被检测并激活，所有Singleton Bean 被预实例化。
-  6. ApplicationStartedEvent：容器已经完成refresh，所有bean都完成加载，ApplicationRunner、CommandLineRunner未执行。
-  7. ApplicationFailedEvent：容器启动失败时触发。
-  8. ApplicationReadyEvent：ApplicationRunner、CommandLineRunner已经执行，容器成功启动后触发。
+    1. ApplicationStartingEvent：Environment 未创建。
+    2. ApplicationEnvironmentPreparedEvent：Environment 已创建，环境变量、JVM参数、ServletContext 已加载。
+    3. ApplicationContextInitializedEvent：容器刚刚创建，ApplicationContextInitializer执行之后，还未load、refresh。
+    4. ApplicationPreparedEvent：已经完成load，BeanPostProcessor，入口类已完成加载，注解未完成扫描。
+    5. ContextRefreshedEvent：在refresh方法最后， refresh() 被调用时发生，所有的Bean被成功装载，后处理Bean被检测并激活，所有Singleton
+       Bean 被预实例化。
+    6. ApplicationStartedEvent：容器已经完成refresh，所有bean都完成加载，ApplicationRunner、CommandLineRunner未执行。
+    7. ApplicationFailedEvent：容器启动失败时触发。
+    8. ApplicationReadyEvent：ApplicationRunner、CommandLineRunner已经执行，容器成功启动后触发。
 
 ## Bean 生命周期
 
@@ -81,7 +108,9 @@
 * HierarchicalBeanFactory：增加 BeanFactory 对 parentFactory 的缓存。
 * ListableBeanFactory：获取bean的列表。
 * ConfigurableBeanFactory：可以配置 BeanFactory。
-* AutowireCapableBeanFactory：可以手动调用完成 bean 的注入、初始化、应用后处理器，这里的自动装配不是 @Autowired 注解，而是 xml方式 的注入，也叫传统注入方式，注解驱动注入是通过 AutowiredAnnotationBeanPostProcessor#setAutowiredAnnotationType 提供的。
+* AutowireCapableBeanFactory：可以手动调用完成 bean 的注入、初始化、应用后处理器，这里的自动装配不是 @Autowired 注解，而是
+  xml方式 的注入，也叫传统注入方式，注解驱动注入是通过 AutowiredAnnotationBeanPostProcessor#setAutowiredAnnotationType
+  提供的。
 * ConfigurableListableBeanFactory：继承 ConfigurableBeanFactory 和 AutowireCapableBeanFactory。
 
 ## XmlBeanDefinitionReader：
@@ -100,10 +129,12 @@
 
 ## Bean的加载：
 
-当我们隐式或者显示的调用 BeanFactory#getBean(...) 时，会触发加载Bean阶段，这时，容器会首先检查所请求的对象是否已经初始化完成，如果没有，则会根据注册的 Bean 信息实例化请求的对象，并为其注册依赖，然后将其返回给请求方。
+当我们隐式或者显示的调用 BeanFactory#getBean(...) 时，会触发加载Bean阶段，这时，容器会首先检查所请求的对象是否已经初始化完成，如果没有，则会根据注册的
+Bean 信息实例化请求的对象，并为其注册依赖，然后将其返回给请求方。
 
 1. 首先从 alias 中获取 BeanName。
-   假设配置了一个 FactoryBean 的名字为 "abc" ，那么获取 FactoryBean 创建的 Bean 时，使用 "abc" ，如果获取 FactoryBean 本身，使用 "&abc" 。另外，&定义在 BeanFactory.FACTORY_BEAN_PREFIX = "&" 上。
+   假设配置了一个 FactoryBean 的名字为 "abc" ，那么获取 FactoryBean 创建的 Bean 时，使用 "abc" ，如果获取 FactoryBean
+   本身，使用 "&abc" 。另外，&定义在 BeanFactory.FACTORY_BEAN_PREFIX = "&" 上。
    FactoryBean 用于创建一些复杂的bean。
 2. 依次从缓存中获取bean，这里的bean有个可能是 FactoryBean 也有可能是普通bean，并且可能没有实例化，缓存有三个：
 
@@ -130,7 +161,8 @@
      private final Map<String, Object> earlySingletonObjects = new HashMap<>(16);
    }
    ```
-3. 如果从缓存中获取到bean，由于bean不是最终的bean，所以需要调用 getObjectForBeanInstance(...) 获取bean实例 或 FactoryBean.getObject() 的对象。
+3. 如果从缓存中获取到bean，由于bean不是最终的bean，所以需要调用 getObjectForBeanInstance(...) 获取bean实例 或
+   FactoryBean.getObject() 的对象。
 4. 如果没有从缓存中获取到bean 先从 parentBeanFactory 获取 Bean。
 5. 如果没有从 parentBeanFactory 获取到，再获取 BeanDefinition ，先需要依赖，判断没有循环先创建依赖，再根据不同的作用域创建bean。
 6. 类型转换，例如name返回为String，requiredType 要求返回 Integer，这时候会使用 ConversionService 做转换。
@@ -139,10 +171,14 @@
 
 1. 首先，从一级缓存 singletonObjects 获取。
 2. 如果，没有且当前指定的 beanName 正在创建，就再从二级缓存 earlySingletonObjects 中获取。
-3. 如果，还是没有获取到且允许 singletonFactories 通过 #getObject() 获取，则从三级缓存 singletonFactories 获取。如果获取到，则通过其 #getObject() 方法，获取对象，并将其加入到二级缓存 earlySingletonObjects 中，并从三级缓存 singletonFactories 删除，这里的 #getObject 是ObjectFactory 的方法，不是 FactoryBean 的方法，不要搞混。
+3. 如果，还是没有获取到且允许 singletonFactories 通过 #getObject() 获取，则从三级缓存 singletonFactories 获取。如果获取到，则通过其
+   #getObject() 方法，获取对象，并将其加入到二级缓存 earlySingletonObjects 中，并从三级缓存 singletonFactories 删除，这里的
+   #getObject 是ObjectFactory 的方法，不是 FactoryBean 的方法，不要搞混。
 
-三级缓存这样升级到二级缓存，二级缓存存在的意义，就是缓存三级缓存中的 ObjectFactory 的 #getObject() 方法的执行结果，提早曝光的单例 Bean 对象。
-singletonFactories 中的数据来自于 doCreateBean 时使添加，添加的是刚创建但是没有填充属性、也没有初始化的对象，并对对象进行postProcessAfterInitialization处理，这个逻辑不会立马触发，是一个函数表达式，需要满足三个条件：单例、正在创建、可以运行提前暴露。
+三级缓存这样升级到二级缓存，二级缓存存在的意义，就是缓存三级缓存中的 ObjectFactory 的 #getObject() 方法的执行结果，提早曝光的单例
+Bean 对象。
+singletonFactories 中的数据来自于 doCreateBean
+时使添加，添加的是刚创建但是没有填充属性、也没有初始化的对象，并对对象进行postProcessAfterInitialization处理，这个逻辑不会立马触发，是一个函数表达式，需要满足三个条件：单例、正在创建、可以运行提前暴露。
 当创建单例完成后就 从singletonFactories移除。
 
 如果对象A和对象B循环依赖，且都有代理的话:
@@ -162,12 +198,15 @@ singletonFactories 中的数据来自于 doCreateBean 时使添加，添加的�
 那为什么Sping不选择二级缓存方式，而是要额外加一层缓存？
 
 * Spring 的设计原则是尽可能保证普通对象创建完成之后，再生成其 AOP 代理，如果要使用二级缓存解决循环依赖，意味着Bean在构造完后就创建代理对象。
-* SpringAOP 是在Bean创建完全之后通过AnnotationAwareAspectJAutoProxyCreator这个后置处理器来完成的，在这个后置处理的postProcessAfterInitialization方法中对初始化后的Bean完成AOP代理，如果出现了循环依赖，那没有办法，只有给Bean先创建代理。
+* SpringAOP
+  是在Bean创建完全之后通过AnnotationAwareAspectJAutoProxyCreator这个后置处理器来完成的，在这个后置处理的postProcessAfterInitialization方法中对初始化后的Bean完成AOP代理，如果出现了循环依赖，那没有办法，只有给Bean先创建代理。
 
 ## Resource：
 
-> * getInputStream(): 找到并打开资源，返回一个InputStream以从资源中读取。预计每次调用都会返回一个新的InputStream()，调用者有责任关闭每个流
-> * isOpen: 返回一个布尔值，指示此资源是否具有开放流的句柄。如果为true，InputStream就不能够多次读取，只能够读取一次并且及时关闭以避免内存泄漏。对于所有常规资源实现，返回false，但是InputStreamResource除外。
+> * getInputStream(): 找到并打开资源，返回一个InputStream以从资源中读取。预计每次调用都会返回一个新的InputStream()
+    ，调用者有责任关闭每个流
+> * isOpen:
+    返回一个布尔值，指示此资源是否具有开放流的句柄。如果为true，InputStream就不能够多次读取，只能够读取一次并且及时关闭以避免内存泄漏。对于所有常规资源实现，返回false，但是InputStreamResource除外。
 > * getDescription(): 返回资源的描述，用来输出错误的日志。这通常是完全限定的文件名或资源的实际URL。
 > * isReadable(): 表明资源的目录读取是否通过getInputStream()进行读取。
 > * isFile(): 表明这个资源是否代表了一个文件系统的文件。
@@ -185,36 +224,37 @@ Resource一般包括这些实现类：UrlResource、ClassPathResource、FileSyst
 ```java
 public interface ResourceLoader {
 
- //该接口仅包含这个方法，该方法用于返回一个 Resource 实例。ApplicationContext 的实现类都实现       ResourceLoader 接口，因此 ApplicationContext 可用于直接获取 Resource 实例
- Resource getResource(String location);
+    //该接口仅包含这个方法，该方法用于返回一个 Resource 实例。ApplicationContext 的实现类都实现       ResourceLoader 接口，因此 ApplicationContext 可用于直接获取 Resource 实例
+    Resource getResource(String location);
 
 }
 ```
 
-另外 Resource 可以直接接受 application.yml 中的路径，ResourcePatternResolver 可用来加载多个Resource,以及它的实现类 PathMatchingResourcePatternResolver：
+另外 Resource 可以直接接受 application.yml 中的路径，ResourcePatternResolver 可用来加载多个Resource,以及它的实现类
+PathMatchingResourcePatternResolver：
 
 ```java
 public interface ResourcePatternResolver extends ResourceLoader {
 
-	String CLASSPATH_ALL_URL_PREFIX = "classpath*:";
+    String CLASSPATH_ALL_URL_PREFIX = "classpath*:";
 
-	Resource[] getResources(String locationPattern) throws IOException;
+    Resource[] getResources(String locationPattern) throws IOException;
 
 }
 ```
 
 Spring不仅支持classpath:、file:、http:等各种前缀开头的资源文件解析，而且对于也支持Ant(路径匹配表达式)风格的通配符解析.
 
-
-| Pattern | Description             | Example                                           | Remark                                                                                                                                                              |
-| ------- | ----------------------- | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| ?       | 匹配任何的单个字符      | example/?ork                                      | 可以匹配:example/fork;example/work                                                                                                                                  |
-| *       | 匹配0或者任意数量的字符 | file:C:/some/path/*.xml                           | 可以匹配C:/some/path下的所有xml文件                                                                                                                                 |
-| **      | 匹配0个或者更多的目录   | classpath:com/mycompany/**/applicationContext.xml | 可以匹配mycompany和applicationContext.xml的任意目录，例如: classpath:com/mycompany/test/applicationContext.xml;classpath:com/mycompany/work/applicationContext.xml. |
+| Pattern | Description  | Example                                           | Remark                                                                                                                                                 |
+|---------|--------------|---------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------|
+| ?       | 匹配任何的单个字符    | example/?ork                                      | 可以匹配:example/fork;example/work                                                                                                                         |
+| *       | 匹配0或者任意数量的字符 | file:C:/some/path/*.xml                           | 可以匹配C:/some/path下的所有xml文件                                                                                                                              |
+| **      | 匹配0个或者更多的目录  | classpath:com/mycompany/**/applicationContext.xml | 可以匹配mycompany和applicationContext.xml的任意目录，例如: classpath:com/mycompany/test/applicationContext.xml;classpath:com/mycompany/work/applicationContext.xml. |
 
 ## BeanWrapper
 
-可通过 BeanWrapper 对 Bean 进行操作,可通过 PropertyAccessorFactory#forBeanPropertyAccess 进行创建，可通过 ApplicationContext 获取 ConversionService。
+可通过 BeanWrapper 对 Bean 进行操作,可通过 PropertyAccessorFactory#forBeanPropertyAccess 进行创建，可通过
+ApplicationContext 获取 ConversionService。
 
 ![101](assets/101.png)
 ![102](assets/102.png)
@@ -245,9 +285,12 @@ public class BeanWrapperTest {
 
 上下文分为4类：
 
-* ServletContext : 由 Servlet 容器初始化，为项目提供宿主环境，例如 Tom­cat，在 web 项目启动的时候他就初始化这样的上下文环境，为后续的 Spring 容器，Spring­Mvc 容器提供宿主环境。
-* WebApplicationContext ：Spring 上下文，也是根上下文，是 Spring­Mvc servlet 的父级上下文，当我们启动 Spring 的时候，那么就需要初始化 IOC 容器，而这个上下文就是用于管理这些 bean，把他们放到容器里。
-* Spring­MVC 上下文 ：DispatchServlet 初始化的时候会创建自己的上下文，并从 ServletContext 中取出 WebApplicationContext 作为自己上下文的父容器。
+* ServletContext : 由 Servlet 容器初始化，为项目提供宿主环境，例如 Tom­cat，在 web 项目启动的时候他就初始化这样的上下文环境，为后续的
+  Spring 容器，Spring­Mvc 容器提供宿主环境。
+* WebApplicationContext ：Spring 上下文，也是根上下文，是 Spring­Mvc servlet 的父级上下文，当我们启动 Spring 的时候，那么就需要初始化
+  IOC 容器，而这个上下文就是用于管理这些 bean，把他们放到容器里。
+* Spring­MVC 上下文 ：DispatchServlet 初始化的时候会创建自己的上下文，并从 ServletContext 中取出 WebApplicationContext
+  作为自己上下文的父容器。
 * 其他上下文：servlet 可以有多个，自然也存在多个上下文。
 
 Spring 中容器存在父子关系，父容器不能访问子容器的资源，而子容器可以访问父容器的资源。
@@ -255,7 +298,8 @@ Spring 中容器存在父子关系，父容器不能访问子容器的资源，�
 # ApplicationContext
 
 ![99](assets/99.png)
-ApplicationContext 是对 BeanFactory 的扩展，Application 有两个直接子类：WebApplicationContext 和 ConfigurableApplicationContext：
+ApplicationContext 是对 BeanFactory 的扩展，Application 有两个直接子类：WebApplicationContext 和
+ConfigurableApplicationContext：
 
 * WebApplicationContext：可以获取ServletContext。
 * ConfigurableApplicationContext：包含主要的方法，其中就包含refresh()方法，它是 ApplicationContext 对 BeanFactory 最主要的扩展。
@@ -264,7 +308,8 @@ ApplicationContext 继承 ResourcePatternResolver 的 getResources() 方法可�
 
 * `AnnotationConfigApplicationContext`：从一个或多个基于Java的配置类中加载Spring应用上下文。
 * `AnnotationConfigWebApplicationContext`：从一个或多个基于Java的配置类中加载Spring Web应用上下文。
-* `ClassPathXmlApplicationContext`：从类路径下的一个或多个XML配置文件中加载上下文定义，把应用上下文的定义文件作为类资源，使用的是 class路径
+* `ClassPathXmlApplicationContext`：从类路径下的一个或多个XML配置文件中加载上下文定义，把应用上下文的定义文件作为类资源，使用的是
+  class路径
 * `FileSystemXmlapplicationcontext`：从文件系统下的一个或多个XML配置文件中加载上下文定义,使用的是 文件系统路径。
 * `XmlWebApplicationContext`：从Web应用下的一个或多个XML配置文件中加载上下文定义。
 
@@ -272,25 +317,33 @@ ApplicationContext 继承 ResourcePatternResolver 的 getResources() 方法可�
 
 1. 准备刷新：
 
-* Environment 并且对 Environment 中的属性进行校验，Environment 可能是 StandardEnvironment(包含 系统环境和jvm属性) 也可能是 StandardServletEnvironment(继承 StandardEnvironment,另外包含 ServletContext 的属性)
+* Environment 并且对 Environment 中的属性进行校验，Environment 可能是 StandardEnvironment(包含 系统环境和jvm属性) 也可能是
+  StandardServletEnvironment(继承 StandardEnvironment,另外包含 ServletContext 的属性)
 
-2. 获取 BeanFactory，对于 XmlWebApplicationContext 类型的会在这个时候创建，并加载BeanDefinition，对于 AnnotationConfigWebApplicationContext 类型的直接获取，并不会加载 BeanDefin，因为AnnotationConfigWebApplicationContext创建时就已经创建。
+2. 获取 BeanFactory，对于 XmlWebApplicationContext 类型的会在这个时候创建，并加载BeanDefinition，对于
+   AnnotationConfigWebApplicationContext 类型的直接获取，并不会加载
+   BeanDefin，因为AnnotationConfigWebApplicationContext创建时就已经创建。
 3. 准备 BeanFactory
-   * 填充 SpelExpressionParser。
-   * 添加 Resource 类型及其子类型添加 转换器。
-   * 添加 xxxAware 类型后置处理器，即创建bean后注入对应的 xxx。
-   * 将 BeanFactory、ApplicationContext 等注入到上下文。
-   * 添加 ApplicationListener 类型后置处理器，即创建bean 之后注入到 发布器。
-   * 注册 Environment、SystemProperties、SystemEnvironment。
+    * 填充 SpelExpressionParser。
+    * 添加 Resource 类型及其子类型添加 转换器。
+    * 添加 xxxAware 类型后置处理器，即创建bean后注入对应的 xxx。
+    * 将 BeanFactory、ApplicationContext 等注入到上下文。
+    * 添加 ApplicationListener 类型后置处理器，即创建bean 之后注入到 发布器。
+    * 注册 Environment、SystemProperties、SystemEnvironment。
 4. postProcessBeanFactory，提供给子类实现，
-   * 在 AbstractRefreshableWebApplicationContext 中默认实现是 处理ServletContextAware，并且设置 RequestObjectFactory，ResponseObjectFactory，SessionObjectFactory，WebRequestObjectFactory。
-   * 在 AnnotationConfigServletWebServerApplicationContext 相对上面的内容还要添加 扫描AnnotationConfigServletWebServerApplicationContext 中的basePackages和annotatedClasses。
+    * 在 AbstractRefreshableWebApplicationContext 中默认实现是 处理ServletContextAware，并且设置
+      RequestObjectFactory，ResponseObjectFactory，SessionObjectFactory，WebRequestObjectFactory。
+    * 在 AnnotationConfigServletWebServerApplicationContext 相对上面的内容还要添加
+      扫描AnnotationConfigServletWebServerApplicationContext 中的basePackages和annotatedClasses。
 5. 触发 BeanFactoryPostProcessor，springboot 在该阶段会扫描所有包。
-   * ConfigurationClassPostProcessor：beanName为internalConfigurationAnnotationProcessor用于处理@configuration注解的后置处理器的bean
-   * AutowiredAnnotationBeanPostProcessor：beanName为internalAutowiredAnnotationProcessor用于处理@Autowired，@Value,@Inject以及@Lookup注解的后置处理器bean
-   * CommonAnnotationBeanPostProcessor：beanName为internalCommonAnnotationProcessor用于处理JSR-250注解，例如@Resource,@PostConstruct,@PreDestroy的后置处理器bean
-   * EventListenerMethodProcessor：beanName为internalEventListenerProcessor用于处理@EventListener注解的后置处理器的bean
-   * DefaultEventListenerFactory：beanName为internalEventListenerFactory管理用于生产ApplicationListener对象的EventListenerFactory对象
+    * ConfigurationClassPostProcessor：beanName为internalConfigurationAnnotationProcessor用于处理@configuration注解的后置处理器的bean
+    *
+   AutowiredAnnotationBeanPostProcessor：beanName为internalAutowiredAnnotationProcessor用于处理@Autowired，@Value,@Inject以及@Lookup注解的后置处理器bean
+    *
+   CommonAnnotationBeanPostProcessor：beanName为internalCommonAnnotationProcessor用于处理JSR-250注解，例如@Resource,@PostConstruct,@PreDestroy的后置处理器bean
+    * EventListenerMethodProcessor：beanName为internalEventListenerProcessor用于处理@EventListener注解的后置处理器的bean
+    *
+   DefaultEventListenerFactory：beanName为internalEventListenerFactory管理用于生产ApplicationListener对象的EventListenerFactory对象
 6. 识别所有的 BeanPostProcessor 并注册到 BeanFactory。
 7. 初始化 MessageSource。
 8. 初始化 ApplicationEventMulticaster 上下文事件广播器。
@@ -307,7 +360,8 @@ ApplicationContext 继承 ResourcePatternResolver 的 getResources() 方法可�
 1. Expression 表达式（“干什么”）：SpEL的核心，所以表达式语言都是围绕表达式进行的
 2. ExpressionParser 解析器（“谁来干”）：用于将字符串表达式解析为表达式对象
 3. EvaluationContext 上下文（“在哪干”）：表达式对象执行的环境，该环境可能定义变量、定义自定义函数、提供类型转换等等
-4. root根对象及活动上下文对象（“对谁干”）：root根对象是默认的活动上下文对象，活动上下文对象表示了当前表达式操作的对象，例如 application.yml 所生成的root对象，表示表达式在这个跟对象取数据。
+4. root根对象及活动上下文对象（“对谁干”）：root根对象是默认的活动上下文对象，活动上下文对象表示了当前表达式操作的对象，例如
+   application.yml 所生成的root对象，表示表达式在这个跟对象取数据。
 
 表达的变量可能从 EvaluationContext 和 rootObject 取。
 
@@ -337,9 +391,10 @@ public class SpelExpressionParserTest {
 public class HelloController {
     @Autowired
     MessageSource messageSource;
+
     @GetMapping("/hello")
     public String hello() {
-       // 第二个参数用于替换 属性文件中 的 #{0} 变量
+        // 第二个参数用于替换 属性文件中 的 #{0} 变量
         return messageSource.getMessage("user.name", null, LocaleContextHolder.getLocale());
     }
 }
@@ -354,24 +409,27 @@ public class HelloController {
 
 * 构造器注入：
 
-```java
-<bean id="cdPlay" class="com.springinaction.CDPlayer" >
-	<constructor-arg ref="compactDisc"/>
+```xml
+
+<bean id="cdPlay" class="com.springinaction.CDPlayer">
+    <constructor-arg ref="compactDisc"/>
 </bean>
 ```
 
 * 属性注入：
 
-```java
-<bean id="compactDisc" class="com.springinaction.BlankDisc" >
-        <property name="title" value="Sgt. Pepper's Lonely Hearts Club Band"/>
-        <property name="artist" value="The Beatles" />
+```xml
+
+<bean id="compactDisc" class="com.springinaction.BlankDisc">
+    <property name="title" value="Sgt. Pepper's Lonely Hearts Club Band"/>
+    <property name="artist" value="The Beatles"/>
 </bean>
 ```
 
 导入其他配置类：
 
 ```java
+
 @Configuration
 @Import(CDConfig.class)     // 导入单个配置类
 @Import({CDConfig.class, CDPlayingConfig.class})   // 导入多个配置类
@@ -385,9 +443,9 @@ public class CDPlayerConfig {
 <beans xmlns="http://www.springframework.org/schema/beans"
        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
        xmlns:c="http://www.springframework.org/schema/c"
-      xsi:schemaLocation="http://www.springframework.org/schema/beans
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
        http://www.springframework.org/schema/beans/spring-beans.xsd">
-    <bean class="com.springinaction.CDConfig" />
+    <bean class="com.springinaction.CDConfig"/>
     <import resource="cdplayer-config.xml"/>
 </beans>
 ```
@@ -399,9 +457,9 @@ public class CDPlayerConfig {
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
 <beans xmlns="http://www.springframework.org/schema/beans"
-  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:jdbc="http://www.springframework.org/schema/jdbc"
-  xmlns:jee="http://www.springframework.org/schema/jee" xmlns:p="http://www.springframework.org/schema/p"
-  xsi:schemaLocation="
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:jdbc="http://www.springframework.org/schema/jdbc"
+       xmlns:jee="http://www.springframework.org/schema/jee" xmlns:p="http://www.springframework.org/schema/p"
+       xsi:schemaLocation="
     http://www.springframework.org/schema/jee
     http://www.springframework.org/schema/jee/spring-jee.xsd
     http://www.springframework.org/schema/jdbc
@@ -409,20 +467,20 @@ public class CDPlayerConfig {
     http://www.springframework.org/schema/beans
     http://www.springframework.org/schema/beans/spring-beans.xsd">
 
-  <beans profile="dev">
-    <jdbc:embedded-database id="dataSource" type="H2">
-      <jdbc:script location="classpath:schema.sql" />
-      <jdbc:script location="classpath:test-data.sql" />
-    </jdbc:embedded-database>
-  </beans>
+    <beans profile="dev">
+        <jdbc:embedded-database id="dataSource" type="H2">
+            <jdbc:script location="classpath:schema.sql"/>
+            <jdbc:script location="classpath:test-data.sql"/>
+        </jdbc:embedded-database>
+    </beans>
 
-  <beans profile="prod">
-    <jee:jndi-lookup id="dataSource"
-      lazy-init="true"
-      jndi-name="jdbc/myDatabase"
-      resource-ref="true"
-      proxy-interface="javax.sql.DataSource" />
-  </beans>
+    <beans profile="prod">
+        <jee:jndi-lookup id="dataSource"
+                         lazy-init="true"
+                         jndi-name="jdbc/myDatabase"
+                         resource-ref="true"
+                         proxy-interface="javax.sql.DataSource"/>
+    </beans>
 </beans>
 ```
 
@@ -448,39 +506,39 @@ public class CDPlayerConfig {
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://java.sun.com/xml/ns/javaee
     http://java.sun.com/xml/ns/javaee/web-app_2_5.xsd">
-  <context-param>
-    <param-name>contextConfigLocation</param-name>
-    <param-value>/WEB-INF/spring/root-context.xml</param-value>
-  </context-param>
-  <!--为上下文设置默认的profile-->
-  <context-param>
-    <param-name>spring.profiles.default</param-name>
-    <param-value>dev</param-value>
-  </context-param>
+    <context-param>
+        <param-name>contextConfigLocation</param-name>
+        <param-value>/WEB-INF/spring/root-context.xml</param-value>
+    </context-param>
+    <!--为上下文设置默认的profile-->
+    <context-param>
+        <param-name>spring.profiles.default</param-name>
+        <param-value>dev</param-value>
+    </context-param>
 
-  <listener>
-    <listener-class>
-      org.springframework.web.context.ContextLoaderListener
-    </listener-class>
-  </listener>
+    <listener>
+        <listener-class>
+            org.springframework.web.context.ContextLoaderListener
+        </listener-class>
+    </listener>
 
-  <servlet>
-    <servlet-name>appServlet</servlet-name>
-    <servlet-class>
-      org.springframework.web.servlet.DispatcherServlet
-    </servlet-class>
-    <init-param>
-      <!--为Servlet设置默认的profile-->
-      <param-name>spring.profiles.default</param-name>
-      <param-value>dev</param-value>
-    </init-param>
-    <load-on-startup>1</load-on-startup>
-  </servlet>
+    <servlet>
+        <servlet-name>appServlet</servlet-name>
+        <servlet-class>
+            org.springframework.web.servlet.DispatcherServlet
+        </servlet-class>
+        <init-param>
+            <!--为Servlet设置默认的profile-->
+            <param-name>spring.profiles.default</param-name>
+            <param-value>dev</param-value>
+        </init-param>
+        <load-on-startup>1</load-on-startup>
+    </servlet>
 
-  <servlet-mapping>
-    <servlet-name>appServlet</servlet-name>
-    <url-pattern>/</url-pattern>
-  </servlet-mapping>
+    <servlet-mapping>
+        <servlet-name>appServlet</servlet-name>
+        <url-pattern>/</url-pattern>
+    </servlet-mapping>
 </web-app>
 ```
 
@@ -494,15 +552,15 @@ public class CDPlayerConfig {
 ```java
 public class MagicExistsCondition implements Condition {
 
-  @Override
-  public boolean matches(ConditionContext context, AnnotatedTypeMetadata metadata) {
-    Environment env = context.getEnvironment();
-	// 根据环境中是否存在magic属性来决策是否创建MagicBean
-    return env.containsProperty("magic");
-  }
+    @Override
+    public boolean matches(ConditionContext context, AnnotatedTypeMetadata metadata) {
+        Environment env = context.getEnvironment();
+        // 根据环境中是否存在magic属性来决策是否创建MagicBean
+        return env.containsProperty("magic");
+    }
 }
 
-@Target({ ElementType.TYPE, ElementType.METHOD })
+@Target({ElementType.TYPE, ElementType.METHOD})
 @Retention(RetentionPolicy.RUNTIME)
 @Documented
 @Conditional(MagicExistsCondition.class)
@@ -515,11 +573,15 @@ public @interface MyConditionAnnotation {
 public interface AnnotatedTypeMetadata {
     // 够判断带有@Bean注解的方法是不是还有其他特定的注解
     boolean isAnnotated(String annotationType);
+
     // 获取注解的属性例如 annotatedTypeMetadata.getAnnotationAttributes(ConditionalOnProperty.class.getName())
     Map<String, Object> getAnnotationAttributes(String annotationType);
+
     Map<String, Object> getAnnotationAttributes(String annotationType, boolean classValuesAsString);
+
     // 获取注解的属性
     MultiValueMap<String, Object> getAllAnnotationAttributes(String annotationType);
+
     MultiValueMap<String, Object> getAllAnnotationAttributes(String annotationType, boolean classValuesAsString);
 }
 ```
@@ -530,10 +592,12 @@ public interface AnnotatedTypeMetadata {
 2. 使用 @Qualifier 指定使用具体的bean。
 
 ```java
+
 @Component
 @Qualifier("cold")
 public class IceCream implements Dessert {
 }
+
 @Autowired
 @Qualifier("cold")
 public void setDessert(Dessert dessert) {
@@ -559,55 +623,57 @@ public void setDessert(Dessert dessert) {
 
 ```java
 public class SpELTest {
-    //1. 它的最终结果是计算表达式的那一刻当前时间的毫秒数。T () 表达式会将java.lang.System视为Java中对应的类型，因此可以调用其static修饰的currentTimeMillis()方法。
-    "# {T(System).currentTimeMillis()}"
-    //2. SpEL表达式可以引用其他的bean或其他bean的属性。
-    //例如，引用sgtPeppers的bean
-    "{ sgtPeppers }"
-    //例如，如下的表达式会计算得到ID为sgtPeppers的bean的artist属性：
-    "# { sgtPeppers.artist }"
-    //3. 还可以通过systemProperties对象引用系统属性：
-    "# { systemProperties['disc.title'] }"
-    //4. 表示字面值：
-    "# { 3.1415926 }"
-    "# { 9.87E4 }"
-    "# { 'Hello' }"
-    "# { false }"
-    //5. 引用其他的bean的方法
-    "# { artistSelector.selectArtist () }"
-    //为了防止方法值为null，抛出异常，可以使用“?.”
-    //不是null，正常返回；如果是null，不执行后面的方法，直接返回null
-    "# { artistSelector.selectArtist ()?.toUpperCase() }"
-    //6. 如果要在SpEL中访问类作用域的方法和常量的话，要依赖T() 这个关键的运算符。
-    "# { T(java.lang.Math).PI }"
-    "# { T(java.lang.Math).random() }"
-    //7. 还可以将运算符用在表达式上，如：
-    "# { 2 * T(java.lang.Math).PI * circle.radius }"
-    "# { disc.title + ' by ' + disc.artist }"
-    //8. 比较数字相等的写法
-    "# { counter.total == 100 }"
-    "# { counter.total eq 100 }"
-    //9. 三元运算符
-    "# { scoreboard.score > 1000 ? "Winner!" : "Loser" }"
-    "# { disc.title ?: 'Rattle and Hum' } " // 如果disc.title的值为空，返回'Rattle and Hum'
-    //10. 支持正则表达式
-    "# { admin.email matches '[a-zA-Z0-9.*%+-]+@[a-zA-Z0-9.*]+\.com' }"
-    //11. 支持与集合和数组相关的表达式
-    "# { jukebox.songs[4].title }"
-    "# { jukebox.songs[T(java.lang.Math).random() * jukebox.songs.size()].title }"
-    "# { 'This is a test' [3] }" // 引用第4个字符 - “s”
-    //12. 支持查询运算符
-    //例如你希望得到jukebox中artist属性为Aerosmith的所有歌曲：
-    "# { jukebox.songs.?[artist eq 'Aerosmith'] }"
-    //查找列表中第一个artist属性为Aerosmith的歌曲：
-    "# { jukebox.songs.^[artist eq 'Aerosmith'] }"
-    //查找列表中最后一个artist属性为Aerosmith的歌曲：
-    "# { jukebox.songs.$[artist eq 'Aerosmith'] }"
-    //13. 支持投影运算符
-    //假设我们不想要歌曲对象的集合，而是所有歌曲名称的集合。如下表达式会将title属性投影到一个新的String类型的集合中：
-    "# { jukebox.songs.![title]}"
-    //获取Aerosmith所有歌曲的title
-    "# { jukebox.songs.?[artist eq 'Aerosmith'].![title] }"
+    public void test() {
+        //1. 它的最终结果是计算表达式的那一刻当前时间的毫秒数。T () 表达式会将java.lang.System视为Java中对应的类型，因此可以调用其static修饰的currentTimeMillis()方法。
+        "# {T(System).currentTimeMillis()}"
+        //2. SpEL表达式可以引用其他的bean或其他bean的属性。
+        //例如，引用sgtPeppers的bean
+        "{ sgtPeppers }"
+        //例如，如下的表达式会计算得到ID为sgtPeppers的bean的artist属性：
+        "# { sgtPeppers.artist }"
+        //3. 还可以通过systemProperties对象引用系统属性：
+        "# { systemProperties['disc.title'] }"
+        //4. 表示字面值：
+        "# { 3.1415926 }"
+        "# { 9.87E4 }"
+        "# { 'Hello' }"
+        "# { false }"
+        //5. 引用其他的bean的方法
+        "# { artistSelector.selectArtist () }"
+        //为了防止方法值为null，抛出异常，可以使用“?.”
+        //不是null，正常返回；如果是null，不执行后面的方法，直接返回null
+        "# { artistSelector.selectArtist ()?.toUpperCase() }"
+        //6. 如果要在SpEL中访问类作用域的方法和常量的话，要依赖T() 这个关键的运算符。
+        "# { T(java.lang.Math).PI }"
+        "# { T(java.lang.Math).random() }"
+        //7. 还可以将运算符用在表达式上，如：
+        "# { 2 * T(java.lang.Math).PI * circle.radius }"
+        "# { disc.title + ' by ' + disc.artist }"
+        //8. 比较数字相等的写法
+        "# { counter.total == 100 }"
+        "# { counter.total eq 100 }"
+        //9. 三元运算符
+        "# { scoreboard.score > 1000 ? " Winner !" : " Loser " }"
+        "# { disc.title ?: 'Rattle and Hum' } " // 如果disc.title的值为空，返回'Rattle and Hum'
+        //10. 支持正则表达式
+        "# { admin.email matches '[a-zA-Z0-9.*%+-]+@[a-zA-Z0-9.*]+\.com' }"
+        //11. 支持与集合和数组相关的表达式
+        "# { jukebox.songs[4].title }"
+        "# { jukebox.songs[T(java.lang.Math).random() * jukebox.songs.size()].title }"
+        "# { 'This is a test' [3] }" // 引用第4个字符 - “s”
+        //12. 支持查询运算符
+        //例如你希望得到jukebox中artist属性为Aerosmith的所有歌曲：
+        "# { jukebox.songs.?[artist eq 'Aerosmith'] }"
+        //查找列表中第一个artist属性为Aerosmith的歌曲：
+        "# { jukebox.songs.^[artist eq 'Aerosmith'] }"
+        //查找列表中最后一个artist属性为Aerosmith的歌曲：
+        "# { jukebox.songs.$[artist eq 'Aerosmith'] }"
+        //13. 支持投影运算符
+        //假设我们不想要歌曲对象的集合，而是所有歌曲名称的集合。如下表达式会将title属性投影到一个新的String类型的集合中：
+        "# { jukebox.songs.![title]}"
+        //获取Aerosmith所有歌曲的title
+        "# { jukebox.songs.?[artist eq 'Aerosmith'].![title] }"
+    }
 }
 ```
 
@@ -700,11 +766,16 @@ public class SpELTest {
 创建：
 
 * 根据对象创建：`Flux.just("A","B")`
-* 根据集合创建：`Flux.fromArray(new String[]{"A","B"})`,`Flux.fromIterable(new ArrayList<>())`,`Flux.fromStream(Stream.of("A","B"))`
+*
+
+根据集合创建：`Flux.fromArray(new String[]{"A","B"})`,`Flux.fromIterable(new ArrayList<>())`,`Flux.fromStream(Stream.of("A","B"))`
+
 * 生成数据：`Flux.range(1,5)`,`Flux.interval(Duration.ofSeconds(1)).take(5)`
 * 合并：`Flux.range(1,5).mergeWith(Flux.interval(Duration.ofSeconds(1)).take(5))`
 * 延迟发布：`Flux.range(1,5).delaySubscription(Duration.ofMillis(250)).delayElements(Duration.ofMillis(500))`
-* 压缩,会将多个FLUX对齐分组为 Tuple2，通过 getT1(),getT2() 来获取：`Flux.zip(Flux.range(1,5),Flux.interval(Duration.ofSeconds(1)).take(5))`，如果不想获得 Tuple2 ，可使用 `Flux.zip( flux1, flux2,mergeFunction)`
+* 压缩,会将多个FLUX对齐分组为 Tuple2，通过 getT1(),getT2()
+  来获取：`Flux.zip(Flux.range(1,5),Flux.interval(Duration.ofSeconds(1)).take(5))`，如果不想获得 Tuple2
+  ，可使用 `Flux.zip( flux1, flux2,mergeFunction)`
 * 只发布快的第一个flux：`Flux.first(flux1,flux2)`只会消费一个flux，另一个flux忽略。
 * 缓冲数据：
 
@@ -743,14 +814,13 @@ public class FluxTest {
 
 * 并行处理 `Flux.just("A","B").flatMap(n -> Mono.just(n).map(mapFunction).subscribeOn(Schedulers.parallel()))`
 
-
-| Scheduler方法 | 描述                                                                                                         |
-| ------------- | ------------------------------------------------------------------------------------------------------------ |
-| .immediate()  | 在当前线程中执行订阅                                                                                         |
-| .single()     | 在单个可重用线程中执行订阅，对所有调用方重复使用同一线程                                                     |
-| .newSingle()  | 在每个调用专用线程中执行订阅                                                                                 |
-| .elastic()    | 在从无限弹性池中提取的工作进程中执行订阅，根据需要创建新的工作线程，并释放空闲的工作线程（默认情况下 60 秒） |
-| .parallel()   | 在从固定大小的池中提取的工作进程中执行订阅，该池的大小取决于 CPU 核心的数量。                                |
+| Scheduler方法  | 描述                                                       |
+|--------------|----------------------------------------------------------|
+| .immediate() | 在当前线程中执行订阅                                               |
+| .single()    | 在单个可重用线程中执行订阅，对所有调用方重复使用同一线程                             |
+| .newSingle() | 在每个调用专用线程中执行订阅                                           |
+| .elastic()   | 在从无限弹性池中提取的工作进程中执行订阅，根据需要创建新的工作线程，并释放空闲的工作线程（默认情况下 60 秒） |
+| .parallel()  | 在从固定大小的池中提取的工作进程中执行订阅，该池的大小取决于 CPU 核心的数量。                |
 
 # SpringWebFlux
 
@@ -762,63 +832,60 @@ public class FluxTest {
 
 @Cacheable 和 @CachePut 属性：
 
-
-| 属性      | 类型     | 描述                                                               |
-| --------- | -------- | ------------------------------------------------------------------ |
-| value     | String[] | 要使用的缓存名称                                                   |
+| 属性        | 类型       | 描述                                      |
+|-----------|----------|-----------------------------------------|
+| value     | String[] | 要使用的缓存名称                                |
 | condition | String   | SpEL 表达式，如果得到的值是 false 的话，不会将缓存应用到方法调用上 |
-| key       | String   | SpEL 表达式，用来计算自定义的缓存key                               |
-| unless    | String   | SpEL 表达式，如果得到的值是 true 的话，返回值不会放到缓存之中      |
+| key       | String   | SpEL 表达式，用来计算自定义的缓存key                  |
+| unless    | String   | SpEL 表达式，如果得到的值是 true 的话，返回值不会放到缓存之中    |
 
 自定义缓存 key：
 
-
-| 表达式            | 描述                                                       |
-| ----------------- | ---------------------------------------------------------- |
-| #root.args        | 传递给缓存方法的参数，形式为数组                           |
-| #root.caches      | 该方法执行时所对应的缓存，形式为数组                       |
-| #root.target      | 目标对象                                                   |
-| #root.targetClass | 目标对象的类，是 #root.target.class 的简写形式             |
-| #root.method      | 缓存方法                                                   |
-| #root.methodName  | 缓存方法的名字，是 #root.method.name 的简写形式            |
-| #result           | 方法调用的返回值（不能用在 @Cacheable 注解上）             |
+| 表达式               | 描述                                     |
+|-------------------|----------------------------------------|
+| #root.args        | 传递给缓存方法的参数，形式为数组                       |
+| #root.caches      | 该方法执行时所对应的缓存，形式为数组                     |
+| #root.target      | 目标对象                                   |
+| #root.targetClass | 目标对象的类，是 #root.target.class 的简写形式      |
+| #root.method      | 缓存方法                                   |
+| #root.methodName  | 缓存方法的名字，是 #root.method.name 的简写形式      |
+| #result           | 方法调用的返回值（不能用在 @Cacheable 注解上）          |
 | #Argument         | 任意的方法参数名（如 #argName）或参数索引（如 #a0 或 #p0） |
 
 @CacheEvict 属性：
 
-
-| 属性             | 类型     | 描述                                                                                               |
-| ---------------- | -------- | -------------------------------------------------------------------------------------------------- |
-| value            | String[] | 要使用的缓存名称                                                                                   |
-| condition        | String   | SpEL 表达式，如果得到的值是 false 的话，缓存不会应用到方法调用上                                   |
-| key              | String   | SpEL 表达式，用来计算自定义的缓存key                                                               |
-| allEntries       | boolean  | 如果为 true 的话，特定缓存的所有条目都会被移除掉                                                   |
+| 属性               | 类型       | 描述                                                      |
+|------------------|----------|---------------------------------------------------------|
+| value            | String[] | 要使用的缓存名称                                                |
+| condition        | String   | SpEL 表达式，如果得到的值是 false 的话，缓存不会应用到方法调用上                  |
+| key              | String   | SpEL 表达式，用来计算自定义的缓存key                                  |
+| allEntries       | boolean  | 如果为 true 的话，特定缓存的所有条目都会被移除掉                             |
 | beforeInvocation | boolean  | 如果为 true 的话，在方法调用之前移除条目。如果为 false（默认值）的话，在方法成功调用之后再移除条目 |
 
 # SpringBootActuator
 
-
-| HTTP 方法 | 路径            | 描述                                                            |
-| --------- | --------------- | --------------------------------------------------------------- |
-| GET       | /autoconfig     | 提供了一份自动配置报告，记录哪些自动配置条件通过了，哪些没通过  |
-| GET       | /configprops    | 描述配置属性(包含默认值)如何注入Bean                            |
-| GET       | /beans          | 描述应用程序上下文里全部的Bean，以及它们的关系                  |
-| GET       | /dump           | 获取线程活动的快照                                              |
-| GET       | /env            | 获取全部环境属性                                                |
-| GET       | /env/{name}     | 根据名称获取特定的环境属性值                                    |
-| GET       | /health         | 报告应用程序的健康指标，这些值由HealthIndicator的实现类提供     |
-| GET       | /info           | 获取应用程序的定制信息，这些信息由info打头的属性提供            |
-| GET       | /mappings       | 描述全部的URI路径，以及它们和控制器(包含Actuator端点)的映射关系 |
-| GET       | /metrics        | 报告各种应用程序度量信息，比如内存用量和HTTP请求计数            |
-| GET       | /metrics/{name} | 报告指定名称的应用程序度量值                                    |
-| POST      | /shutdown       | 关闭应用程序，要求endpoints.shutdown.enabled设置为true          |
-| GET       | /trace          | 提供基本的HTTP请求跟踪信息(时间戳、HTTP头等)                    |
+| HTTP 方法 | 路径              | 描述                                         |
+|---------|-----------------|--------------------------------------------|
+| GET     | /autoconfig     | 提供了一份自动配置报告，记录哪些自动配置条件通过了，哪些没通过            |
+| GET     | /configprops    | 描述配置属性(包含默认值)如何注入Bean                      |
+| GET     | /beans          | 描述应用程序上下文里全部的Bean，以及它们的关系                  |
+| GET     | /dump           | 获取线程活动的快照                                  |
+| GET     | /env            | 获取全部环境属性                                   |
+| GET     | /env/{name}     | 根据名称获取特定的环境属性值                             |
+| GET     | /health         | 报告应用程序的健康指标，这些值由HealthIndicator的实现类提供      |
+| GET     | /info           | 获取应用程序的定制信息，这些信息由info打头的属性提供               |
+| GET     | /mappings       | 描述全部的URI路径，以及它们和控制器(包含Actuator端点)的映射关系     |
+| GET     | /metrics        | 报告各种应用程序度量信息，比如内存用量和HTTP请求计数               |
+| GET     | /metrics/{name} | 报告指定名称的应用程序度量值                             |
+| POST    | /shutdown       | 关闭应用程序，要求endpoints.shutdown.enabled设置为true |
+| GET     | /trace          | 提供基本的HTTP请求跟踪信息(时间戳、HTTP头等)                |
 
 # SpringBoot
 
 启用开发热部署：
 
-```java
+```xml
+
 <dependencies>
     <dependency>
         <groupId>org.springframework.boot</groupId>
@@ -850,73 +917,71 @@ public class FluxTest {
 8. RandomValuePropertySource，例如 my.secret=${random.value}
 9. 读取配置文件：
 
-   * jar包外 优先 jar 包内。
-   * config下 优先 根目录下。
-   * application-{profile} 优先 application。
-   * properties 优先 yml。
+    * jar包外 优先 jar 包内。
+    * config下 优先 根目录下。
+    * application-{profile} 优先 application。
+    * properties 优先 yml。
 10. @PropertySource
 11. SpringApplication.setDefaultProperties
 
 ymal传输到日志配置文件：
 
-
-| Spring Environment                | System Property               | Comments                                                |
-| --------------------------------- | ----------------------------- | ------------------------------------------------------- |
-| logging.exception-conversion-word | LOG_EXCEPTION_CONVERSION_WORD | 记录异常时使用的转换字。                                |
-| logging.file.name                 | LOG_FILE                      | 如果已定义，它将在默认日志配置中使用。                  |
-| logging.file.path                 | LOG_PATH                      | 如果已定义，它将在默认日志配置中使用。                  |
-| logging.pattern.console           | CONSOLE_LOG_PATTERN           | 在控制台上使用的日志模式 (stdout)。                     |
-| logging.pattern.dateformat        | LOG_DATEFORMAT_PATTERN        | 日志日期格式的附加模式。                                |
-| logging.charset.console           | CONSOLE_LOG_CHARSET           | 用于控制台日志记录的字符集。                            |
-| logging.pattern.file              | FILE_LOG_PATTERN              | 在文件中使用的日志模式（如果LOG_FILE启用）。            |
-| logging.charset.file              | FILE_LOG_CHARSET              | 用于文件日志记录的字符集（如果LOG_FILE启用）。          |
-| logging.pattern.level             | LOG_LEVEL_PATTERN             | 呈现日志级别时使用的格式（默认%5p）。                   |
+| Spring Environment                | System Property               | Comments                        |
+|-----------------------------------|-------------------------------|---------------------------------|
+| logging.exception-conversion-word | LOG_EXCEPTION_CONVERSION_WORD | 记录异常时使用的转换字。                    |
+| logging.file.name                 | LOG_FILE                      | 如果已定义，它将在默认日志配置中使用。             |
+| logging.file.path                 | LOG_PATH                      | 如果已定义，它将在默认日志配置中使用。             |
+| logging.pattern.console           | CONSOLE_LOG_PATTERN           | 在控制台上使用的日志模式 (stdout)。          |
+| logging.pattern.dateformat        | LOG_DATEFORMAT_PATTERN        | 日志日期格式的附加模式。                    |
+| logging.charset.console           | CONSOLE_LOG_CHARSET           | 用于控制台日志记录的字符集。                  |
+| logging.pattern.file              | FILE_LOG_PATTERN              | 在文件中使用的日志模式（如果LOG_FILE启用）。      |
+| logging.charset.file              | FILE_LOG_CHARSET              | 用于文件日志记录的字符集（如果LOG_FILE启用）。     |
+| logging.pattern.level             | LOG_LEVEL_PATTERN             | 呈现日志级别时使用的格式（默认%5p）。            |
 | PID                               | PID                           | 当前进程 ID（如果可能且尚未定义为 OS 环境变量时发现）。 |
 
 Logback 额外的配置：
 
-
-| Spring Environment                                   | System Property                              | Comments                                                       |
-| ---------------------------------------------------- | -------------------------------------------- | -------------------------------------------------------------- |
+| Spring Environment                                   | System Property                              | Comments                                        |
+|------------------------------------------------------|----------------------------------------------|-------------------------------------------------|
 | logging.logback.rollingpolicy.file-name-pattern      | LOGBACK_ROLLINGPOLICY_FILE_NAME_PATTERN      | 翻转日志文件名的模式（默认${LOG_FILE}.%d{yyyy-MM-dd}.%i.gz）。 |
 | logging.logback.rollingpolicy.clean-history-on-start | LOGBACK_ROLLINGPOLICY_CLEAN_HISTORY_ON_START | 是否在启动时清理归档日志文件。                                 |
-| logging.logback.rollingpolicy.max-file-size          | LOGBACK_ROLLINGPOLICY_MAX_FILE_SIZE          | 最大日志文件大小。                                             |
-| logging.logback.rollingpolicy.total-size-cap         | LOGBACK_ROLLINGPOLICY_TOTAL_SIZE_CAP         | 要保留的日志备份的总大小。                                     |
-| logging.logback.rollingpolicy.max-history            | LOGBACK_ROLLINGPOLICY_MAX_HISTORY            | 要保留的存档日志文件的最大数量。                               |
+| logging.logback.rollingpolicy.max-file-size          | LOGBACK_ROLLINGPOLICY_MAX_FILE_SIZE          | 最大日志文件大小。                                       |
+| logging.logback.rollingpolicy.total-size-cap         | LOGBACK_ROLLINGPOLICY_TOTAL_SIZE_CAP         | 要保留的日志备份的总大小。                                   |
+| logging.logback.rollingpolicy.max-history            | LOGBACK_ROLLINGPOLICY_MAX_HISTORY            | 要保留的存档日志文件的最大数量。                                |
 
 动态修改logback日志级别：
 
 ```java
+
 @Controller
 @RequestMapping("/logback")
 public class LogbackController {
-	@RequestMapping(value = "/root/{level}", method = RequestMethod.GET)
-	@ResponseBody
-	public String updateRootLogbackLevel(HttpServletRequest request, HttpServletResponse response, @PathVariable("level") String levelName) {
-		LoggerContext loggerContext = (LoggerContext) LoggerFactory.getILoggerFactory();
-		loggerContext.getLogger(Logger.ROOT_LOGGER_NAME).setLevel(Level.toLevel(levelName));
-		return "修改root的logback{" + levelName + "}级别成功";
-	}
+    @RequestMapping(value = "/root/{level}", method = RequestMethod.GET)
+    @ResponseBody
+    public String updateRootLogbackLevel(HttpServletRequest request, HttpServletResponse response, @PathVariable("level") String levelName) {
+        LoggerContext loggerContext = (LoggerContext) LoggerFactory.getILoggerFactory();
+        loggerContext.getLogger(Logger.ROOT_LOGGER_NAME).setLevel(Level.toLevel(levelName));
+        return "修改root的logback{" + levelName + "}级别成功";
+    }
 
-	@RequestMapping(value = "/{package}/{level}", method = RequestMethod.GET)
-	@ResponseBody
-	public String updateLogbackLevel(HttpServletRequest request, HttpServletResponse response, @PathVariable("package") String packageName,
-			@PathVariable("level") String levelName) {
-		LoggerContext loggerContext = (LoggerContext) LoggerFactory.getILoggerFactory();
-		loggerContext.getLogger(packageName).setLevel(Level.toLevel(levelName));
-		return "修改package{" + packageName + "}的logback{" + levelName + "}级别成功";
-	}
+    @RequestMapping(value = "/{package}/{level}", method = RequestMethod.GET)
+    @ResponseBody
+    public String updateLogbackLevel(HttpServletRequest request, HttpServletResponse response, @PathVariable("package") String packageName,
+                                     @PathVariable("level") String levelName) {
+        LoggerContext loggerContext = (LoggerContext) LoggerFactory.getILoggerFactory();
+        loggerContext.getLogger(packageName).setLevel(Level.toLevel(levelName));
+        return "修改package{" + packageName + "}的logback{" + levelName + "}级别成功";
+    }
 }
 ```
 
 异步日志使用 AsyncAppender：
 
-
-| 参数                | 默认值 | 说明                                                  |
-| ------------------- | ------ | ----------------------------------------------------- |
-| discardingThreshold | 20     | 默认情况下，当队列容量剩余 20% 时，只保留警告和错误。 |
-| queueSize           | 256    | 队列长度。                                            |
-| neverBlock          | false  | 满队列时是否阻塞，设置为true则不阻塞直接丢弃数据。    |
+| 参数                  | 默认值   | 说明                            |
+|---------------------|-------|-------------------------------|
+| discardingThreshold | 20    | 默认情况下，当队列容量剩余 20% 时，只保留警告和错误。 |
+| queueSize           | 256   | 队列长度。                         |
+| neverBlock          | false | 满队列时是否阻塞，设置为true则不阻塞直接丢弃数据。   |
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
@@ -924,12 +989,13 @@ public class LogbackController {
 <!-- scan 当此属性设置为true时，配置文件如果发生改变，将会被重新加载，默认值为true。 -->
 <!-- scanPeriod 设置监测配置文件是否有修改的时间间隔，如果没有给出时间单位，默认单位是毫秒。当scan为true时，此属性生效。默认的时间间隔为1分钟。 -->
 <configuration scan="true" scanPeriod="60 seconds" debug="false">
-    <conversionRule conversionWord="clr" converterClass="org.springframework.boot.logging.logback.ColorConverter" />
+    <conversionRule conversionWord="clr" converterClass="org.springframework.boot.logging.logback.ColorConverter"/>
     <springProperty scope="context" name="APP_NAME" source="spring.application.name"/>
     <springProperty scope="context" name="ENV" source="spring.profiles.active"/>
     <springProperty scope="context" name="LOGSTASH_DESTINATION" source="logstash.destination"/>
 
-    <property name="CONSOLE_LOG_PATTERN" value="%clr(%d{yyyy-MM-dd HH:mm:ss.SSS}){faint} %clr(%5p) %clr([%t]){faint} %clr(%logger{36}){cyan} %clr(:){faint} %m%n" />
+    <property name="CONSOLE_LOG_PATTERN"
+              value="%clr(%d{yyyy-MM-dd HH:mm:ss.SSS}){faint} %clr(%5p) %clr([%t]){faint} %clr(%logger{36}){cyan} %clr(:){faint} %m%n"/>
     <property name="CONSOLE_LOG_CHARSET" value="UTF-8"/>
     <property name="FILE_LOG_PATTERN" value="%d{yyyy-MM-dd HH:mm:ss.SSS} %5p [%t] %logger{36}: %m%n"/>
     <property name="FILE_LOG_CHARSET" value="UTF-8"/>
@@ -946,7 +1012,7 @@ public class LogbackController {
         <discardingThreshold>0</discardingThreshold>
         <queueSize>512</queueSize>
         <!-- 指定异步写入名称为 FILE 的 appender，这里最多只能添加一个 appender-ref -->
-        <appender-ref ref="FILE" />
+        <appender-ref ref="FILE"/>
     </appender>
 
     <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
@@ -972,14 +1038,14 @@ public class LogbackController {
                 <pattern>
                     <pattern>
                         {
-                            "appName": "${APP_NAME}",
-                            "env": "${ENV}",
-                            "level": "%level",
-                            "thread": "%thread",
-                            "class": "%logger{50}",
-                            "message": "%message",
-                            "stack_trace": "%exception",
-                            "time":"%d{yyyy-MM-dd HH:mm:ss.SSS}"
+                        "appName": "${APP_NAME}",
+                        "env": "${ENV}",
+                        "level": "%level",
+                        "thread": "%thread",
+                        "class": "%logger{50}",
+                        "message": "%message",
+                        "stack_trace": "%exception",
+                        "time":"%d{yyyy-MM-dd HH:mm:ss.SSS}"
                         }
                     </pattern>
                 </pattern>
@@ -1032,21 +1098,24 @@ public class MockMvcSupport {
 
     private static final ObjectWriter OBJECT_WRITER = new ObjectMapper().writer().withDefaultPrettyPrinter();
 
-    public static ResultActions prepareRequest(final MockMvc mockMvc, final MockHttpServletRequestBuilder saveRequestBuilder) throws Exception{
-        return prepareRequest(mockMvc,saveRequestBuilder,DEFAULT_TOKEN,null);
+    public static ResultActions prepareRequest(final MockMvc mockMvc, final MockHttpServletRequestBuilder saveRequestBuilder) throws Exception {
+        return prepareRequest(mockMvc, saveRequestBuilder, DEFAULT_TOKEN, null);
     }
-    public static ResultActions prepareRequest(final MockMvc mockMvc, final MockHttpServletRequestBuilder saveRequestBuilder, final Object object) throws Exception{
-        return prepareRequest(mockMvc,saveRequestBuilder,DEFAULT_TOKEN,OBJECT_WRITER.writeValueAsString(object));
+
+    public static ResultActions prepareRequest(final MockMvc mockMvc, final MockHttpServletRequestBuilder saveRequestBuilder, final Object object) throws Exception {
+        return prepareRequest(mockMvc, saveRequestBuilder, DEFAULT_TOKEN, OBJECT_WRITER.writeValueAsString(object));
     }
-    public static ResultActions prepareRequest(final MockMvc mockMvc, final MockHttpServletRequestBuilder saveRequestBuilder, final String content) throws Exception{
-        return prepareRequest(mockMvc,saveRequestBuilder,DEFAULT_TOKEN,content);
+
+    public static ResultActions prepareRequest(final MockMvc mockMvc, final MockHttpServletRequestBuilder saveRequestBuilder, final String content) throws Exception {
+        return prepareRequest(mockMvc, saveRequestBuilder, DEFAULT_TOKEN, content);
     }
-    private static ResultActions prepareRequest(final MockMvc mockMvc, final MockHttpServletRequestBuilder saveRequestBuilder, final String token, final String content) throws Exception{
+
+    private static ResultActions prepareRequest(final MockMvc mockMvc, final MockHttpServletRequestBuilder saveRequestBuilder, final String token, final String content) throws Exception {
         saveRequestBuilder.contentType(MediaType.APPLICATION_JSON)
                 .accept(MediaType.APPLICATION_JSON)
                 .header("token", token)
                 .characterEncoding(StandardCharsets.UTF_8.name());
-        if(Objects.nonNull(content)){
+        if (Objects.nonNull(content)) {
             saveRequestBuilder.content(content);
         }
         ResultActions actions = mockMvc.perform(saveRequestBuilder);
@@ -1069,18 +1138,18 @@ public class SignalDownloadTest2 {
     }
 
     @Test
-    public void downloadSignalGroupConfig() throws Exception{
+    public void downloadSignalGroupConfig() throws Exception {
         downloadSignalGroup("/api/v1/ring/download/signalGroup/config");
     }
 
-    private void downloadSignalGroup(String url) throws Exception{
-    SettingBaseDTO settingBaseDTO=new SettingBaseDTO(663214, 663214, "3e71108323e149e993e96d9e0903cf35");
-    MockHttpServletRequestBuilder downloadRequestBuilder = MockMvcRequestBuilders.post(url);
-    ResultActions actions  = MockMvcSupport.prepareRequest(mockMvc, downloadRequestBuilder, settingBaseDTO);
-       actions.andExpect(status().isBadRequest())
-               .andExpect(jsonPath("$.message",containsString(SIGNAL_NUMBER_NOT_NULL)))
-               .andExpect(jsonPath("$.message",containsString(CROSS_NUMBER_NOT_NULL)))
-               .andExpect(jsonPath("$.message",containsString(CROSS_ID_NOT_NULL)));
+    private void downloadSignalGroup(String url) throws Exception {
+        SettingBaseDTO settingBaseDTO = new SettingBaseDTO(663214, 663214, "3e71108323e149e993e96d9e0903cf35");
+        MockHttpServletRequestBuilder downloadRequestBuilder = MockMvcRequestBuilders.post(url);
+        ResultActions actions = MockMvcSupport.prepareRequest(mockMvc, downloadRequestBuilder, settingBaseDTO);
+        actions.andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message", containsString(SIGNAL_NUMBER_NOT_NULL)))
+                .andExpect(jsonPath("$.message", containsString(CROSS_NUMBER_NOT_NULL)))
+                .andExpect(jsonPath("$.message", containsString(CROSS_ID_NOT_NULL)));
     }
 }
 ```
@@ -1095,9 +1164,13 @@ public class SignalDownloadTest2 {
 
 ### 自动装配流程
 
-1. AutoConfigurationImportSelector 实现 ImportSelector 接口，@Import 会装载 ImportSelector#selectImports 返回的Bean，由 ConfigurationClassParser 来实现。
-2. 在 AutoConfigurationImportSelector#selectImports 中使用 SpringFactoriesLoader.loadFactoryNames(EnableAutoConfiguration.class,getBeanClassLoader()) 加载，会加载 META-INF/spring.factories 中 org.springframework.boot.autoconfigure.EnableAutoConfiguration 的属性。
-3. 通过 @ConditionalOnClass 来完成 添加具体starter 时完成自动加载，stater添加的只是依赖，负责引入依赖包，配置的逻辑存在于 spring-boot-autoconfigure 模块：例如：
+1. AutoConfigurationImportSelector 实现 ImportSelector 接口，@Import 会装载 ImportSelector#selectImports 返回的Bean，由
+   ConfigurationClassParser 来实现。
+2. 在 AutoConfigurationImportSelector#selectImports 中使用 SpringFactoriesLoader.loadFactoryNames(
+   EnableAutoConfiguration.class,getBeanClassLoader()) 加载，会加载 META-INF/spring.factories 中
+   org.springframework.boot.autoconfigure.EnableAutoConfiguration 的属性。
+3. 通过 @ConditionalOnClass 来完成 添加具体starter 时完成自动加载，stater添加的只是依赖，负责引入依赖包，配置的逻辑存在于
+   spring-boot-autoconfigure 模块：例如：
 
    ```java
    // 只有引入 MongoClient 相关包时才会进行自动配置。
@@ -1121,23 +1194,27 @@ public class SignalDownloadTest2 {
 
 自定义：
 
+```xml
+<!-- 1. 添加依赖 -->
+<dependencies>
+    <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter</artifactId>
+    </dependency>
+    <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-configuration-processor</artifactId>
+        <optional>true</optional>
+    </dependency>
+    <dependency>
+        <groupId>org.projectlombok</groupId>
+        <artifactId>lombok</artifactId>
+        <version>1.16.18</version>
+        <scope>provided</scope>
+    </dependency>
+</dependencies>
+```
 ```java
-// 1. 添加依赖
-<dependency>
-   <groupId>org.springframework.boot</groupId>
-   <artifactId>spring-boot-starter</artifactId>
-</dependency>
-<dependency>
-   <groupId>org.springframework.boot</groupId>
-   <artifactId>spring-boot-configuration-processor</artifactId>
-   <optional>true</optional>
-</dependency>
- <dependency>
-   <groupId>org.projectlombok</groupId>
-   <artifactId>lombok</artifactId>
-   <version>1.16.18</version>
-   <scope>provided</scope>
-</dependency>
 // 2. 编写配置文件
 @ConfigurationProperties(prefix = "sms")
 @Data
@@ -1148,7 +1225,7 @@ public class SmsProperties {
     private SmsMessage tencent = new SmsMessage();
 
     @Data
-    public static class SmsMessage{
+    public static class SmsMessage {
 
         private String userName;
 
@@ -1158,38 +1235,51 @@ public class SmsProperties {
 
         private String url;
     }
+
 }
-// yml 文件
+```
+
+```yaml
+# yml 文件
 sms:
-  aliyun:
-    pass-word: 12345
-    user-name: java金融
-    sign: 阿里云
-    url: xxx
-  tencent:
-    pass-word: 6666
-    user-name: java金融
-    sign: 腾讯云
-    url: xxx
+    aliyun:
+        pass-word:12345
+        user-name:java金融
+        sign:阿里云
+        url:xxx
+    tencent:
+        pass-word:6666
+        user-name:java金融
+        sign:腾讯云
+        url:xxx
+```
+
+```java
 // 3. 编写自动配置类
 @EnableConfigurationProperties(value = SmsProperties.class)
 @Configuration
-public class SmsAutoConfiguration  {
+
+public class SmsAutoConfiguration {
 
     @Bean
-    public AliyunSmsSenderImpl aliYunSmsSender(SmsProperties smsProperties){
-       return new AliyunSmsSenderImpl(smsProperties.getAliyun());
+    public AliyunSmsSenderImpl aliYunSmsSender(SmsProperties smsProperties) {
+        return new AliyunSmsSenderImpl(smsProperties.getAliyun());
     }
 
     @Bean
-    public TencentSmsSenderImpl tencentSmsSender(SmsProperties smsProperties){
+    public TencentSmsSenderImpl tencentSmsSender(SmsProperties smsProperties) {
         return new TencentSmsSenderImpl(smsProperties.getTencent());
     }
+
 }
+```
+
+```java
 // 4. 让 Starter生效，有两种方案
-// 4.1 在META-INF下新建一个spring.factories文件,key为org.springframework.boot.autoconfigure.EnableAutoConfiguration， value是我们的SmsAutoConfiguration 全限定名（「记得去除前后的空格，否则会不生效」）。
+// 4.1 在META-INF下新建一个spring.factories文件,key为org.springframework.boot.autoconfigure.EnableAutoConfiguration，
+// value是我们的SmsAutoConfiguration 全限定名（「记得去除前后的空格，否则会不生效」）。
 // 4.2 使用注解导入
-Target({ElementType.TYPE})
+@Target({ElementType.TYPE})
 @Retention(RetentionPolicy.RUNTIME)
 @Documented
 @Import({SmsAutoConfiguration.class})

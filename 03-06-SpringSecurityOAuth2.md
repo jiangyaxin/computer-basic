@@ -332,7 +332,9 @@ eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ
 首先，需要指定一个密钥`secret`。这个密钥只有服务器才知道，不能泄露给用户。然后，使用 `header `里面指定的签名算法（默认是 `HMAC SHA256`），按照下面的公式产生签名:
 
 ```java
-HMACSHA256(base64UrlEncode(header) + "." +base64UrlEncode(payload),secret)
+public void test() {
+    HMACSHA256(base64UrlEncode(header) + "." + base64UrlEncode(payload), secret);
+}
 ```
 
 最后签名以后，把`header`、`payload`、`signature` 三个部分拼成一个字符串，每个部分之间用"点"（.）分隔，就构成整个令牌。
@@ -346,15 +348,18 @@ HMACSHA256(base64UrlEncode(header) + "." +base64UrlEncode(payload),secret)
 3. 引入依赖。
 
 ```xml
-<dependency>
-    <groupId>org.springframework.boot</groupId>
-    <artifactId>spring-boot-starter-security</artifactId>
-</dependency>
 
-<dependency>
-    <groupId>org.springframework.boot</groupId>
-    <artifactId>spring-boot-starter-oauth2-client</artifactId>
-</dependency>
+<dependencies>
+    <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-security</artifactId>
+    </dependency>
+
+    <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-oauth2-client</artifactId>
+    </dependency>
+</dependencies>
 ```
 
 4. 配置 Security。
@@ -399,6 +404,7 @@ public class OAuth2ClientProperties implements InitializingBean {
 	private final Map<String, Provider> provider = new HashMap<>();
 
 	private final Map<String, Registration> registration = new HashMap<>();
+}
 ```
 
 ## 核心接口
@@ -484,10 +490,12 @@ curl --location --request POST 'http://127.0.0.1:9000/uc/oauth2/token?scope=serv
 * client_secret_jwt：算法类型为 MacAlgorithm：HS256、HS384、HS512
 
 ```java
-// MacAlgorithm 对应 SecretKeySpec 算法
-mappings.put(MacAlgorithm.HS256, "HmacSHA256");
-mappings.put(MacAlgorithm.HS384, "HmacSHA384");
-mappings.put(MacAlgorithm.HS512, "HmacSHA512");
+public void test() {
+    // MacAlgorithm 对应 SecretKeySpec 算法
+    mappings.put(MacAlgorithm.HS256, "HmacSHA256");
+    mappings.put(MacAlgorithm.HS384, "HmacSHA384");
+    mappings.put(MacAlgorithm.HS512, "HmacSHA512");
+}
 ```
 
 1. 配置认证中心配置 RegisteredClient ，ClientAuthenticationMethod.CLIENT_SECRET_JWT，MacAlgorithm.HS256
@@ -763,7 +771,7 @@ public class OAuth2ClientController {
 
         OAuth2AccessToken accessToken = authorizedClient.getAccessToken();
 
-        ...
+        // ...
 
         return "index";
     }
@@ -1203,15 +1211,18 @@ public class OAuth2LoginSecurityConfig extends WebSecurityConfigurerAdapter {
 3. 引入依赖。
 
 ```xml
-<dependency>
-    <groupId>org.springframework.boot</groupId>
-    <artifactId>spring-boot-starter-security</artifactId>
-</dependency>
 
-<dependency>
-    <groupId>org.springframework.boot</groupId>
-    <artifactId>spring-boot-starter-oauth2-client</artifactId>
-</dependency>
+<dependencies>
+    <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-security</artifactId>
+    </dependency>
+
+    <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-oauth2-client</artifactId>
+    </dependency>
+</dependencies>
 ```
 
 4. 配置 Security。
@@ -1357,42 +1368,50 @@ nimbus-jose-jwt 支持的算法都在它的 JWSAlgorithm 和 JWEAlgorithm 类中
 JWSHeader：对应JWT中的header部分。
 
 ```java
-JWSHeader header = new JWSHeader.Builder(algorithm).type(JOSEObjectType.JWT).build();
-// 获得头部信息的 Base64 形式（ JWT 中的实际头部信息）
-header.getParsedBase64URL();
+public void test() {
+    JWSHeader header = new JWSHeader.Builder(algorithm).type(JOSEObjectType.JWT).build();
+    // 获得头部信息的 Base64 形式（ JWT 中的实际头部信息）
+    header.getParsedBase64URL();
+}
 ```
 
 Payload：对应JWT中的payload部分。
 
 ```java
-// 这里还可以传 JSON 串，或 Map
-Payload payload = new Payload("hello world");
-// 获得荷载部信息的 Base64 形式（ JWT 中的实际荷载部信息）
-header.toBase64URL();
+public void test() {
+    // 这里还可以传 JSON 串，或 Map
+    Payload payload = new Payload("hello world");
+    // 获得荷载部信息的 Base64 形式（ JWT 中的实际荷载部信息）
+    header.toBase64URL();
+}
 ```
 
 JWSSigner：签名器，负责生成 signature 部分。
 
 ```java
-// secret 为秘钥
-JWSSigner jwsSigner = new MACSigner(secret);
-// 获得荷载部信息的 Base64 形式（ JWT 中的实际荷载部信息）
+public void test() {
+    // secret 为秘钥
+    JWSSigner jwsSigner = new MACSigner(secret);
+    // 获得荷载部信息的 Base64 形式（ JWT 中的实际荷载部信息）
 
-JWSObject jwsObject = new JWSObject(jwsHeader, payload);
-jwsObject.sign(jwsSigner);
+    JWSObject jwsObject = new JWSObject(jwsHeader, payload);
+    jwsObject.sign(jwsSigner);
 
-// jwsObject 序列化为 token
-String token = jwsObject.serialize();
+    // jwsObject 序列化为 token
+    String token = jwsObject.serialize();
+}
 ```
 
 JWSVerifier：验证器，负责对token进行验证。
 
 ```java
-// 将 token 反序列化为 jwsObject
-JWSObject jwsObject = JWSObject.parse(token);
-JWSVerifier jwsVerifier = new MACVerifier(secret);
-if (!jwsObject.verify(jwsVerifier)) {
-    throw new RuntimeException("token 签名不合法！");
+public void test() {
+    // 将 token 反序列化为 jwsObject
+    JWSObject jwsObject = JWSObject.parse(token);
+    JWSVerifier jwsVerifier = new MACVerifier(secret);
+    if (!jwsObject.verify(jwsVerifier)) {
+        throw new RuntimeException("token 签名不合法！");
+    }
 }
 ```
 
@@ -1440,38 +1459,42 @@ public RSAKey generateRsaKey() {
 3. 生成token：
 
 ```java
-RSAKey rsaKey = generateRsaKey();
+public void test() {
+    RSAKey rsaKey = generateRsaKey();
 
-JWSHeader jwsHeader = new JWSHeader
-              .Builder(JWSAlgorithm.RS256)
-              .type(JOSEObjectType.JWT)
-              .build();
+    JWSHeader jwsHeader = new JWSHeader
+            .Builder(JWSAlgorithm.RS256)
+            .type(JOSEObjectType.JWT)
+            .build();
 
-Payload payload = new Payload("hello world");
+    Payload payload = new Payload("hello world");
 
-JWSObject jwsObject = new JWSObject(jwsHeader, payload);
-// rsaKey 生成签名器
-JWSSigner jwsSigner = new RSASSASigner(rsaKey, true);
-jwsObject.sign(jwsSigner);
+    JWSObject jwsObject = new JWSObject(jwsHeader, payload);
+    // rsaKey 生成签名器
+    JWSSigner jwsSigner = new RSASSASigner(rsaKey, true);
+    jwsObject.sign(jwsSigner);
 
-// JWT/JWS 字符串
-String token = jwsObject.serialize();
+    // JWT/JWS 字符串
+    String token = jwsObject.serialize();
+}
 ```
 
 4. 解析token：
 
 ```java
-JWSObject jwsObject = JWSObject.parse(token);
+public void test() {
+    JWSObject jwsObject = JWSObject.parse(token);
 
-RSAKey rsaKey = generateRsaKey();
-RSAKey publicRsaKey = rsaKey.toPublicJWK();
-JWSVerifier jwsVerifier = new RSASSAVerifier(publicRsaKey);
+    RSAKey rsaKey = generateRsaKey();
+    RSAKey publicRsaKey = rsaKey.toPublicJWK();
+    JWSVerifier jwsVerifier = new RSASSAVerifier(publicRsaKey);
 
-if (!jwsObject.verify(jwsVerifier)) {
-    throw new RuntimeException("token签名不合法！");
+    if (!jwsObject.verify(jwsVerifier)) {
+        throw new RuntimeException("token签名不合法！");
+    }
+
+    String payload = jwsObject.getPayload().toString();
 }
-
-String payload = jwsObject.getPayload().toString();
 ```
 
 JWKSource<SecurityContext> : 秘钥集合，包含公钥、私钥。
@@ -1490,15 +1513,18 @@ public JWKSource<SecurityContext> jwkSource() {
 1. 引入依赖：
 
 ```xml
-<dependency>
-    <groupId>org.springframework.boot</groupId>
-    <artifactId>spring-boot-starter-security</artifactId>
-</dependency>
 
-<dependency>
-    <groupId>org.springframework.boot</groupId>
-    <artifactId>spring-boot-starter-oauth2-resource-server</artifactId>
-</dependency>
+<dependencies>
+    <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-security</artifactId>
+    </dependency>
+
+    <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-oauth2-resource-server</artifactId>
+    </dependency>
+</dependencies>
 ```
 
 2.  配置 JwtDecoder ：有4种方式
@@ -1511,6 +1537,9 @@ spring:
       resourceserver:
         jwt:
           jwk-set-uri: https://www.googleapis.com/oauth2/v3/certs
+```
+
+```yaml
 #或者使用认证服务器端点，获取公钥端点
 # 会通过 https://xxx.com/aaa/.well-known/openid-configuration、https://xxx.com/.well-known/openid-configuration/aaa、https://xxx.com/.well-known/oauth-authorization-server/aaa 端点获取 jwks_uri，然后流程和上面一样。
 spring:
@@ -1519,7 +1548,9 @@ spring:
       resourceserver:
         jwt:
           issuer-uri: https://xxx.com/aaa
+```
 
+```yaml
 # 或者使用本地公钥配置
 spring:
   security:
@@ -1532,11 +1563,14 @@ spring:
 或者自定义 JwtDecoder：NimbusJwtDecoder是它的实现类
 
 ```java
-// 使用jwkSetUri
-NimbusJwtDecoder nimbusJwtDecoder = NimbusJwtDecoder.withJwkSetUri("xxxx").jwsAlgorithm(SignatureAlgorithm.from("xxxx")).build();
-// 直接使用公钥字符串
-RSAPublicKey publicKey = (RSAPublicKey) KeyFactory.getInstance("RSA").generatePublic(new X509EncodedKeySpec(java.util.Base64.getMimeDecoder().decode("publickey")));
-NimbusJwtDecoder.withPublicKey(publicKey).signatureAlgorithm(SignatureAlgorithm.from("xxxx")).build();
+public void test() {
+    // 使用jwkSetUri
+    NimbusJwtDecoder nimbusJwtDecoder = NimbusJwtDecoder.withJwkSetUri("xxxx").jwsAlgorithm(SignatureAlgorithm.from("xxxx")).build();
+    // 直接使用公钥字符串
+    RSAPublicKey publicKey = (RSAPublicKey) KeyFactory.getInstance("RSA").generatePublic(new X509EncodedKeySpec(java.util.Base64.getMimeDecoder().decode("publickey")));
+    NimbusJwtDecoder.withPublicKey(publicKey).signatureAlgorithm(SignatureAlgorithm.from("xxxx")).build();
+}
+
 // 获取 RSAPublicKey 可以使用 RsaKeyConversionServicePostProcessor 来获取
 @Bean
 BeanFactoryPostProcessor conversionServiceCustomizer() {
@@ -1546,27 +1580,33 @@ BeanFactoryPostProcessor conversionServiceCustomizer() {
 @Value("${key.location}")
 RSAPublicKey key;
 
-// 使用IssuerUri
-JwtDecoders.fromIssuerLocation("xxxx");
+public void test() {
+    // 使用IssuerUri
+    JwtDecoders.fromIssuerLocation("xxxx");
 
-// 对称秘钥
-NimbusJwtDecoder.withSecretKey(this.key).build();
+    // 对称秘钥
+    NimbusJwtDecoder.withSecretKey(this.key).build();
 
-// NimbusJwtDecoder 设置缓存
-NimbusJwtDecoder.withJwkSetUri(jwkSetUri).cache(cacheManager.getCache("jwks")).build();
+    // NimbusJwtDecoder 设置缓存
+    NimbusJwtDecoder.withJwkSetUri(jwkSetUri).cache(cacheManager.getCache("jwks")).build();
 
-// NimbusJwtDecoder设置请求超时时间
-RestOperations rest = builder
-        .setConnectTimeout(Duration.ofSeconds(60))
-        .setReadTimeout(Duration.ofSeconds(60))
-        .build();
-NimbusJwtDecoder jwtDecoder = NimbusJwtDecoder.withJwkSetUri(jwkSetUri).restOperations(rest).build();
+    // NimbusJwtDecoder设置请求超时时间
+    RestOperations rest = builder
+            .setConnectTimeout(Duration.ofSeconds(60))
+            .setReadTimeout(Duration.ofSeconds(60))
+            .build();
+    NimbusJwtDecoder jwtDecoder = NimbusJwtDecoder.withJwkSetUri(jwkSetUri).restOperations(rest).build();
+}
 ```
 
 3. 配置 HttpSecurity：springboot 已在 OAuth2ResourceServerJwtConfiguration 默认配置，自定义WebSecurityConfigurerAdapter时需要配置。
 
 ```java
-		http.authorizeRequests((requests) -> requests.anyRequest().authenticated()).oauth2ResourceServer(OAuth2ResourceServerConfigurer::jwt);
+public void test() {
+    http.authorizeRequests((requests) -> requests.anyRequest().authenticated())
+            .oauth2ResourceServer(OAuth2ResourceServerConfigurer::jwt);
+}
+
 ```
 
 ## 启动
@@ -1698,24 +1738,27 @@ public interface JwtDecoder {
 1. 引入依赖：
 
 ```xml
-<!-- 需要同时引入这两个包 -->
-<dependency>
-    <groupId>org.springframework.boot</groupId>
-    <artifactId>spring-boot-starter-security</artifactId>
-</dependency>
 
-<!-- 0.2.3 对应springBootVersion 2.5.10  -->
-<dependency>
-    <groupId>org.springframework.security</groupId>
-    <artifactId>spring-security-oauth2-authorization-server</artifactId>
-    <version>${spring-security-oauth2-authorization-server.version}</version>
-</dependency>
+<dependencies>
+    <!-- 需要同时引入这两个包 -->
+    <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-security</artifactId>
+    </dependency>
 
-<!-- 如果需要读取 KeyStore 可引入  -->
-<dependency>
-    <groupId>org.springframework.security</groupId>
-    <artifactId>spring-security-rsa</artifactId>
-</dependency>
+    <!-- 0.2.3 对应springBootVersion 2.5.10  -->
+    <dependency>
+        <groupId>org.springframework.security</groupId>
+        <artifactId>spring-security-oauth2-authorization-server</artifactId>
+        <version>${spring-security-oauth2-authorization-server.version}</version>
+    </dependency>
+
+    <!-- 如果需要读取 KeyStore 可引入  -->
+    <dependency>
+        <groupId>org.springframework.security</groupId>
+        <artifactId>spring-security-rsa</artifactId>
+    </dependency>
+</dependencies>
 ```
 
 2. 执行数据库脚本，并配置 数据源：连接数据库时需要使用UTC时间，若使用GTM+8，可以在查询时解析为UTC时间。
@@ -2025,12 +2068,13 @@ public class RegisteredClient implements Serializable {
 
 ```java
 public class OAuth2Authorization implements Serializable {
-	private String id;
-	private String registeredClientId;
-	private String principalName;
-	private AuthorizationGrantType authorizationGrantType;
-	private Map<Class<? extends OAuth2Token>, Token<?>> tokens;
-	private Map<String, Object> attributes;
+    private String id;
+    private String registeredClientId;
+    private String principalName;
+    private AuthorizationGrantType authorizationGrantType;
+    private Map<Class<? extends OAuth2Token>, Token<?>> tokens;
+    private Map<String, Object> attributes;
+}
 ```
 
 ##### OAuth2AuthorizationService

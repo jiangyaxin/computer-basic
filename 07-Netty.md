@@ -1835,6 +1835,47 @@ Netty内置了三种流量整形功能。
 
 GlobalTrafficShapingHandler 和 GlobalChannelTrafficShapingHandler 需要全局使用一个实例。
 
+## 内核参数调优
+
+### 文件限制
+
+系统级：当前系统可打开的最大数量，通过 `cat /proc/sys/fs/file-max` 查看
+用户级：指定用户可打开的最大数量，通过 `cat /etc/security/limits.conf` 查看
+进程级：单个进程可打开的最大数量，通过 `cat /proc/sys/fs/nr_open` 查看
+
+### 网络端口限制
+
+以下配置均在 `/etc/sysctl.conf` 文件中
+
+最大追踪TCP连接数量:`net.ipv4.ip_conntrack_max=1024 65535`
+
+本地端口范围：`net.ipv4.ip_local_port_range=20000`
+
+### 内核参数优化
+
+修改 `/etc/sysctl.conf` 。
+
+```text
+net.ipv4.ip_local_port_range = 1024 65536
+net.core.rmem_max=16777216
+net.core.wmem_max=16777216
+net.ipv4.tcp_rmem=4096 87380 16777216
+net.ipv4.tcp_wmem=4096 65536 16777216
+net.ipv4.tcp_fin_timeout = 10
+net.ipv4.tcp_tw_recycle = 1
+net.ipv4.tcp_timestamps = 0
+net.ipv4.tcp_window_scaling = 0
+net.ipv4.tcp_sack = 0
+net.core.netdev_max_backlog = 30000
+net.ipv4.tcp_no_metrics_save=1
+net.core.somaxconn = 262144
+net.ipv4.tcp_syncookies = 0
+net.ipv4.tcp_max_orphans = 262144
+net.ipv4.tcp_max_syn_backlog = 262144
+net.ipv4.tcp_synack_retries = 2
+net.ipv4.tcp_syn_retries = 2
+```
+
 ## 零拷贝
 
 传统IO ： 4次数据拷贝 + 4 次上下文切换

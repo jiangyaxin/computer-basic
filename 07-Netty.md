@@ -99,7 +99,7 @@ public class SeekableByteChannelTest {
         } catch (IOException e) {
             e.printStackTrace();
         }
-        
+      
     }
 }
 ```
@@ -1186,7 +1186,7 @@ public class ChannelFutureTest {
             // Connection established successfully
         }
     }
-    
+  
 }
 ```
 
@@ -1825,6 +1825,15 @@ TCP 分片的依据是 在三次握手的时候，在两端主机之间被计算
 1. 消息定长，不够长使用填充。
 2. 在包尾使用固定的分隔符分割，例如 换行符。
 3. 将消息分为头部和消息体，头部中保存整个消息的长度，只有读取到足够长度的消息之后才算是读到了一个完整的消息。
+
+## 流量整形
+
+Netty内置了三种流量整形功能。
+(1)单个链路的流量整形:ChannelTrafficShapingHandler，可以对某个链路的消息发送和读取速度进行控制。
+(2)全局流量整形:GlobalTrafficShapingHandler，针对某个进程所有链路的消息发送和读取速度的总和进行控制。
+(3)全局和单个链路综合型流量整形:GlobalChannelTrafficShapingHandler，同时对全局和单个链路的消息发送和读取速度进行控制。
+
+GlobalTrafficShapingHandler 和 GlobalChannelTrafficShapingHandler 需要全局使用一个实例。
 
 ## 零拷贝
 

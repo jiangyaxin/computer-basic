@@ -99,7 +99,7 @@ public class SeekableByteChannelTest {
         } catch (IOException e) {
             e.printStackTrace();
         }
-      
+
     }
 }
 ```
@@ -110,7 +110,7 @@ public class ScatteringByteChannelTest {
         ByteBuffer header = ByteBuffer.allocateDirect(10);
         ByteBuffer body = ByteBuffer.allocateDirect(80);
         ByteBuffer[] buffers = {header, body};
-        int bytesRead = channel.read(buffers); 
+        int bytesRead = channel.read(buffers);
     }
 }
 ```
@@ -160,15 +160,14 @@ FileChannel channel2 = randomAccessFile.getChannel();
 
 api：
 
-
-| 接口                    | 描述                                                             |
-| ----------------------- | ---------------------------------------------------------------- |
-| open                    | 创建FileChannel                                                  |
-| read/write              | 基于FileChannel读写                                              |
-| force                   | 强制将FileChannel中的数据刷入文件中                              |
+| 接口                      | 描述                                           |
+|-------------------------|----------------------------------------------|
+| open                    | 创建FileChannel                                |
+| read/write              | 基于FileChannel读写                              |
+| force                   | 强制将FileChannel中的数据刷入文件中                      |
 | map                     | 使用 mmap 技术直接映射内核内存到用户内存，返回  MappedByteBuffer |
-| transferTo/transferFrom | 将通道中的字节传输到其他通道                                     |
-| lock/tryLock            | 获取文件锁                                                       |
+| transferTo/transferFrom | 将通道中的字节传输到其他通道                               |
+| lock/tryLock            | 获取文件锁                                        |
 
 read/write：
 
@@ -501,28 +500,28 @@ public class MappedByteBufferUtil {
    JVM 退出时输出最后的内存使用数据。
 2. 使用 `jcmd <pid> VM.native_memory detail scale=MB` 打印JVM内存占用。
 
-   * 使用 `jcmd <pid> VM.native_memory baseline` 设置基准值，再使用 `jcmd <pid> VM.native_memory scale=MB detail.diff`
-     查看增长值。
+    * 使用 `jcmd <pid> VM.native_memory baseline` 设置基准值，再使用 `jcmd <pid> VM.native_memory scale=MB detail.diff`
+      查看增长值。
 
    ![241](assets/241.png)
 
    其中 reserved 向操作系统申请的内存， committed 已经使用的内存， mmap，malloc 是两种不同的内存申请分配方式，arena 是通过
    malloc 方式分配的内存但是代码执行完并不释放，放入 arena chunk 中之后还会继续使用。
 
-   * Java Heap：堆空间
-   * Class：保存类的元数据，其实就是 metaspace，包含两部分： 一是 metadata，被-XX:MaxMetaspaceSize限制最大大小，另外是 class
-     space，被-XX:CompressedClassSpaceSize限制最大大小。
-   * Thread：线程栈占用，每个线程栈占用大小受-Xss限制。
-   * Code：JIT 的代码缓存，为了在不同平台运行JVM字节码，需要将其转换成机器指令。程序运行时，JIT编译器负责这个编译工作，并将编译后的指令存在
-     Code Cache 区域。
-   * GC：gc算法使用的空间。
-   * Compiler：编译器自身操作使用。
-   * Internal：命令行解析，JVMTI 使用的内存。
-   * Other：尚未归类的。
-   * Symbol ：常量池、符号表引用占用，常量池占用的大小，字符串常量池受-XX:StringTableSize个数限制。
-   * Native Memory Tracking：NMT内存采集本身占用的内存大小。
-   * Arena Chunk：所有通过 arena 方式分配的内存。
-     并未统计 Direct Buffer 、MMap Buffer 内存。
+    * Java Heap：堆空间
+    * Class：保存类的元数据，其实就是 metaspace，包含两部分： 一是 metadata，被-XX:MaxMetaspaceSize限制最大大小，另外是 class
+      space，被-XX:CompressedClassSpaceSize限制最大大小。
+    * Thread：线程栈占用，每个线程栈占用大小受-Xss限制。
+    * Code：JIT 的代码缓存，为了在不同平台运行JVM字节码，需要将其转换成机器指令。程序运行时，JIT编译器负责这个编译工作，并将编译后的指令存在
+      Code Cache 区域。
+    * GC：gc算法使用的空间。
+    * Compiler：编译器自身操作使用。
+    * Internal：命令行解析，JVMTI 使用的内存。
+    * Other：尚未归类的。
+    * Symbol ：常量池、符号表引用占用，常量池占用的大小，字符串常量池受-XX:StringTableSize个数限制。
+    * Native Memory Tracking：NMT内存采集本身占用的内存大小。
+    * Arena Chunk：所有通过 arena 方式分配的内存。
+      并未统计 Direct Buffer 、MMap Buffer 内存。
 3. 对应直接内存可通过 Jprofile 查看 MBeans 的 java.nio.BufferPool 监控，单位是字节，也可使用 JVisualVM 安装
    VisualVM-BufferMonitor 监控
 
@@ -661,8 +660,8 @@ Server端启动主流程：
 * 从ServerSocketChannel获取SocketChannel并创建NioSocketChannel（read()方法调用NioServerSocketChannel#doReadMessages ）
 * pipeline.fireChannelRead(NioSocketChannel Pipeline)
 * ServerBootstrap.ServerBootstrapAcceptor#channelRead() 将 ChannelInitializer 添加到 NioSocketChannel Pipeline
-* 将NioSocketChannel 注册到 WorkEventLoop，触发 ChannelInitializer#initChannel 添加 自定义
-  ChannelHandler，并移除ChannelInitializer
+* 将NioSocketChannel 注册到 WorkEventLoop，触发 ChannelInitializer#initChannel 添加
+  自定义ChannelHandler，并移除ChannelInitializer
 * WorkEventLoop select 获取到 READ 事件 调用 AbstractNioByteChannel.NioByteUnsafe#read()
 * 使用NioSocketChannel#doReadBytes 循环读取数据，并触发 pipeline.fireChannelRead(byteBuf)，
 * 读取完成后调用 pipeline.fireChannelReadComplete()
@@ -707,13 +706,21 @@ public class AbstractChannel {
 
 ##### register
 
-ServerSocketChannel注册流程： AbstractChannel#doRegister() -> pipeline.invokeHandlerAddedIfNeeded()（即
-ChannelHandler#handlerAdded） ->  pipeline.fireChannelRegistered();
+ServerSocketChannel注册流程：
+AbstractChannel#doRegister()
+-> pipeline.invokeHandlerAddedIfNeeded()（即 ChannelHandler#handlerAdded）
+-> pipeline.fireChannelRegistered();
 
-SocketChannel注册流程： AbstractChannel#doRegister() -> pipeline.invokeHandlerAddedIfNeeded()（即
-ChannelHandler#handlerAdded） ->  pipeline.fireChannelRegistered() -> ChannelInitializer#channelRegistered ->
-ChannelInitializer#initChannel（添加自定义ChannelHandler，然后移除 ChannelInitializer） -> pipeline.fireChannelActive() ->
-beginRead() ->  AbstractChannel#doBeginRead() ->  AbstractNioChannel覆盖doBeginRead方法注册 READ 事件
+SocketChannel注册流程：
+AbstractChannel#doRegister()
+-> pipeline.invokeHandlerAddedIfNeeded()（即ChannelHandler#handlerAdded）
+->  pipeline.fireChannelRegistered()
+-> ChannelInitializer#channelRegistered
+-> ChannelInitializer#initChannel（添加自定义ChannelHandler，然后移除 ChannelInitializer）
+-> pipeline.fireChannelActive()
+-> beginRead()
+-> AbstractChannel#doBeginRead()
+-> AbstractNioChannel覆盖doBeginRead方法注册 READ 事件
 
 ```java
 
@@ -823,13 +830,25 @@ public final void beginRead() {
 
 ServerSocketChannel 注册完才会触发绑定端口。
 
-ServerSocketChannel 的 Pipeline 为 HeadContext -> ServerBootstrap.ServerBootstrapAcceptor -> TailContext
+ServerSocketChannel 的 Pipeline 为 ：
+HeadContext
+-> ServerBootstrap.ServerBootstrapAcceptor
+-> TailContext
 
-SocketChannel 的 Pipeline 为 HeadContext -> 自定义ChannelHandler -> TailContext
+SocketChannel 的 Pipeline 为：
+HeadContext
+-> 自定义ChannelHandler
+-> TailContext
 
-流程：AbstractChannel#doBind -> pipeline.fireChannelActive() -> HeadContext#channelActive -> channel#read ->
-pipeline#read -> AbstractChannel.AbstractUnsafe#beginRead() ->  AbstractChannel#doBeginRead() ->
-AbstractNioChannel覆盖doBeginRead方法注册 ACCEPT 事件。
+流程：
+AbstractChannel#doBind
+-> pipeline.fireChannelActive()
+-> HeadContext#channelActive
+-> channel#read
+-> pipeline#read
+-> AbstractChannel.AbstractUnsafe#beginRead()
+-> AbstractChannel#doBeginRead()
+-> AbstractNioChannel覆盖doBeginRead方法注册 ACCEPT 事件。
 
 ```java
 public final void bind(final SocketAddress localAddress, final ChannelPromise promise) {
@@ -879,8 +898,12 @@ public final void bind(final SocketAddress localAddress, final ChannelPromise pr
 
 1. 将 SelectableChannel 注册到 EventLoop 中的 Selector。
 
-调用顺序: Channel使用Unsafe -> 调用 AbstractChannel.AbstractUnsafe#register -> 调用
-AbstractChannel.AbstractUnsafe#register0 -> 调用 AbstractChannel#doRegister -> AbstractNioChannel覆盖doRegister方法
+调用顺序:
+Channel使用Unsafe
+-> 调用 AbstractChannel.AbstractUnsafe#register
+-> 调用 AbstractChannel.AbstractUnsafe#register0
+-> 调用 AbstractChannel#doRegister
+-> AbstractNioChannel覆盖doRegister方法
 
 ```java
 
@@ -909,8 +932,10 @@ protected void doRegister() throws Exception {
 
 2. 向 Selector 注册 readInterestOp。
 
-流程： AbstractChannel.AbstractUnsafe#beginRead() -> AbstractChannel#doBeginRead() ->
-由覆盖AbstractNioChannel#doBeginRead()
+流程：
+AbstractChannel.AbstractUnsafe#beginRead()
+-> AbstractChannel#doBeginRead()
+-> 由覆盖AbstractNioChannel#doBeginRead()
 
 ```java
 
@@ -1178,15 +1203,15 @@ public class ChannelFutureTest {
         // Now we are sure the future is completed.
         assert f.isDone();
 
-        if(f.isCancelled()){
+        if (f.isCancelled()) {
             // Connection attempt cancelled by user
-        }else if(!f.isSuccess()){
+        } else if (!f.isSuccess()) {
             f.cause().printStackTrace();
-        }else{
+        } else {
             // Connection established successfully
         }
     }
-  
+
 }
 ```
 
@@ -1286,18 +1311,18 @@ boolean setUncancellable();
 public ChannelFuture bind() {
     final PendingRegistrationPromise promise = new PendingRegistrationPromise(channel);
     regFuture.addListener(new ChannelFutureListener() {
-                @Override
-                public void operationComplete (ChannelFuture future) throws Exception {
-                    Throwable cause = future.cause();
-                    if (cause != null) {
-                        promise.setFailure(cause);
-                    } else {
-                        promise.registered();
+        @Override
+        public void operationComplete(ChannelFuture future) throws Exception {
+            Throwable cause = future.cause();
+            if (cause != null) {
+                promise.setFailure(cause);
+            } else {
+                promise.registered();
 
-                        doBind0(regFuture, channel, localAddress, promise);
-                    }
-                }
-            });
+                doBind0(regFuture, channel, localAddress, promise);
+            }
+        }
+    });
     return promise;
 }
 ```
@@ -1427,19 +1452,19 @@ ReplayingDecoder：遇到半包时通过抛出 ReplayingDecoder.REPLAY 异常，
 * DelimiterBasedFrameDecoder：分割符解码器。
 * LineBasedFrameDecoder：换行符解码器，`\r\n`、`\n`都视为换行符。
 * LengthFieldBasedFrameDecoder：
-  * maxFrameLength：最大帧长度，如果超过，此次数据会被丢弃。
-  * lengthFieldOffset：长度域偏移。如果数据开始的几个字节可能不是表示数据长度，所以需要后移几个字节才是长度域。
-  * lengthFieldLength：长度域字节数。用几个字节来表示数据长度。
-  * lengthAdjustment：长度域后实际长度 - 长度域长度，因为长度域长度可能包含 head 长度，需要 减去
-  * initialBytesToStrip：将本帧跳过几个字节，添加到 out。
+    * maxFrameLength：最大帧长度，如果超过，此次数据会被丢弃。
+    * lengthFieldOffset：长度域偏移。如果数据开始的几个字节可能不是表示数据长度，所以需要后移几个字节才是长度域。
+    * lengthFieldLength：长度域字节数。用几个字节来表示数据长度。
+    * lengthAdjustment：长度域后实际长度 - 长度域长度，因为长度域长度可能包含 head 长度，需要 减去
+    * initialBytesToStrip：将本帧跳过几个字节，添加到 out。
 
 常用 MessageToByteEncoder：
 
 * LengthFieldPrepender：
-  * byteOrder：表示Length字段本身占用的字节数使用的是大端还是小端编码
-  * lengthFieldLength：表示Length字段本身占用的字节数,只可以指定 1, 2, 3, 4, 或 8。
-  * lengthAdjustment：表示Length字段调整值。
-  * lengthIncludesLengthFieldLength：表示Length字段本身占用的字节数是否包含在Length字段表示的值中。
+    * byteOrder：表示Length字段本身占用的字节数使用的是大端还是小端编码
+    * lengthFieldLength：表示Length字段本身占用的字节数,只可以指定 1, 2, 3, 4, 或 8。
+    * lengthAdjustment：表示Length字段调整值。
+    * lengthIncludesLengthFieldLength：表示Length字段本身占用的字节数是否包含在Length字段表示的值中。
 
 Http常用编解码器：HttpServerCodec、HttpClientCodec、HttpObjectAggregator、HttpContentCompressor、HttpContentDecompressor、SslHandler
 
@@ -1485,97 +1510,90 @@ ServerBootStrap中option()设置 SeverSocketChannel,childOption() 设置 SocketC
 
 1. 读操作
 
-
-| 操作                                          | 说明                                                            |
-| --------------------------------------------- | --------------------------------------------------------------- |
-| readBoolean()                                 | 返回当前readIndex的Boolean值，readIndex增加1                    |
-| readByte()                                    | 返回当前readIndex处的字节值，readIndex增加1                     |
-| readUnsignedByte()                            | 返回当前readIndex处的无符号字节值，readIndex增加1               |
-| readShort()                                   | 返回当前readIndex处的无符号short值，readIndex增加2              |
-| readShortLE()                                 | 使用小端计算返回 Short 值，readIndex增加2                       |
-| readUnsignedShort()                           | 返回当前readIndex处的short值，readIndex增加2                    |
-| readMedium()                                  | 读取 3 个字节24位转换为 int，readIndex增加3                     |
-| readInt()                                     | 返回当前readIndex处的int值，readIndex增加4                      |
-| readIntLE()                                   | 使用小端计算返回int值，readIndex增加4                           |
+| 操作                                            | 说明                                            |
+|-----------------------------------------------|-----------------------------------------------|
+| readBoolean()                                 | 返回当前readIndex的Boolean值，readIndex增加1           |
+| readByte()                                    | 返回当前readIndex处的字节值，readIndex增加1               |
+| readUnsignedByte()                            | 返回当前readIndex处的无符号字节值，readIndex增加1            |
+| readShort()                                   | 返回当前readIndex处的无符号short值，readIndex增加2         |
+| readShortLE()                                 | 使用小端计算返回 Short 值，readIndex增加2                 |
+| readUnsignedShort()                           | 返回当前readIndex处的short值，readIndex增加2            |
+| readMedium()                                  | 读取 3 个字节24位转换为 int，readIndex增加3               |
+| readInt()                                     | 返回当前readIndex处的int值，readIndex增加4              |
+| readIntLE()                                   | 使用小端计算返回int值，readIndex增加4                     |
 | readUnsignedInt()                             | 返回当前readIndex处的无符号int值,返回类型为long，readIndex增加4 |
-| readLong()                                    | 返回当前readIndex处的long值，readIndex增加8                     |
-| readBytes(ByteBuf dst, int length)            | 读取 length 长度写入到 dst，readIndex增加length                 |
-| readCharSequence(int length, Charset charset) | 读取 length 长度返回 CharSequence，readIndex增加length          |
+| readLong()                                    | 返回当前readIndex处的long值，readIndex增加8             |
+| readBytes(ByteBuf dst, int length)            | 读取 length 长度写入到 dst，readIndex增加length         |
+| readCharSequence(int length, Charset charset) | 读取 length 长度返回 CharSequence，readIndex增加length |
 
 2. 写操作
 
-
-| 操作                                                      | 说明                                                                                                                   |
-| --------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| writeBoolean(boolean value)                               | 在当前writeIndex处写入一个boolean值，并将writeIndex增加1                                                               |
-| writeByte(int value)                                      | 在当前writeIndex处写入一个int值，忽略高位24位，并将writeIndex增加1，应当小于等于255，否则会被截断                      |
-| writeShort(int value)                                     | 在当前writeIndex处写入一个int值，忽略高位16位，并将writeIndex增加2，应当小于等于65535，否则会被截断                    |
+| 操作                                                        | 说明                                                                           |
+|-----------------------------------------------------------|------------------------------------------------------------------------------|
+| writeBoolean(boolean value)                               | 在当前writeIndex处写入一个boolean值，并将writeIndex增加1                                   |
+| writeByte(int value)                                      | 在当前writeIndex处写入一个int值，忽略高位24位，并将writeIndex增加1，应当小于等于255，否则会被截断              |
+| writeShort(int value)                                     | 在当前writeIndex处写入一个int值，忽略高位16位，并将writeIndex增加2，应当小于等于65535，否则会被截断            |
 | writeShortLE(int value)                                   | 在当前writeIndex处写入一个int值，使用小端字节序，忽略高位16位，并将writeIndex增加2，应当小于等于65535，否则会被截断    |
-| writeMedium(int value)                                    | 在当前writeIndex处写入一个int值，忽略高位8位，并将writeIndex增加3，应当小于等于65535*255，否则会被截断                 |
+| writeMedium(int value)                                    | 在当前writeIndex处写入一个int值，忽略高位8位，并将writeIndex增加3，应当小于等于65535*255，否则会被截断         |
 | writeMediumLE(int value)                                  | 在当前writeIndex处写入一个int值，使用小端字节序，忽略高位8位，并将writeIndex增加3，应当小于等于65535*255，否则会被截断 |
-| writeInt(int value)                                       | 在当前writeIndex处写入一个int值，并将writeIndex增加4                                                                   |
-| writeIntLE(int value)                                     | 在当前writeIndex处写入一个int值，使用小端字节序，并将writeIndex增加4                                                   |
-| writeLong(long value)                                     | 在当前writeIndex处写入一个long值，并将writeIndex增加8                                                                  |
-| writeLongLE(long value)                                   | 在当前writeIndex处写入一个long值，使用小端字节序，并将writeIndex增加8                                                  |
-| writeChar(int value)                                      | 在当前writeIndex处写入一个int值，忽略高位16位，并将writeIndex增加2，低2位字节视为 2字节 UTF-8 字符                     |
-| writeFloat(float value)                                   | 在当前writeIndex处写入一个float值，并将writeIndex增加4                                                                 |
-| writeDouble(double value)                                 | 在当前writeIndex处写入一个double值，并将writeIndex增加8                                                                |
-| writeBytes(ByteBuf src)                                   | 在当前writeIndex处写入 readableBytes ，并将writeIndex增加 readableBytes                                                |
-| writeZero(int length)                                     | 填充 length 长度 0x00                                                                                                  |
-| writeCharSequence(CharSequence sequence, Charset charset) | 写入 CharSequence ，writeIndex 增加长度跟编码有关，UTF-8 位 长度的2倍                                                  |
+| writeInt(int value)                                       | 在当前writeIndex处写入一个int值，并将writeIndex增加4                                       |
+| writeIntLE(int value)                                     | 在当前writeIndex处写入一个int值，使用小端字节序，并将writeIndex增加4                               |
+| writeLong(long value)                                     | 在当前writeIndex处写入一个long值，并将writeIndex增加8                                      |
+| writeLongLE(long value)                                   | 在当前writeIndex处写入一个long值，使用小端字节序，并将writeIndex增加8                              |
+| writeChar(int value)                                      | 在当前writeIndex处写入一个int值，忽略高位16位，并将writeIndex增加2，低2位字节视为 2字节 UTF-8 字符          |
+| writeFloat(float value)                                   | 在当前writeIndex处写入一个float值，并将writeIndex增加4                                     |
+| writeDouble(double value)                                 | 在当前writeIndex处写入一个double值，并将writeIndex增加8                                    |
+| writeBytes(ByteBuf src)                                   | 在当前writeIndex处写入 readableBytes ，并将writeIndex增加 readableBytes                 |
+| writeZero(int length)                                     | 填充 length 长度 0x00                                                            |
+| writeCharSequence(CharSequence sequence, Charset charset) | 写入 CharSequence ，writeIndex 增加长度跟编码有关，UTF-8 位 长度的2倍                          |
 
 3. 随机读取：getXXXX，和 readXXXX 方法相似，readIndex 不变
 4. 随机写入：setXXXX，和 writeXXXX 方法相似，writeIndex 不变
 5. 可读字节：
 
-
-| 操作            | 说明                                  |
-| --------------- | ------------------------------------- |
+| 操作              | 说明                              |
+|-----------------|---------------------------------|
 | readableBytes() | 可读取字节，writerIndex - readerIndex |
-| isReadable()    | 可读字节是否大于0                     |
+| isReadable()    | 可读字节是否大于0                       |
 
 6. 可写字节：
 
-
-| 操作                                                | 说明                             |
-| --------------------------------------------------- | -------------------------------- |
+| 操作                                                  | 说明                          |
+|-----------------------------------------------------|-----------------------------|
 | writableBytes()                                     | 可写字节，capacity - writerIndex |
-| isWritable(int size)                                | 可写字节是否大于size             |
-| ensureWritable(int minWritableBytes, boolean force) | 可写入多大内容，是否扩容         |
+| isWritable(int size)                                | 可写字节是否大于size                |
+| ensureWritable(int minWritableBytes, boolean force) | 可写入多大内容，是否扩容                |
 
 7. 索引操作：
 
-
-| 操作                   | 说明                                                                                                 |
-| ---------------------- | ---------------------------------------------------------------------------------------------------- |
-| clear()                | 丢弃所有字节，writeIndex = readIndex = 0                                                             |
-| discardReadBytes()     | 丢弃已读字节，将未读字节复制到 索引 0                                                                |
+| 操作                     | 说明                                                                   |
+|------------------------|----------------------------------------------------------------------|
+| clear()                | 丢弃所有字节，writeIndex = readIndex = 0                                    |
+| discardReadBytes()     | 丢弃已读字节，将未读字节复制到 索引 0                                                 |
 | discardSomeReadBytes() | 当 writeIndex == readIndex ，丢弃所有字节，当 readIndex 大于容量一半，丢弃已读字节，否则不丢弃字节。 |
-| markReaderIndex()      | 标记 readerIndex                                                                                     |
-| resetReaderIndex()     | 重置到 readerIndex                                                                                   |
-| markWriterIndex()      | 标记 writerIndex                                                                                     |
-| resetWriterIndex       | 重置到 writerIndex                                                                                   |
-| skipBytes(int length)  | 跳过 length 字节                                                                                     |
+| markReaderIndex()      | 标记 readerIndex                                                       |
+| resetReaderIndex()     | 重置到 readerIndex                                                      |
+| markWriterIndex()      | 标记 writerIndex                                                       |
+| resetWriterIndex       | 重置到 writerIndex                                                      |
+| skipBytes(int length)  | 跳过 length 字节                                                         |
 
 8. 查找操作：
 
-
-| 操作                                            | 说明                                                                                        |
-| ----------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| 操作                                              | 说明                                                                    |
+|-------------------------------------------------|-----------------------------------------------------------------------|
 | indexOf(int fromIndex, int toIndex, byte value) | 1. from>to,从from到to查找第一个值，包含from<br />2. from<to,从to到from查找第一个值，包含 to |
-| bytesBefore(byte value)                         | 查找第一个值索引 - readerIndex                                                              |
-| bytesBefore(int length, byte value)             | 在指定length查找第一个值索引 - readerIndex                                                  |
-| bytesBefore(int index, int length, byte value)  | 从指定索引搜索，而不是 readerIndex                                                          |
-| forEachByte(ByteProcessor processor)            | 指定byte匹配规则，返回一个查找的值                                                          |
+| bytesBefore(byte value)                         | 查找第一个值索引 - readerIndex                                                |
+| bytesBefore(int length, byte value)             | 在指定length查找第一个值索引 - readerIndex                                       |
+| bytesBefore(int index, int length, byte value)  | 从指定索引搜索，而不是 readerIndex                                               |
+| forEachByte(ByteProcessor processor)            | 指定byte匹配规则，返回一个查找的值                                                   |
 
 9. 派生缓冲区：返回新的ByteBuf，具有自己的读索引、写索引和标记索引，但是内部储存和原ByteBuf使用同一个，任何一个修改数据都可以修改所有视图。
 
-
-| 操作        | 说明                                                                  |
-| ----------- | --------------------------------------------------------------------- |
+| 操作          | 说明                                     |
+|-------------|----------------------------------------|
 | slice()     | 返回可读字节视图，最大长度为可读字节长度，与原ByteBuf使用一个引用计数 |
-| duplicate() | 返回新视图，最大长度与之前一样，与原ByteBuf使用一个引用计数           |
-| copy()      | 深复制一个新的ByteBuf                                                 |
+| duplicate() | 返回新视图，最大长度与之前一样，与原ByteBuf使用一个引用计数      |
+| copy()      | 深复制一个新的ByteBuf                         |
 
 10. 引用计数：retain() 引用计数加1 ， release() 引用计数减1
 
@@ -1693,15 +1711,14 @@ private ByteBufAllocator allocator;
 
 常用api:
 
-
-| 操作                    | 说明                                                 |
-| ----------------------- | ---------------------------------------------------- |
+| 操作                      | 说明                                       |
+|-------------------------|------------------------------------------|
 | buffer()                | 根据directByDefault字段，决定 buffer 类型，默认false |
-| heapBuffer()            | 初始大小256，最大容量 Integer.MAX_VALUE              |
-| directBuffer()          | 初始大小256，最大容量 Integer.MAX_VALUE              |
+| heapBuffer()            | 初始大小256，最大容量 Integer.MAX_VALUE           |
+| directBuffer()          | 初始大小256，最大容量 Integer.MAX_VALUE           |
 | compositeBuffer()       | 根据directByDefault字段，决定 buffer 类型，默认false |
-| compositeHeapBuffer()   | 最大组件数量为16                                     |
-| compositeDirectBuffer() | 最大组件数量为16                                     |
+| compositeHeapBuffer()   | 最大组件数量为16                                |
+| compositeDirectBuffer() | 最大组件数量为16                                |
 
 #### ByteBufUtil & HeapByteBufUtil & UnsafeByteBufUtil
 
@@ -1772,13 +1789,12 @@ public class FileRegionTest {
 
 通过 EmbeddedChannel 测试 Pipeline 的出站、入站。
 
-
-| 操作          | 说明                                                                                                       |
-| ------------- | ---------------------------------------------------------------------------------------------------------- |
-| writeInbound  | 将入站消息写到EmbeddedChannel中。如果可以通过readInbound方法从EmbeddedChannel中读取数据，则返回true        |
-| readInbound   | 从EmbeddedChannel中读取入站消息。任何返回东西都经过整个ChannelPipeline。如果没有任何可供读取的，则返回null |
-| writeOutbound | 将出站消息写到EmbeddedChannel中，如果现在可以通过readOutbound从EmbeddedChannel中读取到东西，则返回true     |
-| readOutbound  | 从EmbeddedChannel中读取出站消息。任何返回东西都经过整个ChannelPipeline。如果没有任何可供读取的，则返回null |
+| 操作            | 说明                                                                         |
+|---------------|----------------------------------------------------------------------------|
+| writeInbound  | 将入站消息写到EmbeddedChannel中。如果可以通过readInbound方法从EmbeddedChannel中读取数据，则返回true   |
+| readInbound   | 从EmbeddedChannel中读取入站消息。任何返回东西都经过整个ChannelPipeline。如果没有任何可供读取的，则返回null     |
+| writeOutbound | 将出站消息写到EmbeddedChannel中，如果现在可以通过readOutbound从EmbeddedChannel中读取到东西，则返回true |
+| readOutbound  | 从EmbeddedChannel中读取出站消息。任何返回东西都经过整个ChannelPipeline。如果没有任何可供读取的，则返回null     |
 
 ```java
 public class EmbeddedChannelTest {

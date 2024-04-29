@@ -1419,8 +1419,7 @@ ChannelOutboundHandler：处理出站操作。
 通常我们实现 ChannelHandler 时，会选择继承 ChannelInboundHandlerAdapter 、 ChannelOutboundHandlerAdapter
 、ChannelDuplexHandler，或者更为推荐的 SimpleChannelInboundHandler 。
 
-如果 ChannelHandler 是线程安全的，可以使用 @Sharable 注解标识，这样可以让多个ChannelPipeline 使用同一个ChannelHandler。 被
-@Skip 注解的方法会直接跳过。
+如果 ChannelHandler 是线程安全的，可以使用 @Sharable 注解标识，这样可以让多个ChannelPipeline 使用同一个ChannelHandler。
 
 ChannelHandler 一定不能阻塞。
 

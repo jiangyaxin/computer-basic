@@ -16,8 +16,6 @@
 
 ![105](assets/105.png)
 
-1.
-
 从spring.factories配置文件中加载EventPublishingRunListener对象，该对象拥有SimpleApplicationEventMulticaster属性，即在SpringBoot启动过程的不同阶段用来发射内置的生命周期事件。
 
 2. 准备环境变量，包括系统变量，环境变量，命令行参数，默认变量，servlet相关配置变量，随机值以及配置文件（比如application.properties）等。
@@ -204,8 +202,9 @@ singletonFactories 中的数据来自于 doCreateBean
 ## Resource：
 
 > * getInputStream(): 找到并打开资源，返回一个InputStream以从资源中读取。预计每次调用都会返回一个新的InputStream()
-    ，调用者有责任关闭每个流
+    > ，调用者有责任关闭每个流
 > * isOpen:
+    >
     返回一个布尔值，指示此资源是否具有开放流的句柄。如果为true，InputStream就不能够多次读取，只能够读取一次并且及时关闭以避免内存泄漏。对于所有常规资源实现，返回false，但是InputStreamResource除外。
 > * getDescription(): 返回资源的描述，用来输出错误的日志。这通常是完全限定的文件名或资源的实际URL。
 > * isReadable(): 表明资源的目录读取是否通过getInputStream()进行读取。
@@ -324,6 +323,7 @@ ApplicationContext 继承 ResourcePatternResolver 的 getResources() 方法可�
    AnnotationConfigWebApplicationContext 类型的直接获取，并不会加载
    BeanDefin，因为AnnotationConfigWebApplicationContext创建时就已经创建。
 3. 准备 BeanFactory
+
     * 填充 SpelExpressionParser。
     * 添加 Resource 类型及其子类型添加 转换器。
     * 添加 xxxAware 类型后置处理器，即创建bean后注入对应的 xxx。
@@ -331,18 +331,22 @@ ApplicationContext 继承 ResourcePatternResolver 的 getResources() 方法可�
     * 添加 ApplicationListener 类型后置处理器，即创建bean 之后注入到 发布器。
     * 注册 Environment、SystemProperties、SystemEnvironment。
 4. postProcessBeanFactory，提供给子类实现，
+
     * 在 AbstractRefreshableWebApplicationContext 中默认实现是 处理ServletContextAware，并且设置
       RequestObjectFactory，ResponseObjectFactory，SessionObjectFactory，WebRequestObjectFactory。
     * 在 AnnotationConfigServletWebServerApplicationContext 相对上面的内容还要添加
       扫描AnnotationConfigServletWebServerApplicationContext 中的basePackages和annotatedClasses。
 5. 触发 BeanFactoryPostProcessor，springboot 在该阶段会扫描所有包。
+
     * ConfigurationClassPostProcessor：beanName为internalConfigurationAnnotationProcessor用于处理@configuration注解的后置处理器的bean
     *
+
    AutowiredAnnotationBeanPostProcessor：beanName为internalAutowiredAnnotationProcessor用于处理@Autowired，@Value,@Inject以及@Lookup注解的后置处理器bean
     *
-   CommonAnnotationBeanPostProcessor：beanName为internalCommonAnnotationProcessor用于处理JSR-250注解，例如@Resource,@PostConstruct,@PreDestroy的后置处理器bean
-    * EventListenerMethodProcessor：beanName为internalEventListenerProcessor用于处理@EventListener注解的后置处理器的bean
+   CommonAnnotationBeanPostProcessor：beanName为internalCommonAnnotationProcessor用于处理JSR-250注解，例如@Resource,@PostConstruct,@PreDestroy的后置处理器bean*
+   EventListenerMethodProcessor：beanName为internalEventListenerProcessor用于处理@EventListener注解的后置处理器的bean
     *
+
    DefaultEventListenerFactory：beanName为internalEventListenerFactory管理用于生产ApplicationListener对象的EventListenerFactory对象
 6. 识别所有的 BeanPostProcessor 并注册到 BeanFactory。
 7. 初始化 MessageSource。
@@ -377,6 +381,43 @@ public class SpelExpressionParserTest {
         expression.getValue(EvaluationContext);
         expression.getValue(rootObject);
     }
+}
+```
+
+## EmbeddedValueResolverAware
+
+从spring环境解析 `${}`, SPEL表达式：
+
+```java
+
+@Component
+public class PropertiesUtil implements EmbeddedValueResolverAware {
+
+    private static StringValueResolver valueResolver;
+
+    @Override
+    public void setEmbeddedValueResolver(StringValueResolver resolver) {
+        PropertiesUtil.valueResolver = resolver;
+    }
+
+    public static String getValue(String key) {
+        //StringValueResolver还可以解析spel表达式，@Value注解能够解析的，StringValueResolver都可以解析
+        return valueResolver.resolveStringValue("${" + key + "}");
+    }
+}
+```
+
+自定义 Placeholder 前后缀解析：
+
+```java
+    public void test() {
+    PropertyPlaceholderHelper propertyPlaceholderHelper = new PropertyPlaceholderHelper("${", "}");
+    Properties properties = new Properties();
+    properties.put("group", "aaa");
+    String result = propertyPlaceholderHelper.replacePlaceholders("${group}.qty", properties);
+
+    // 输出 aaa.qty
+    System.out.println(result);
 }
 ```
 
@@ -1214,6 +1255,7 @@ public class SignalDownloadTest2 {
     </dependency>
 </dependencies>
 ```
+
 ```java
 // 2. 编写配置文件
 @ConfigurationProperties(prefix = "sms")
@@ -1242,16 +1284,16 @@ public class SmsProperties {
 ```yaml
 # yml 文件
 sms:
-    aliyun:
-        pass-word:12345
-        user-name:java金融
-        sign:阿里云
-        url:xxx
-    tencent:
-        pass-word:6666
-        user-name:java金融
-        sign:腾讯云
-        url:xxx
+  aliyun:
+    pass-word:12345
+    user-name:java金融
+    sign:阿里云
+    url:xxx
+  tencent:
+    pass-word:6666
+    user-name:java金融
+    sign:腾讯云
+    url:xxx
 ```
 
 ```java

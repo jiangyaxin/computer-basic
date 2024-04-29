@@ -714,7 +714,7 @@ AbstractChannel#doRegister()
 SocketChannel注册流程：
 AbstractChannel#doRegister()
 -> pipeline.invokeHandlerAddedIfNeeded()（即ChannelHandler#handlerAdded）
-->  pipeline.fireChannelRegistered()
+-> pipeline.fireChannelRegistered()
 -> ChannelInitializer#channelRegistered
 -> ChannelInitializer#initChannel（添加自定义ChannelHandler，然后移除 ChannelInitializer）
 -> pipeline.fireChannelActive()

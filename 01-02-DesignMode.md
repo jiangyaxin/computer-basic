@@ -46,32 +46,32 @@ public class Context {
 ```java
 public interface KindWomen {
 
-  //这种类型的女人能做什么事情呢？
-  public void makeEyesWithMan(); //抛媚眼
+    //这种类型的女人能做什么事情呢？
+    public void makeEyesWithMan(); //抛媚眼
 
-  public void happyWithMan(); //happy what? You know that!
+    public void happyWithMan(); //happy what? You know that!
 
 }
 
 public class WangPo implements KindWomen {
-  private KindWomen kindWomen;
+    private KindWomen kindWomen;
 
-  public WangPo(){ //默认的话，是潘金莲的代理
-    this.kindWomen = new PanJinLian();
-  }
+    public WangPo() { //默认的话，是潘金莲的代理
+        this.kindWomen = new PanJinLian();
+    }
 
-  //她可以是KindWomen的任何一个女人的代理，只要你是这一类型
-  public WangPo(KindWomen kindWomen){
-    this.kindWomen = kindWomen;
-  }
+    //她可以是KindWomen的任何一个女人的代理，只要你是这一类型
+    public WangPo(KindWomen kindWomen) {
+        this.kindWomen = kindWomen;
+    }
 
-  public void happyWithMan() {
-    this.kindWomen.happyWithMan(); //自己老了，干不了，可以让年轻的代替
-  }
+    public void happyWithMan() {
+        this.kindWomen.happyWithMan(); //自己老了，干不了，可以让年轻的代替
+    }
 
-  public void makeEyesWithMan() {
-    this.kindWomen.makeEyesWithMan(); //王婆这么大年龄了，谁看她抛媚眼？！
-  }
+    public void makeEyesWithMan() {
+        this.kindWomen.makeEyesWithMan(); //王婆这么大年龄了，谁看她抛媚眼？！
+    }
 }
 ```
 
@@ -200,36 +200,36 @@ public class FemaleHumanFactory extends AbstractHumanFactory {
 ```java
 public interface LetterProcess {
 
-  //首先要写信的内容
-  public void writeContext(String context);
+    //首先要写信的内容
+    public void writeContext(String context);
 
-  //其次写信封
-  public void fillEnvelope(String address);
+    //其次写信封
+    public void fillEnvelope(String address);
 
-  //把信放到信封里
-  public void letterInotoEnvelope();
+    //把信放到信封里
+    public void letterInotoEnvelope();
 
-  //然后邮递
-  public void sendLetter();
+    //然后邮递
+    public void sendLetter();
 
 }
 
 public class ModenPostOffice {
-private LetterProcess letterProcess = new LetterProcessImpl();
+    private LetterProcess letterProcess = new LetterProcessImpl();
 
-  //写信，封装，投递，一体化了
-  public void sendLetter(String context,String address){
+    //写信，封装，投递，一体化了
+    public void sendLetter(String context, String address) {
 
-    //帮你写信
-    letterProcess.writeContext(context);
-    //写好信封
-    letterProcess.fillEnvelope(address);
-    //把信放到信封中
-    letterProcess.letterInotoEnvelope();
-    //邮递信件
-    letterProcess.sendLetter();
+        //帮你写信
+        letterProcess.writeContext(context);
+        //写好信封
+        letterProcess.fillEnvelope(address);
+        //把信放到信封中
+        letterProcess.letterInotoEnvelope();
+        //邮递信件
+        letterProcess.sendLetter();
 
-  }
+    }
 }
 ```
 
@@ -804,7 +804,7 @@ public class StatePatternDemo {
         }
     } 
     ```
-   
+
 2. 发布事件
 
     ```java
@@ -828,7 +828,7 @@ public class StatePatternDemo {
         }
     }
     ```
-   
+
 3. 消费事件
 
     ```java
@@ -877,7 +877,7 @@ public class StatePatternDemo {
    ```
 
 2. 定义路由
-   
+
    ```java
      /**
       * 通用的“策略树“框架，通过树形结构实现分发与委托，每层通过指定的参数进行向下分发委托，直到达到最终的执行者。

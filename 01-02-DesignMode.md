@@ -77,7 +77,7 @@ public class WangPo implements KindWomen {
 
 ### 单例模式
 
-参考 Java.md 单例实现。
+参考 [Java](01-01-Java.md) 单例实现。
 
 ### 工厂方法模式：使用工厂创建完成复杂对象的创建，一种工厂创建一种对象。
 

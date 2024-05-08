@@ -781,7 +781,7 @@ public class StatePatternDemo {
 
 ## 应用
 
-## Spring中的事件机制
+### Spring中的事件机制
 
 1. 定义事件
 
@@ -856,7 +856,7 @@ public class StatePatternDemo {
     }
     ```
 
-## 策略树
+### 策略树
 
 1. 定义策略
 

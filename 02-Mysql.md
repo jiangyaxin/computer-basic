@@ -34,7 +34,7 @@ AVG() 会忽略值为 NULL 的行。
 
 COUNT(*) 会统计所有行，COUNT(column) 会忽略 NULL 值。
 
-MAX()、MIN()会忽略值为 NULL 的行,如果作用于文本数据，则返回最后一行，MIN() 返回第一行。
+MAX()、MIN()会忽略值为 NULL 的行。
 
 AVG()、COUNT()、MAX()、MIN()、SUM() 都可使用 DISTINCT 关键字。
 

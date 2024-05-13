@@ -495,7 +495,7 @@ keytool -importkeystore -srckeystore client-keystore.p12 -srcstoretype pkcs12 -s
 ```properties
 ssl.cert.path=/home/app/cert
 ssl.config=required&clientCertificateKeyStoreUrl=file:${ssl.cert.path}/keystoremysql&clientCertificateKeyStorePassword=password456&trustCertificateKeyStoreUrl=file:${ssl.cert.path}/truststoremysql&trustCertificateKeyStorePassword=password123 
-spring.datasource.url=jdbc:mysql://1.2.3.4:3306/db?serverTimezone=Asia/Shanghai&useUnicode=true&characterEncoding=utf-8&$sslMode={ssl.config}
+spring.datasource.url=jdbc:mysql://1.2.3.4:3306/db?serverTimezone=Asia/Shanghai&useUnicode=true&characterEncoding=utf-8&sslMode={ssl.config}
 ```
 
 ### 批量插入

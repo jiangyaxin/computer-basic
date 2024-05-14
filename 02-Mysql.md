@@ -2332,9 +2332,9 @@ ORDER BY c;
 2. 减少乱序条件下缓冲池中的同一个页被反复替换。
 3. 可以批量处理对键值对的查询操作。
 
-该优化通过 optimizer_switch 中的 mrr(是否启用）、mrr_cost_based(由优化器判断是否使用) 参数配置。
+该优化通过 `SELECT @@optimizer_switch` 中的 mrr(是否启用）、mrr_cost_based(由优化器判断是否使用) 参数配置。
 
-read_rnd_buffer-size 控制缓冲区大小，默认256k。
+`read_rnd_buffer-size` 控制缓冲区大小，默认256k。
 
 ### Index Condition Pushdown优化
 

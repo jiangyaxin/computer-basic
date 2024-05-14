@@ -1,6 +1,6 @@
 # Spring扩展点：
 
-* `BeanFactoryPostProcessor#postProcessBeanFactory(ConfigurableListableBeanFactory beanFactory)`：负责修改 BeanFactory 属性，例如继承 `CustomEditorConfigurer` 自定义Editor 时自动将其注入到 `BeanFactory`、`PropertyPlaceholderConfigurer` 、`ConfigurationClassPostProcessor` 扫描 @configuration 注解等。
+* `BeanFactoryPostProcessor#postProcessBeanFactory(ConfigurableListableBeanFactory beanFactory)`：负责修改 BeanFactory 属性，例如继承`CustomEditorConfigurer`自定义Editor 时自动将其注入到`BeanFactory`、`PropertyPlaceholderConfigurer`、`ConfigurationClassPostProcessor`扫描 @configuration 注解等。
 * `BeanDefinitionRegistryPostProcessor#postProcessBeanDefinitionRegistry(BeanDefinitionRegistry registry)` ：可以直接注入 BeanDefinition，例如 mybatis 中 `MapperScannerConfigurer`。
 * `BeanPostProcessor#postProcessAfterInitialization(Object bean, String beanName)`：负责修改Bean，例如生成代理，注入 xxxAware、注入ApplicationListener等。
 * `xxxAware`
@@ -14,7 +14,7 @@
 
 1. 从`spring.factories`配置文件中加载`EventPublishingRunListener`对象，该对象拥有`SimpleApplicationEventMulticaster`属性，即在SpringBoot启动过程的不同阶段用来发射内置的生命周期事件。
 2. 准备环境变量，包括系统变量，环境变量，命令行参数，默认变量，servlet相关配置变量，随机值以及配置文件（比如`application.properties`）等。
-3. 控制台打印SpringBoot的bannner标志。
+3. 控制台打印SpringBoot的banner标志。
 4. 根据不同类型环境创建不同类型的`ApplicationContext`容器，因为这里是servlet环境，所以创建的是`AnnotationConfigServletWebServerApplicationContext`容器对象；
 5. 从`spring.factories`配置文件中加载`FailureAnalyzers`对象,用来报告SpringBoot启动过程中的异常。
 6. 为刚创建的容器对象做一些初始化工作，准备一些容器属性值等，对`ApplicationContext`应用一些相关的后置处理和调用各个`ApplicationContextInitializer`的初始化方法来执行一些初始化逻辑等。
@@ -26,6 +26,7 @@
 ## SpringBoot扩展点
 
 * `org.springframework.context.ApplicationContextInitializer`：这时候容器刚刚创建，还未load、refresh，例如`ConfigFileApplicationContextInitializer` 在这时候初始化属性。
+  
   生效办法：
     1. 启动类中加入 `springApplication.addInitializers(new TestApplicationContextInitializer())`
     2. 配置文件中加入， 例如 `context.initializer.classes=com.example.demo.TestApplicationContextInitializer`

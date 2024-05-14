@@ -716,8 +716,7 @@ InnoDB储存引擎有多个内存块，它们组成一个大的内存池，并�
 
    * 重做日志缓冲刷新到磁盘，即使这个事务还没提交(总是)。
    * 合并插入缓冲(前一秒发生的IO次数小于5次)。
-   * 刷新缓冲池中的脏页到磁盘(当前缓冲池中脏页比例超过 innodb_max_dirty_pages_pct,默认 75%)，**现在由PageCleanerThread来执行
-     **。
+   * 刷新缓冲池中的脏页到磁盘(当前缓冲池中脏页比例超过 innodb_max_dirty_pages_pct,默认 75%)，**现在由PageCleanerThread来执行**。
 
    每10秒一次：
 
@@ -726,8 +725,7 @@ InnoDB储存引擎有多个内存块，它们组成一个大的内存池，并�
    * 合并至多 5% * innodb_io_capacity 个插入缓冲(总是)。
    * 重做日志缓冲刷新到磁盘(总是)。
    * 删除无用的undo页(总是)，**现在由PurgeThread来执行**。
-   * 刷新 innodb_io_capacity 个(脏页超过70%)或者 10% * innodb_io_capacity个(脏页小于70%)脏页到磁盘(总是)，*
-     *现在由PageCleanerThread来执行**。
+   * 刷新 innodb_io_capacity 个(脏页超过70%)或者 10% * innodb_io_capacity个(脏页小于70%)脏页到磁盘(总是)，**现在由PageCleanerThread来执行**。
 2. IOThread：分为write、read、insert buffer、log IO thread，负责IO请求的回调。
 3. PurgeThread：事务提交后，其所使用的undolog可能不再需要，使用该线程来回收已经使用并分配的undo页。可以通过在[mysqld]模块添加
    innodb_purge_threads=1来启用，默认开启。

@@ -1137,7 +1137,9 @@ Number of rows inserted 172887566, updated 227534242, deleted 56676133, read 709
 ```
 
 queries：表示innodb内核中有多少个线程，队列中有多少个线程。
+
 read views open inside InnoDB：表示有多少个read view 被打开，一个read view 包含事物开始点数据库内容的MVCC快照。
+
 Number of rows inserted、updated、deleted、read：表示多少行被插入，更新和删除，读取及每秒信息，可用于监控。
 
 #### 系统参数

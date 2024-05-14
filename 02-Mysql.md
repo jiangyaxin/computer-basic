@@ -1100,12 +1100,19 @@ I/O sum[69]:cur[8], unzip sum[0]:cur[0]
 ```
 
 Total large memory：innodb 分配的总内存（字节）。
+
 Dictionary memory allocated：innodb数据字典 分配的总内存（字节）。
+
 Buffer pool size：buffer pool 总页数。
+
 Free buffers：空闲页数。
-Database pages37：非空闲页数。
+
+Database pages：非空闲页数。
+
 Old database pages：LRU列表中后 3/8 的列表，新读取的页会插入到 5/8 处。
+
 Modified db pages：脏页数量。
+
 Pending reads：挂起读的数量。
 
 Pages made young：显示LRU列表中old list移到new list的次数，not young：显示仍在old list的次数。

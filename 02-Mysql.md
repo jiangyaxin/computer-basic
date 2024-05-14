@@ -2174,12 +2174,11 @@ InnoDB数据是按行来存放，并规定每页最少储存两行记录(否则B
 create table t
 (
     idint
-)engine=innodb
-
-  partition by range(id)(
-     partition  p0  values  less  than(10),
-     partition  p1  values  less  than(20),
-     partition  p2  values  less than(maxvalue)
+) ENGINE=InnoDB
+    PARTITION BY RANGE(id)(
+     PARTITION p0 VALUES LESS THAN(10),
+     PARTITION p1 VALUES LESS THAN(20),
+     PARTITION p2 VALUES LESS THAN(maxvalue)
 );
 ```
 
@@ -2239,23 +2238,23 @@ CREATE TABLE `t_c` (
 
 ```sql
 -- 增加分区
-alter table my_user
-    add partition (partition p3 values less than (4000));
-alter table my_user
-    add partition (partition p3 values in (40));
+alter table my_user add partition (partition p3 values less than (4000));
+alter table my_user add partition (partition p3 values in (40));
 -- 删除表分区，并删除数据
 alter table my_user drop partition p30;
 -- 删除表的所有分区，不会丢失数据
 alter table my_user remove partitioning;
+
 -- 通过此语句来显示扫描哪些分区，及他们是如何使用的
 explain
 partitions
 select 语句
+
 --重新定义range分区表，不会丢失数据
 Alter table my_user partition by range (salary)(
     partition p1 values less than (2000),
     partition p2 values less than (4000)
-    );
+);
 ```
 
 ## 索引

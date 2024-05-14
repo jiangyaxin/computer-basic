@@ -1,89 +1,66 @@
 # Spring扩展点：
 
-* BeanFactoryPostProcessor#postProcessBeanFactory(ConfigurableListableBeanFactory beanFactory)：负责修改 BeanFactory
-  属性，例如继承CustomEditorConfigurer 自定义Editor 时自动将其注入到 BeanFactory、PropertyPlaceholderConfigurer
-  、ConfigurationClassPostProcessor扫描 @configuration 注解等。
-* BeanDefinitionRegistryPostProcessor#postProcessBeanDefinitionRegistry(BeanDefinitionRegistry registry) ：可以直接注入
-  BeanDefinition，例如 mybatis 中 MapperScannerConfigurer。
-* BeanPostProcessor#postProcessAfterInitialization(Object bean, String beanName)：负责修改Bean，例如生成代理，注入
-  xxxAware、注入ApplicationListener等。
-* xxxAware
-* InitializingBean
-* DisposableBean
-* ApplicationListener
+* `BeanFactoryPostProcessor#postProcessBeanFactory(ConfigurableListableBeanFactory beanFactory)`：负责修改 BeanFactory 属性，例如继承CustomEditorConfigurer 自定义Editor 时自动将其注入到 BeanFactory、PropertyPlaceholderConfigurer 、ConfigurationClassPostProcessor扫描 @configuration 注解等。
+* `BeanDefinitionRegistryPostProcessor#postProcessBeanDefinitionRegistry(BeanDefinitionRegistry registry)` ：可以直接注入 BeanDefinition，例如 mybatis 中 MapperScannerConfigurer。
+* `BeanPostProcessor#postProcessAfterInitialization(Object bean, String beanName)`：负责修改Bean，例如生成代理，注入 xxxAware、注入ApplicationListener等。
+* `xxxAware`
+* `InitializingBean`
+* `DisposableBean`
+* `ApplicationListener`
 
 # Springboot启动流程
 
 ![105](assets/105.png)
 
-从spring.factories配置文件中加载EventPublishingRunListener对象，该对象拥有SimpleApplicationEventMulticaster属性，即在SpringBoot启动过程的不同阶段用来发射内置的生命周期事件。
-
+1. 从`spring.factories`配置文件中加载`EventPublishingRunListener`对象，该对象拥有`SimpleApplicationEventMulticaster`属性，即在SpringBoot启动过程的不同阶段用来发射内置的生命周期事件。
 2. 准备环境变量，包括系统变量，环境变量，命令行参数，默认变量，servlet相关配置变量，随机值以及配置文件（比如application.properties）等。
 3. 控制台打印SpringBoot的bannner标志。
-4. 根据不同类型环境创建不同类型的applicationcontext容器，因为这里是servlet环境，所以创建的是AnnotationConfigServletWebServerApplicationContext容器对象；
+4. 根据不同类型环境创建不同类型的applicationcontext容器，因为这里是servlet环境，所以创建的是`AnnotationConfigServletWebServerApplicationContext`容器对象；
 5. 从spring.factories配置文件中加载FailureAnalyzers对象,用来报告SpringBoot启动过程中的异常。
-6. 为刚创建的容器对象做一些初始化工作，准备一些容器属性值等，对ApplicationContext应用一些相关的后置处理和调用各个ApplicationContextInitializer的初始化方法来执行一些初始化逻辑等。
-7. 刷新容器，这一步至关重要。比如调用bean
-   factory的后置处理器，注册BeanPostProcessor后置处理器，初始化事件广播器且广播事件，初始化剩下的单例bean和SpringBoot创建内嵌的Tomcat服务器等等重要且复杂的逻辑都在这里实现。
+6. 为刚创建的容器对象做一些初始化工作，准备一些容器属性值等，对ApplicationContext应用一些相关的后置处理和调用各个`ApplicationContextInitializer`的初始化方法来执行一些初始化逻辑等。
+7. 刷新容器，这一步至关重要。比如调用bean factory的后置处理器，注册BeanPostProcessor后置处理器，初始化事件广播器且广播事件，初始化剩下的单例bean和SpringBoot创建内嵌的Tomcat服务器等等重要且复杂的逻辑都在这里实现。
 8. 执行刷新容器后的后置处理逻辑，注意这里为空方法。
-9. 调用ApplicationRunner和CommandLineRunner的run方法，我们实现这两个接口可以在spring容器启动后需要的一些东西比如加载一些业务数据等。
+9. 调用`ApplicationRunner`和`CommandLineRunner`的run方法，我们实现这两个接口可以在spring容器启动后需要的一些东西比如加载一些业务数据等。
 10. 报告启动异常，即若启动过程中抛出异常，此时用FailureAnalyzers来报告异常。
 
 ## SpringBoot扩展点
 
-* org.springframework.context.ApplicationContextInitializer：这时候容器刚刚创建，还未load、refresh，例如
-  ConfigFileApplicationContextInitializer 在这时候初始化属性。
+* `org.springframework.context.ApplicationContextInitializer`：这时候容器刚刚创建，还未load、refresh，例如`ConfigFileApplicationContextInitializer` 在这时候初始化属性。
   生效办法：
-    1. 启动类中加入 springApplication.addInitializers(new TestApplicationContextInitializer())
-    2. 配置文件中加入， 例如 context.initializer.classes=com.example.demo.TestApplicationContextInitializer
-    3. Spring SPI扩展，在spring.factories中加入，例如
-       org.springframework.context.ApplicationContextInitializer=com.example.demo.TestApplicationContextInitializer
-* org.springframework.beans.factory.support.BeanDefinitionRegistryPostProcessor
-* org.springframework.beans.factory.config.BeanFactoryPostProcessor：Springboot扫描注解就是通过这种方式。
-* org.springframework.beans.factory.config.InstantiationAwareBeanPostProcessor：继承于 BeanPostProcessor，除此之外还存在额外的3个方法：
-    1. postProcessBeforeInstantiation：未创建实例，默认返回为null，当不为null，会用该对象替换 Bean默认的实例化过程，后续会执行
-       postProcessAfterInitialization，不会执行 postProcessAfterInstantiation、postProcessProperties，例如
-       AnnotationAwareAspectJAutoProxyCreator 实现的 AOP。
-    2. postProcessAfterInstantiation：Bean默认的实例化后，属性还没有被赋值；它的返回值是决定要不要调用
-       postProcessProperties 方法，默认为 true 。
-    3. postProcessProperties：对属性值进行修改，如果该方法返回的为null，则继续使用原来的 PropertyValues
-       对象，如果返回的不为null，则替换掉原有的 PropertyValues 对象。
-* org.springframework.beans.factory.config.BeanPostProcessor：用于扩展 实例化后初始化前后的操作。
-* org.springframework.beans.factory.config.SmartInstantiationAwareBeanPostProcessor：继承于
-  InstantiationAwareBeanPostProcessor，除此之外还存在额外的3个方法：
-    1.
-  predictBeanType：触发点发生在postProcessBeforeInstantiation之前，预测Bean的类型，返回第一个预测成功的Class类型，如果不能预测返回null。主要当调用BeanFactory.getType(
-  name)时BeanDefinition无法确定Bean类型的时候调用该方法来确定类型。
-    2.
-  determineCandidateConstructors：在postProcessBeforeInstantiation方法和postProcessAfterInstantiation方法之间调用，如果postProcessBeforeInstantiation方法返回了一个新的实例代替了原本该生成的实例，那么该方法会被忽略，用于确定该bean的构造函数之用，返回的是该bean的所有构造函数列表。如果返回null，会执行下一个PostProcessor的determineCandidateConstructors方法；否则选取该PostProcessor选择的构造器。
+    1. 启动类中加入 `springApplication.addInitializers(new TestApplicationContextInitializer())`
+    2. 配置文件中加入， 例如 `context.initializer.classes=com.example.demo.TestApplicationContextInitializer`
+    3. Spring SPI扩展，在spring.factories中加入，例如 `org.springframework.context.ApplicationContextInitializer=com.example.demo.TestApplicationContextInitializer`
+* `org.springframework.beans.factory.support.BeanDefinitionRegistryPostProcessor`
+* `org.springframework.beans.factory.config.BeanFactoryPostProcessor`：Springboot扫描注解就是通过这种方式。
+* `org.springframework.beans.factory.config.InstantiationAwareBeanPostProcessor`：继承于 BeanPostProcessor，除此之外还存在额外的3个方法：
+    1. `postProcessBeforeInstantiation`：未创建实例，默认返回为null，当不为null，会用该对象替换 Bean默认的实例化过程，后续会执行 `postProcessAfterInitialization`，不会执行 `postProcessAfterInstantiation`、`postProcessProperties`，例如 `AnnotationAwareAspectJAutoProxyCreator` 实现的 AOP。
+    2. `postProcessAfterInstantiation`：Bean默认的实例化后，属性还没有被赋值；它的返回值是决定要不要调用 postProcessProperties 方法，默认为 true 。
+    3. `postProcessProperties`：对属性值进行修改，如果该方法返回的为null，则继续使用原来的 PropertyValues 对象，如果返回的不为null，则替换掉原有的 PropertyValues 对象。
+* `org.springframework.beans.factory.config.BeanPostProcessor`：用于扩展 实例化后初始化前后的操作。
+* `org.springframework.beans.factory.config.SmartInstantiationAwareBeanPostProcessor`：继承于 `InstantiationAwareBeanPostProcessor`，除此之外还存在额外的3个方法：
+    1. `predictBeanType`：触发点发生在postProcessBeforeInstantiation之前，预测Bean的类型，返回第一个预测成功的Class类型，如果不能预测返回null。主要当调用`BeanFactory.getType(name)`时BeanDefinition无法确定Bean类型的时候调用该方法来确定类型。
+    2. `determineCandidateConstructors`：在`postProcessBeforeInstantiation`方法和`postProcessAfterInstantiation`方法之间调用，如果`postProcessBeforeInstantiation`方法返回了一个新的实例代替了原本该生成的实例，那么该方法会被忽略，用于确定该bean的构造函数之用，返回的是该bean的所有构造函数列表。如果返回null，会执行下一个PostProcessor的determineCandidateConstructors方法；否则选取该PostProcessor选择的构造器。
     3. getEarlyBeanReference：主要用于解决循环引用问题，提前暴露的ObjectFactory就是通过该方法得到。
-* BeanFactoryAware、BeanNameAware、BeanClassLoaderAware：填充属性之后，postProcessBeforeInitialization之前。
-*
+* `BeanFactoryAware`、`BeanNameAware`、`BeanClassLoaderAware`：填充属性之后，`postProcessBeforeInitialization`之前。
+* `EnvironmentAware`、`EmbeddedValueResolverAware`、`ResourceLoaderAware`、`ApplicationEventPublisherAware`、`MessageSourceAware`、`ApplicationContextAware`：属性填充之后，在postProcessBeforeInitialization中执行。
 
-EnvironmentAware、EmbeddedValueResolverAware、ResourceLoaderAware、ApplicationEventPublisherAware、MessageSourceAware、ApplicationContextAware：属性填充之后，在postProcessBeforeInitialization中执行。
+* `javax.annotation.PostConstruct`：在postProcessBeforeInitialization中执行，存在于InitDestroyAnnotationBeanPostProcessor中。
+* `org.springframework.beans.factory.InitializingBean`：`postProcessBeforeInitialization`之后，`postProcessAfterInitialization`之前，`init-method` 会在随后执行。
+* `org.springframework.beans.factory.FactoryBean`：用来构建复杂的bean。
+* `org.springframework.beans.factory.SmartInitializingSingleton`：Spring容器管理的所有单例对象（非懒加载对象）初始化完成之后调用，触发时机在postProcessAfterInitialization之后。
 
-* javax.annotation.PostConstruct：在postProcessBeforeInitialization中执行，存在于InitDestroyAnnotationBeanPostProcessor中。
-* org.springframework.beans.factory.InitializingBean：postProcessBeforeInitialization
-  之后，postProcessAfterInitialization之前，init-method 会在随后执行。
-* org.springframework.beans.factory.FactoryBean：用来构建复杂的bean。
-*
-
-org.springframework.beans.factory.SmartInitializingSingleton：Spring容器管理的所有单例对象（非懒加载对象）初始化完成之后调用，触发时机在postProcessAfterInitialization之后。
-
-* org.springframework.boot.ApplicationRunner、org.springframework.boot.CommandLineRunner：容器启动之后，顺序由 @Order
-  决定，区别是参数不同。
-* org.springframework.beans.factory.DisposableBean：对象销毁时执行。
-* org.springframework.context.ApplicationListener：2种方式调用，可以实现 ApplicationListener 或者 使用 @EventListener。
+* `org.springframework.boot.ApplicationRunner、org.springframework.boot.CommandLineRunner`：容器启动之后，顺序由 `@Order`决定，区别是参数不同。
+* `org.springframework.beans.factory.DisposableBean`：对象销毁时执行。
+* `org.springframework.context.ApplicationListener`：2种方式调用，可以实现 `ApplicationListener` 或者 使用 `@EventListener`。
   Springboot 启动过程中事件：
-    1. ApplicationStartingEvent：Environment 未创建。
-    2. ApplicationEnvironmentPreparedEvent：Environment 已创建，环境变量、JVM参数、ServletContext 已加载。
-    3. ApplicationContextInitializedEvent：容器刚刚创建，ApplicationContextInitializer执行之后，还未load、refresh。
-    4. ApplicationPreparedEvent：已经完成load，BeanPostProcessor，入口类已完成加载，注解未完成扫描。
-    5. ContextRefreshedEvent：在refresh方法最后， refresh() 被调用时发生，所有的Bean被成功装载，后处理Bean被检测并激活，所有Singleton
-       Bean 被预实例化。
-    6. ApplicationStartedEvent：容器已经完成refresh，所有bean都完成加载，ApplicationRunner、CommandLineRunner未执行。
-    7. ApplicationFailedEvent：容器启动失败时触发。
-    8. ApplicationReadyEvent：ApplicationRunner、CommandLineRunner已经执行，容器成功启动后触发。
+    1. `ApplicationStartingEvent`：Environment 未创建。
+    2. `ApplicationEnvironmentPreparedEvent`：Environment 已创建，环境变量、JVM参数、ServletContext 已加载。
+    3. `ApplicationContextInitializedEvent`：容器刚刚创建，ApplicationContextInitializer执行之后，还未load、refresh。
+    4. `ApplicationPreparedEvent`：已经完成load，BeanPostProcessor，入口类已完成加载，注解未完成扫描。
+    5. `ContextRefreshedEvent`：在refresh方法最后， refresh() 被调用时发生，所有的Bean被成功装载，后处理Bean被检测并激活，所有Singleton Bean 被预实例化。
+    6. `ApplicationStartedEvent`：容器已经完成refresh，所有bean都完成加载，ApplicationRunner、CommandLineRunner未执行。
+    7. `ApplicationFailedEvent`：容器启动失败时触发。
+    8. `ApplicationReadyEven`t：ApplicationRunner、CommandLineRunner已经执行，容器成功启动后触发。
 
 ## Bean 生命周期
 
@@ -101,39 +78,34 @@ org.springframework.beans.factory.SmartInitializingSingleton：Spring容器管�
 
 ![97](assets/97.png)
 
-* AliasRegistry：定义对alias的简单增删改等操作。
-* BeanDefinitionRegistry：定义对 BeanDefinition 的各种增删改操作。
-* HierarchicalBeanFactory：增加 BeanFactory 对 parentFactory 的缓存。
-* ListableBeanFactory：获取bean的列表。
-* ConfigurableBeanFactory：可以配置 BeanFactory。
-* AutowireCapableBeanFactory：可以手动调用完成 bean 的注入、初始化、应用后处理器，这里的自动装配不是 @Autowired 注解，而是
-  xml方式 的注入，也叫传统注入方式，注解驱动注入是通过 AutowiredAnnotationBeanPostProcessor#setAutowiredAnnotationType
-  提供的。
-* ConfigurableListableBeanFactory：继承 ConfigurableBeanFactory 和 AutowireCapableBeanFactory。
+* `AliasRegistry`：定义对alias的简单增删改等操作。
+* `BeanDefinitionRegistry`：定义对 BeanDefinition 的各种增删改操作。
+* `HierarchicalBeanFactory`：增加 BeanFactory 对 parentFactory 的缓存。
+* `ListableBeanFactory`：获取bean的列表。
+* `ConfigurableBeanFactory`：可以配置 BeanFactory。
+* `AutowireCapableBeanFactory`：可以手动调用完成 bean 的注入、初始化、应用后处理器，这里的自动装配不是 @Autowired 注解，而是 xml方式 的注入，也叫传统注入方式，注解驱动注入是通过 `AutowiredAnnotationBeanPostProcessor#setAutowiredAnnotationType` 提供的。
+* `ConfigurableListableBeanFactory`：继承 ConfigurableBeanFactory 和 AutowireCapableBeanFactory。
 
 ## XmlBeanDefinitionReader：
 
 ![98](assets/98.png)
 
-* ResourceLoader：根据给定资源文件地址返回对应的 Resource 。
-* DocumentLoader：从资源文件加载转换为 Document 。
-* BeanDefinitionDocument：将 Document 转换为 BeanDefinition 。
-* BeanDefinitionReader：整合 ResourceLoader、DocumentLoader、BeanDefinitionDocument 功能读取资源获得 BeanDefinition 。
+* `ResourceLoader`：根据给定资源文件地址返回对应的 Resource 。
+* `DocumentLoader`：从资源文件加载转换为 Document 。
+* `BeanDefinitionDocument`：将 Document 转换为 BeanDefinition 。
+* `BeanDefinitionReader`：整合 ResourceLoader、DocumentLoader、BeanDefinitionDocument 功能读取资源获得 BeanDefinition 。
 
 ## BeanDefinition：
 
-* AnnotatedGenericBeanDefinition ： 表示@Configuration注解注释的BeanDefinition类。
-* ScannedGenericBeanDefinition ：表示@Component、@Service、@Controller等注解注释的Bean类。
+* `AnnotatedGenericBeanDefinition` ： 表示@Configuration注解注释的BeanDefinition类。
+* `ScannedGenericBeanDefinition` ：表示@Component、@Service、@Controller等注解注释的Bean类。
 
 ## Bean的加载：
 
-当我们隐式或者显示的调用 BeanFactory#getBean(...) 时，会触发加载Bean阶段，这时，容器会首先检查所请求的对象是否已经初始化完成，如果没有，则会根据注册的
+当我们隐式或者显示的调用 `BeanFactory#getBean(...)` 时，会触发加载Bean阶段，这时，容器会首先检查所请求的对象是否已经初始化完成，如果没有，则会根据注册的
 Bean 信息实例化请求的对象，并为其注册依赖，然后将其返回给请求方。
 
-1. 首先从 alias 中获取 BeanName。
-   假设配置了一个 FactoryBean 的名字为 "abc" ，那么获取 FactoryBean 创建的 Bean 时，使用 "abc" ，如果获取 FactoryBean
-   本身，使用 "&abc" 。另外，&定义在 BeanFactory.FACTORY_BEAN_PREFIX = "&" 上。
-   FactoryBean 用于创建一些复杂的bean。
+1. 首先从 alias 中获取 BeanName。 假设配置了一个 FactoryBean 的名字为 "abc" ，那么获取 FactoryBean 创建的 Bean 时，使用 "abc" ，如果获取 FactoryBean 本身，使用 "&abc" 。另外，`&`定义在 `BeanFactory.FACTORY_BEAN_PREFIX = "&"` 上。 FactoryBean 用于创建一些复杂的bean。
 2. 依次从缓存中获取bean，这里的bean有个可能是 FactoryBean 也有可能是普通bean，并且可能没有实例化，缓存有三个：
 
    ```java
@@ -159,8 +131,7 @@ Bean 信息实例化请求的对象，并为其注册依赖，然后将其返回
      private final Map<String, Object> earlySingletonObjects = new HashMap<>(16);
    }
    ```
-3. 如果从缓存中获取到bean，由于bean不是最终的bean，所以需要调用 getObjectForBeanInstance(...) 获取bean实例 或
-   FactoryBean.getObject() 的对象。
+3. 如果从缓存中获取到bean，由于bean不是最终的bean，所以需要调用 getObjectForBeanInstance(...) 获取bean实例 或 FactoryBean.getObject() 的对象。
 4. 如果没有从缓存中获取到bean 先从 parentBeanFactory 获取 Bean。
 5. 如果没有从 parentBeanFactory 获取到，再获取 BeanDefinition ，先需要依赖，判断没有循环先创建依赖，再根据不同的作用域创建bean。
 6. 类型转换，例如name返回为String，requiredType 要求返回 Integer，这时候会使用 ConversionService 做转换。
@@ -169,15 +140,10 @@ Bean 信息实例化请求的对象，并为其注册依赖，然后将其返回
 
 1. 首先，从一级缓存 singletonObjects 获取。
 2. 如果，没有且当前指定的 beanName 正在创建，就再从二级缓存 earlySingletonObjects 中获取。
-3. 如果，还是没有获取到且允许 singletonFactories 通过 #getObject() 获取，则从三级缓存 singletonFactories 获取。如果获取到，则通过其
-   #getObject() 方法，获取对象，并将其加入到二级缓存 earlySingletonObjects 中，并从三级缓存 singletonFactories 删除，这里的
-   #getObject 是ObjectFactory 的方法，不是 FactoryBean 的方法，不要搞混。
+3. 如果，还是没有获取到且允许 singletonFactories 通过 `#getObject()` 获取，则从三级缓存 singletonFactories 获取。如果获取到，则通过其`#getObject()` 方法，获取对象，并将其加入到二级缓存 earlySingletonObjects 中，并从三级缓存 singletonFactories 删除，这里的`#getObject` 是ObjectFactory 的方法，不是 FactoryBean 的方法，不要搞混。
 
-三级缓存这样升级到二级缓存，二级缓存存在的意义，就是缓存三级缓存中的 ObjectFactory 的 #getObject() 方法的执行结果，提早曝光的单例
-Bean 对象。
-singletonFactories 中的数据来自于 doCreateBean
-时使添加，添加的是刚创建但是没有填充属性、也没有初始化的对象，并对对象进行postProcessAfterInitialization处理，这个逻辑不会立马触发，是一个函数表达式，需要满足三个条件：单例、正在创建、可以运行提前暴露。
-当创建单例完成后就 从singletonFactories移除。
+三级缓存这样升级到二级缓存，二级缓存存在的意义，就是缓存三级缓存中的 ObjectFactory 的 #getObject() 方法的执行结果，提早曝光的单例 Bean 对象。
+singletonFactories 中的数据来自于 doCreateBean 时使添加，添加的是刚创建但是没有填充属性、也没有初始化的对象，并对对象进行postProcessAfterInitialization处理，这个逻辑不会立马触发，是一个函数表达式，需要满足三个条件：单例、正在创建、可以运行提前暴露。 当创建单例完成后就 从singletonFactories移除。
 
 如果对象A和对象B循环依赖，且都有代理的话:
 
@@ -196,16 +162,12 @@ singletonFactories 中的数据来自于 doCreateBean
 那为什么Sping不选择二级缓存方式，而是要额外加一层缓存？
 
 * Spring 的设计原则是尽可能保证普通对象创建完成之后，再生成其 AOP 代理，如果要使用二级缓存解决循环依赖，意味着Bean在构造完后就创建代理对象。
-* SpringAOP
-  是在Bean创建完全之后通过AnnotationAwareAspectJAutoProxyCreator这个后置处理器来完成的，在这个后置处理的postProcessAfterInitialization方法中对初始化后的Bean完成AOP代理，如果出现了循环依赖，那没有办法，只有给Bean先创建代理。
+* SpringAOP 是在Bean创建完全之后通过`AnnotationAwareAspectJAutoProxyCreator`这个后置处理器来完成的，在这个后置处理的postProcessAfterInitialization方法中对初始化后的Bean完成AOP代理，如果出现了循环依赖，那没有办法，只有给Bean先创建代理。
 
 ## Resource：
 
-> * getInputStream(): 找到并打开资源，返回一个InputStream以从资源中读取。预计每次调用都会返回一个新的InputStream()
-    > ，调用者有责任关闭每个流
-> * isOpen:
-    >
-    返回一个布尔值，指示此资源是否具有开放流的句柄。如果为true，InputStream就不能够多次读取，只能够读取一次并且及时关闭以避免内存泄漏。对于所有常规资源实现，返回false，但是InputStreamResource除外。
+> * getInputStream(): 找到并打开资源，返回一个InputStream以从资源中读取。预计每次调用都会返回一个新的InputStream()，调用者有责任关闭每个流
+> * isOpen: 返回一个布尔值，指示此资源是否具有开放流的句柄。如果为true，InputStream就不能够多次读取，只能够读取一次并且及时关闭以避免内存泄漏。对于所有常规资源实现，返回false，但是InputStreamResource除外。
 > * getDescription(): 返回资源的描述，用来输出错误的日志。这通常是完全限定的文件名或资源的实际URL。
 > * isReadable(): 表明资源的目录读取是否通过getInputStream()进行读取。
 > * isFile(): 表明这个资源是否代表了一个文件系统的文件。
@@ -216,7 +178,7 @@ singletonFactories 中的数据来自于 doCreateBean
 > * createRelative(): 创建此资源的相关资源
 > * getFilename(): 资源的文件名是什么 例如：最后一部分的文件名 myfile.txt
 
-Resource一般包括这些实现类：UrlResource、ClassPathResource、FileSystemResource、ServletContextResource、InputStreamResource、ByteArrayResource。
+Resource一般包括这些实现类：`UrlResource`、`ClassPathResource`、`FileSystemResource`、`ServletContextResource`、`InputStreamResource`、`ByteArrayResource`。
 
 平常使用可以使用 ResourceLoader 接口 ,可通过 ResourceLoaderAware 注入：
 
@@ -229,8 +191,7 @@ public interface ResourceLoader {
 }
 ```
 
-另外 Resource 可以直接接受 application.yml 中的路径，ResourcePatternResolver 可用来加载多个Resource,以及它的实现类
-PathMatchingResourcePatternResolver：
+另外 Resource 可以直接接受 application.yml 中的路径，ResourcePatternResolver 可用来加载多个Resource,以及它的实现类`PathMatchingResourcePatternResolver`：
 
 ```java
 public interface ResourcePatternResolver extends ResourceLoader {
@@ -252,8 +213,7 @@ Spring不仅支持classpath:、file:、http:等各种前缀开头的资源文件
 
 ## BeanWrapper
 
-可通过 BeanWrapper 对 Bean 进行操作,可通过 PropertyAccessorFactory#forBeanPropertyAccess 进行创建，可通过
-ApplicationContext 获取 ConversionService。
+可通过 BeanWrapper 对 Bean 进行操作,可通过 `PropertyAccessorFactory#forBeanPropertyAccess` 进行创建，可通过 ApplicationContext 获取 ConversionService。
 
 ![101](assets/101.png)
 ![102](assets/102.png)
@@ -284,12 +244,9 @@ public class BeanWrapperTest {
 
 上下文分为4类：
 
-* ServletContext : 由 Servlet 容器初始化，为项目提供宿主环境，例如 Tom­cat，在 web 项目启动的时候他就初始化这样的上下文环境，为后续的
-  Spring 容器，Spring­Mvc 容器提供宿主环境。
-* WebApplicationContext ：Spring 上下文，也是根上下文，是 Spring­Mvc servlet 的父级上下文，当我们启动 Spring 的时候，那么就需要初始化
-  IOC 容器，而这个上下文就是用于管理这些 bean，把他们放到容器里。
-* Spring­MVC 上下文 ：DispatchServlet 初始化的时候会创建自己的上下文，并从 ServletContext 中取出 WebApplicationContext
-  作为自己上下文的父容器。
+* ServletContext : 由 Servlet 容器初始化，为项目提供宿主环境，例如 Tomcat，在 web 项目启动的时候他就初始化这样的上下文环境，为后续的 Spring 容器，SpringMvc 容器提供宿主环境。
+* WebApplicationContext ：Spring 上下文，也是根上下文，是 SpringMvc servlet 的父级上下文，当我们启动 Spring 的时候，那么就需要初始化 IOC 容器，而这个上下文就是用于管理这些 bean，把他们放到容器里。
+* SpringMVC 上下文 ：DispatchServlet 初始化的时候会创建自己的上下文，并从 ServletContext 中取出 WebApplicationContext 作为自己上下文的父容器。
 * 其他上下文：servlet 可以有多个，自然也存在多个上下文。
 
 Spring 中容器存在父子关系，父容器不能访问子容器的资源，而子容器可以访问父容器的资源。
@@ -298,7 +255,7 @@ Spring 中容器存在父子关系，父容器不能访问子容器的资源，�
 
 ![99](assets/99.png)
 ApplicationContext 是对 BeanFactory 的扩展，Application 有两个直接子类：WebApplicationContext 和
-ConfigurableApplicationContext：
+`ConfigurableApplicationContext`：
 
 * WebApplicationContext：可以获取ServletContext。
 * ConfigurableApplicationContext：包含主要的方法，其中就包含refresh()方法，它是 ApplicationContext 对 BeanFactory 最主要的扩展。
@@ -316,12 +273,9 @@ ApplicationContext 继承 ResourcePatternResolver 的 getResources() 方法可�
 
 1. 准备刷新：
 
-* Environment 并且对 Environment 中的属性进行校验，Environment 可能是 StandardEnvironment(包含 系统环境和jvm属性) 也可能是
-  StandardServletEnvironment(继承 StandardEnvironment,另外包含 ServletContext 的属性)
+* Environment 并且对 Environment 中的属性进行校验，Environment 可能是 StandardEnvironment(包含 系统环境和jvm属性) 也可能是 StandardServletEnvironment(继承 StandardEnvironment,另外包含 ServletContext 的属性)
 
-2. 获取 BeanFactory，对于 XmlWebApplicationContext 类型的会在这个时候创建，并加载BeanDefinition，对于
-   AnnotationConfigWebApplicationContext 类型的直接获取，并不会加载
-   BeanDefin，因为AnnotationConfigWebApplicationContext创建时就已经创建。
+2. 获取 BeanFactory，对于 XmlWebApplicationContext 类型的会在这个时候创建，并加载BeanDefinition，对于 AnnotationConfigWebApplicationContext 类型的直接获取，并不会加载 BeanDefin，因为AnnotationConfigWebApplicationContext创建时就已经创建。
 3. 准备 BeanFactory
 
     * 填充 SpelExpressionParser。
@@ -332,22 +286,14 @@ ApplicationContext 继承 ResourcePatternResolver 的 getResources() 方法可�
     * 注册 Environment、SystemProperties、SystemEnvironment。
 4. postProcessBeanFactory，提供给子类实现，
 
-    * 在 AbstractRefreshableWebApplicationContext 中默认实现是 处理ServletContextAware，并且设置
-      RequestObjectFactory，ResponseObjectFactory，SessionObjectFactory，WebRequestObjectFactory。
-    * 在 AnnotationConfigServletWebServerApplicationContext 相对上面的内容还要添加
-      扫描AnnotationConfigServletWebServerApplicationContext 中的basePackages和annotatedClasses。
+    * 在 AbstractRefreshableWebApplicationContext 中默认实现是 处理ServletContextAware，并且设置 RequestObjectFactory，ResponseObjectFactory，SessionObjectFactory，WebRequestObjectFactory。
+    * 在 AnnotationConfigServletWebServerApplicationContext 相对上面的内容还要添加 扫描AnnotationConfigServletWebServerApplicationContext 中的basePackages和annotatedClasses。
 5. 触发 BeanFactoryPostProcessor，springboot 在该阶段会扫描所有包。
 
     * ConfigurationClassPostProcessor：beanName为internalConfigurationAnnotationProcessor用于处理@configuration注解的后置处理器的bean
-    *
-
-   AutowiredAnnotationBeanPostProcessor：beanName为internalAutowiredAnnotationProcessor用于处理@Autowired，@Value,@Inject以及@Lookup注解的后置处理器bean
-    *
-   CommonAnnotationBeanPostProcessor：beanName为internalCommonAnnotationProcessor用于处理JSR-250注解，例如@Resource,@PostConstruct,@PreDestroy的后置处理器bean*
-   EventListenerMethodProcessor：beanName为internalEventListenerProcessor用于处理@EventListener注解的后置处理器的bean
-    *
-
-   DefaultEventListenerFactory：beanName为internalEventListenerFactory管理用于生产ApplicationListener对象的EventListenerFactory对象
+    * AutowiredAnnotationBeanPostProcessor：beanName为internalAutowiredAnnotationProcessor用于处理@Autowired，@Value,@Inject以及@Lookup注解的后置处理器bean
+    * CommonAnnotationBeanPostProcessor：beanName为internalCommonAnnotationProcessor用于处理JSR-250注解，例如@Resource,@PostConstruct,@PreDestroy的后置处理器bean*EventListenerMethodProcessor：beanName为internalEventListenerProcessor用于处理@EventListener注解的后置处理器的bean
+    * DefaultEventListenerFactory：beanName为internalEventListenerFactory管理用于生产ApplicationListener对象的EventListenerFactory对象
 6. 识别所有的 BeanPostProcessor 并注册到 BeanFactory。
 7. 初始化 MessageSource。
 8. 初始化 ApplicationEventMulticaster 上下文事件广播器。
@@ -364,8 +310,7 @@ ApplicationContext 继承 ResourcePatternResolver 的 getResources() 方法可�
 1. Expression 表达式（“干什么”）：SpEL的核心，所以表达式语言都是围绕表达式进行的
 2. ExpressionParser 解析器（“谁来干”）：用于将字符串表达式解析为表达式对象
 3. EvaluationContext 上下文（“在哪干”）：表达式对象执行的环境，该环境可能定义变量、定义自定义函数、提供类型转换等等
-4. root根对象及活动上下文对象（“对谁干”）：root根对象是默认的活动上下文对象，活动上下文对象表示了当前表达式操作的对象，例如
-   application.yml 所生成的root对象，表示表达式在这个跟对象取数据。
+4. root根对象及活动上下文对象（“对谁干”）：root根对象是默认的活动上下文对象，活动上下文对象表示了当前表达式操作的对象，例如 application.yml 所生成的root对象，表示表达式在这个跟对象取数据。
 
 表达的变量可能从 EvaluationContext 和 rootObject 取。
 

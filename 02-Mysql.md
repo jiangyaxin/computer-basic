@@ -2031,10 +2031,7 @@ grant replication slave,replication client on *.* to <user>@<ip> identified by <
 2. 在主库上，创建一个复制用户，`grant replication slave on *.* to <user>@<ip> identified by <password>;`
 3. 在主库上，进行备份。
 4. 在从库上，恢复此备份。
-5.
-
-在从库上，恢复备份好，执行 `CHANGE MASTER TO MASTER_HOST=<master-ip>,MASTER_USER=<user>,MASTER_PASSWORD=<password>,MASTER_LOG_FILE=<log-file>,MASTER_LOG_POS=<position>;`
-log-file和position存在于转储文件中，使用 `less <dump.sql>`查看。
+5. 在从库上，恢复备份好，执行 `CHANGE MASTER TO MASTER_HOST=<master-ip>,MASTER_USER=<user>,MASTER_PASSWORD=<password>,MASTER_LOG_FILE=<log-file>,MASTER_LOG_POS=<position>;`log-file和position存在于转储文件中，使用 `less <dump.sql>`查看。
 6. 在从库上，start slave。
 
 链式复制：主库和从位于数据中心A内，中继主库位于数据中心B，中继主库从数据中心A的主库复制，数据中心B的从库复制中继主库。

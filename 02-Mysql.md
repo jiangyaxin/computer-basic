@@ -1773,7 +1773,7 @@ MySQL 启动后会将自己进程ID写入pid文件，默认文件名为 `<host_n
 
 1. 设置数据库为只读：`SET @@GLOABL.READ_ONLY = 1`
 2. 备份数据,不包括sys数据库：`mydumper -u root --password=<password> --trx-consistency-only --kill-long-queries --long-query-guard 500 --regex '^(?!sys)' --outputdir </backups>`
-3. 删除所有的*.ibd、*.ib_log、ibdata文件，如果只使用了InnoDB表，则可以删除数据目录和存储系统表空间的所有位置(`innodb_data_file_path`)。
+3. 删除所有的`*.ibd`、`*.ib_log`、`ibdata`文件，如果只使用了InnoDB表，则可以删除数据目录和存储系统表空间的所有位置(`innodb_data_file_path`)。
 4. 初始化数据目录,`mysqld --initialize --datadir=<data-path>`
 5. 导入数据：`myloader --directory=</backups/> --queries-per-transaction=50000 --threads=6 --user=root --password=<password> --overwrite-tables`
 6. 恢复可读：`SET @@GLOBAL.READ_ONLY=0`
@@ -1793,8 +1793,7 @@ MySQL 启动后会将自己进程ID写入pid文件，默认文件名为 `<host_n
 
 ![71.png](./assets/71.png)
 
-默认情况下，存在于数据目录中 ib_logfile0 和 ib_logfile1,每个InnoDB储存引擎至少存在一组重做日志，每组存在两个重做日志文件，组中每个redolog
-大小一致，并以循环写入的方式运行。从重做日志缓冲刷新到磁盘时，按扇区大小写入，也就是512B，扇区是磁盘的最小物理单位，写入必定成功。
+默认情况下，存在于数据目录中 `ib_logfile0` 和 `ib_logfile1`,每个InnoDB储存引擎至少存在一组重做日志，每组存在两个重做日志文件，组中每个redolog 大小一致，并以循环写入的方式运行。从重做日志缓冲刷新到磁盘时，按扇区大小写入，也就是512B，扇区是磁盘的最小物理单位，写入必定成功。
 
 与 binlog 区别：
 

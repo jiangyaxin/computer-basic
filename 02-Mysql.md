@@ -2082,9 +2082,7 @@ grant replication slave,replication client on *.* to <user>@<ip> identified by <
 默认情况下复制是异步的，主库不知道写入操作是否已经到达从库，半同步复制中主库会一直等待，直到至少有一个从库收到写入的数据。配置如下：
 
 1. 在主库安装插件：`INSTALL PLUGIN rpl_semi_sync_master SONAME 'semisync_master.so';`
-2.
-
-在主库上启用半同步复制并调整超时：`SET @@GLOBAL.rpl_semi_sync_master_enabled=1; SET @@GLOBAL.rpl_semi_sync_master_timeout=1000; `
+2. 在主库上启用半同步复制并调整超时：`SET @@GLOBAL.rpl_semi_sync_master_enabled=1; SET @@GLOBAL.rpl_semi_sync_master_timeout=1000; `
 3. 在从库安装插件：`INSTALL PLUGIN rpl_semi_sync_slave SONAME 'semisync_slave.so';`
 4. 在从库上启动半同步复制：`SET GLOBAL rpl_semi_sync_slave_enabled=1; STOP SLAVE IO_THREAD; START SLAVE IO_THREAD;`
 

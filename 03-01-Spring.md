@@ -1,7 +1,7 @@
 # Spring扩展点：
 
-* `BeanFactoryPostProcessor#postProcessBeanFactory(ConfigurableListableBeanFactory beanFactory)`：负责修改 BeanFactory 属性，例如继承CustomEditorConfigurer 自定义Editor 时自动将其注入到 BeanFactory、PropertyPlaceholderConfigurer 、ConfigurationClassPostProcessor扫描 @configuration 注解等。
-* `BeanDefinitionRegistryPostProcessor#postProcessBeanDefinitionRegistry(BeanDefinitionRegistry registry)` ：可以直接注入 BeanDefinition，例如 mybatis 中 MapperScannerConfigurer。
+* `BeanFactoryPostProcessor#postProcessBeanFactory(ConfigurableListableBeanFactory beanFactory)`：负责修改 BeanFactory 属性，例如继承 `CustomEditorConfigurer` 自定义Editor 时自动将其注入到 `BeanFactory`、`PropertyPlaceholderConfigurer` 、`ConfigurationClassPostProcessor` 扫描 @configuration 注解等。
+* `BeanDefinitionRegistryPostProcessor#postProcessBeanDefinitionRegistry(BeanDefinitionRegistry registry)` ：可以直接注入 BeanDefinition，例如 mybatis 中 `MapperScannerConfigurer`。
 * `BeanPostProcessor#postProcessAfterInitialization(Object bean, String beanName)`：负责修改Bean，例如生成代理，注入 xxxAware、注入ApplicationListener等。
 * `xxxAware`
 * `InitializingBean`
@@ -13,15 +13,15 @@
 ![105](assets/105.png)
 
 1. 从`spring.factories`配置文件中加载`EventPublishingRunListener`对象，该对象拥有`SimpleApplicationEventMulticaster`属性，即在SpringBoot启动过程的不同阶段用来发射内置的生命周期事件。
-2. 准备环境变量，包括系统变量，环境变量，命令行参数，默认变量，servlet相关配置变量，随机值以及配置文件（比如application.properties）等。
+2. 准备环境变量，包括系统变量，环境变量，命令行参数，默认变量，servlet相关配置变量，随机值以及配置文件（比如`application.properties`）等。
 3. 控制台打印SpringBoot的bannner标志。
-4. 根据不同类型环境创建不同类型的applicationcontext容器，因为这里是servlet环境，所以创建的是`AnnotationConfigServletWebServerApplicationContext`容器对象；
-5. 从spring.factories配置文件中加载FailureAnalyzers对象,用来报告SpringBoot启动过程中的异常。
-6. 为刚创建的容器对象做一些初始化工作，准备一些容器属性值等，对ApplicationContext应用一些相关的后置处理和调用各个`ApplicationContextInitializer`的初始化方法来执行一些初始化逻辑等。
-7. 刷新容器，这一步至关重要。比如调用bean factory的后置处理器，注册BeanPostProcessor后置处理器，初始化事件广播器且广播事件，初始化剩下的单例bean和SpringBoot创建内嵌的Tomcat服务器等等重要且复杂的逻辑都在这里实现。
+4. 根据不同类型环境创建不同类型的`ApplicationContext`容器，因为这里是servlet环境，所以创建的是`AnnotationConfigServletWebServerApplicationContext`容器对象；
+5. 从`spring.factories`配置文件中加载`FailureAnalyzers`对象,用来报告SpringBoot启动过程中的异常。
+6. 为刚创建的容器对象做一些初始化工作，准备一些容器属性值等，对`ApplicationContext`应用一些相关的后置处理和调用各个`ApplicationContextInitializer`的初始化方法来执行一些初始化逻辑等。
+7. 刷新容器，这一步至关重要。比如调用`BeanFactory`的后置处理器，注册`BeanPostProcessor`后置处理器，初始化事件广播器且广播事件，初始化剩下的单例bean和SpringBoot创建内嵌的Tomcat服务器等等重要且复杂的逻辑都在这里实现。
 8. 执行刷新容器后的后置处理逻辑，注意这里为空方法。
 9. 调用`ApplicationRunner`和`CommandLineRunner`的run方法，我们实现这两个接口可以在spring容器启动后需要的一些东西比如加载一些业务数据等。
-10. 报告启动异常，即若启动过程中抛出异常，此时用FailureAnalyzers来报告异常。
+10. 报告启动异常，即若启动过程中抛出异常，此时用`FailureAnalyzers`来报告异常。
 
 ## SpringBoot扩展点
 

@@ -958,7 +958,7 @@ Record lock, heap no 105 PHYSICAL RECORD: n_fields 2; compact format; info bits 
 > (1) WAITING FOR THIS LOCK TO BE GRANTED:
 > (2) HOLDS THE LOCK(S):
 
-正在等待的锁、目前保存的锁
+正在等待的锁、目前保持的锁
 
 > RECORD LOCKS space id 14096 page no 57 n bits 272 index bd_index of table `mydatabase`.`table1` trx id 14235673
 > lock_mode X locks rec but not gap waiting
@@ -1067,8 +1067,11 @@ Log maximum file id is       4211
 ```
 
 Log sequence number：最新产生的日志序列号
+
 Log flushed up to：已刷到磁盘的重做日志的日志号
+
 Pages flushed up to：已刷到磁盘的页的日志号
+
 Last checkpoint at: 最后一次检查点位置，数据和日志一致的状态
 
 ##### BUFFER POOL AND MEMORY

@@ -2290,13 +2290,14 @@ B+ 树索引高扇出性，在数据库中一般2-4层，意思就是查找一�
 
 对表中的多个列进行索引。
 
-例如：对 a、b、c 三个字段进行索引，以前情况可以使用索引：
+例如：对 a、b、c 三个字段进行索引，以下情况可以使用索引：
 
 ```sql
 SELECT *
 FROM TABLE
 WHERE a = 'xxxx'
 ORDER BY b;
+
 SELECT *
 FROM TABLE
 WHERE a = 'xxxx'

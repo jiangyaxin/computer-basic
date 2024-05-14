@@ -1765,7 +1765,7 @@ MySQL 启动后会将自己进程ID写入pid文件，默认文件名为 `<host_n
 
 增大：
 
-数据目录中ibdata1文件是默认的系统表空间，可以使用 `innodb_data_file_path`（配置innodb系统表空间数据文件，可以指定多个文件，使用;分隔） 和 innodb_data_home_dir 来配置。例如一个固定大小50MB的ibdata1和一个50Mb自动扩展的ibdata2：`innodb_data_file_path=ibdata1:50M;ibdata2:50M:autoextend`
+数据目录中ibdata1文件是默认的系统表空间，可以使用 `innodb_data_file_path`（配置innodb系统表空间数据文件，可以指定多个文件，使用;分隔） 和 `innodb_data_home_dir` 来配置。例如一个固定大小50MB的ibdata1和一个50Mb自动扩展的ibdata2：`innodb_data_file_path=ibdata1:50M;ibdata2:50M:autoextend`
 
 缩小：
 
@@ -1780,7 +1780,7 @@ MySQL 启动后会将自己进程ID写入pid文件，默认文件名为 `<host_n
 
 ###### 管理UNDO表空间
 
-通过 innodb_max_undo_log_size(默认1GB)来管理UNDO表空间大小，innodb_undo_tablespaces(默认2GB)来控制表空间的数量。默认情况下innodb_undo_log_truncate被启用，超过innodb_max_undo_log_size会被截断，必须至少有两个UNDO表空间才能实现截断。
+通过 `innodb_max_undo_log_size`(默认1GB)来管理UNDO表空间大小，`innodb_undo_tablespaces`(默认2GB)来控制表空间的数量。默认情况下`innodb_undo_log_truncate`被启用，超过`innodb_max_undo_log_size`会被截断，必须至少有两个UNDO表空间才能实现截断。
 
 ###### 压缩InnoDB表
 

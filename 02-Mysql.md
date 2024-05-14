@@ -1856,8 +1856,7 @@ InnoDB 支持事务，MyISAM不支持事务。
 
 持久性：数据库是否故障，已经保存的数据不会丢失。
 
-事务的隔离性是通过锁来实现，原子性、一致性、持久性通过 redo log 和 undo log 来完成。redo log 保证事务的持久性，是物理日志，记录页的物理修改操作，undo
-log保证事务的一致性和原子性，帮助事务回滚以及MVCC，是逻辑日志，根据每行记录进行记录，需要进行随机读写。
+事务的隔离性是通过锁来实现，原子性、一致性、持久性通过 redo log 和 undo log 来完成。redo log 保证事务的持久性，是物理日志，记录页的物理修改操作，undo log保证事务的一致性和原子性，帮助事务回滚以及MVCC，是逻辑日志，根据每行记录进行记录，需要进行随机读写。
 
 ```bash
 # 开启、回滚、提交一个事务
@@ -1873,11 +1872,9 @@ ROLLBACK TO <savepoint>;
 
 重做日志包含两部分：重做日志缓冲(易失的) 和 重做日志文件(持久的)。
 
-在事务提交时，必须先将该事务的所有重做日志写入文件进行持久化，待事务的提交操作完成才算完成，每次将重做日志缓冲写入文件后都会调用fsync操作，因此磁盘的性能影响事务提交的性能，可以
-通过改变 innodb_flush_log_at_trx_commit 来改变fsync操作时机。
+在事务提交时，必须先将该事务的所有重做日志写入文件进行持久化，待事务的提交操作完成才算完成，每次将重做日志缓冲写入文件后都会调用fsync操作，因此磁盘的性能影响事务提交的性能，可以 通过改变 `innodb_flush_log_at_trx_commit` 来改变fsync操作时机。
 
-重做日志以 512B 储存，意味着重做日志缓存、重做日志文件都是以 块(block)
-进行保存，由于块的大小和磁盘扇区大小一致，因此日志的写入可以保证原子性，不需要doublewrite，日志头占用12字节、日志尾占用8字节，实际储存492字节。
+重做日志以 512B 储存，意味着重做日志缓存、重做日志文件都是以 块(block) 进行保存，由于块的大小和磁盘扇区大小一致，因此日志的写入可以保证原子性，不需要doublewrite，日志头占用12字节、日志尾占用8字节，实际储存492字节。
 
 ### undo
 
@@ -1892,8 +1889,7 @@ undo 存放在数据库内部的一个特殊段中，称为 undo 段，undo 段�
 分类：
 
 * insert undo log：因为是insert操作的记录，只对当前事务可见，对其他事务不可见，所以在事务提交后直接删除，不需要 purge操作。
-* update undo log：记录delete和update操作产生的undo log，该undo log可能需要提供MVCC机制，因此不能在事务提交的时候删除，而是放入一个链表中，等待
-  purge 线程进行删除。
+* update undo log：记录delete和update操作产生的undo log，该undo log可能需要提供MVCC机制，因此不能在事务提交的时候删除，而是放入一个链表中，等待 purge 线程进行删除。
 
 当事务提交后，对于 undo log 会做两件事：
 
@@ -1923,24 +1919,24 @@ undo页存在于缓冲池中，跟随checkpoint刷新(write+flush)磁盘。
 
 相关配置：
 
-innodb_undo_directory：用于 设置 undo段文件 的路径，意味着 undo段 可以存放在共享表空间之外的位置。
+`innodb_undo_directory`：用于 设置 undo段文件 的路径，意味着 undo段 可以存放在共享表空间之外的位置。
 
-innodb_rollback_segments：设置 undo段 的个数，默认128。
+`innodb_rollback_segments`：设置 undo段 的个数，默认128。
 
-innodb_undo_tablespaces：用来设置 undo段文件 的数量，默认为2，这样 undo段 可以较均匀的分布在多个文件。
+`innodb_undo_tablespaces`：用来设置 undo段文件 的数量，默认为2，这样 undo段 可以较均匀的分布在多个文件。
 
-innodb_max_undo_log_size：控制 undo tablespace 最大值大小，默认1G
+`innodb_max_undo_log_size`：控制 undo tablespace 最大值大小，默认1G
 
-innodb_undo_log_truncate：当启动该字段时，如果 undo tablespace 超过 innodb_max_undo_log_size 会尝试 truncate。
+`innodb_undo_log_truncate`：当启动该字段时，如果 undo tablespace 超过 innodb_max_undo_log_size 会尝试 truncate。
 
 ### 隔离级别
 
 1. 读取未提交(read uncommitted)：当前事务可以读取由另一个未提交事务写入的数据(脏读 dirty read)。
-2. 读提交(read committed)：当前事务只能读取另一个事务提交数据(不可重复读取 non-repeatable read)
-   ，事务A读取数据a，另一个事务修改数据a并提交，事务A再次读取数据a，两次读取数据a不一样，叫不可重复读。
-3. 可重复读取(repeatable read)
-   ：InnoDB默认级别，在同一个事务内的查询都是事务开始时刻一致的，事务A只能在事务B修改数据并提交后，自己也提交事务后，才能读取到事务B修改的数据，有一种特殊情况就是事务A可以读取到自己修改的数据,不能避免幻读(
+2. 读提交(read committed)：当前事务只能读取另一个事务提交数据(不可重复读取 non-repeatable read)，事务A读取数据a，另一个事务修改数据a并提交，事务A再次读取数据a，两次读取数据a不一样，叫不可重复读。
+3. 可重复读取(repeatable read)：InnoDB默认级别，在同一个事务内的查询都是事务开始时刻一致的，事务A只能在事务B修改数据并提交后，自己也提交事务后，才能读取到事务B修改的数据，有一种特殊情况就是事务A可以读取到自己修改的数据,不能避免幻读(
+   
    例如：事务A事务期间查询某数据返回3行，事务B在此期间插入1行，事务A在提交之后再次查询该数据发现存在4行)。
+
 4. 序列化：在每个SELECT操作后自动加上 LOCK IN SHARE MODE，事务顺序执行。
 
 ## 备份

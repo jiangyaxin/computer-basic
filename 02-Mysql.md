@@ -1756,8 +1756,8 @@ MySQL 启动后会将自己进程ID写入pid文件，默认文件名为 `<host_n
 
 ##### 表空间文件
 
-1. 系统表空间：InnoDB系统表空间包含InnoDB数据字典，同时也是 doublewrite buffer、change buffer 和 UNDO 日志的储存区域，系统表空间还包含在系统表空间中创建的表以及所有用户创建的表的索引数据。系统表空间用一个和多个数据文件表示。默认情况下，将在 MySQL 数据目录中创建一个名为 ibdata1 的系统数据文件，该文件的大小和数据由 innodb_data_file_path 启动项控制。
-2. 独立表空间：每个独立表空间都是一个单表表空间，它在自己的数据文件中创建，而不是在系统表空间中创建，当启用innodb_file_per_table时，将在独立表空间中创建，否则在系统表空间中创建InnoDB表，每个独立表空间有一个.idb数据文件表示，该文件默认是在数据库目录中创建。独立表空间中只存放数据、索引、插入缓冲Bitmap页，其他数据(比如undo信息)仍存放在系统表空间中，意思就是使用了独立表空间后，系统表空间仍然会逐渐增大。
+1. 系统表空间：InnoDB系统表空间包含InnoDB数据字典，同时也是 doublewrite buffer、change buffer 和 UNDO 日志的储存区域，系统表空间还包含在系统表空间中创建的表以及所有用户创建的表的索引数据。系统表空间用一个和多个数据文件表示。默认情况下，将在 MySQL 数据目录中创建一个名为 ibdata1 的系统数据文件，该文件的大小和数据由 `innodb_data_file_path` 启动项控制。
+2. 独立表空间：每个独立表空间都是一个单表表空间，它在自己的数据文件中创建，而不是在系统表空间中创建，当启用`innodb_file_per_table`时，将在独立表空间中创建，否则在系统表空间中创建InnoDB表，每个独立表空间有一个.idb数据文件表示，该文件默认是在数据库目录中创建。独立表空间中只存放数据、索引、插入缓冲Bitmap页，其他数据(比如undo信息)仍存放在系统表空间中，意思就是使用了独立表空间后，系统表空间仍然会逐渐增大。
 3. 通用表空间：当使用 CREATE TABELSPACE 创建的共享InnoDB表空间，可以在MySQL数据目录之外创建，可以容纳多张表，如 `CREATE TABLESPACE ts1 ADD DATAFILE '/my/tablespace/directory/ts1.ibd' Engine=InnoDB;`
 4. UNDO表空间：由一个或多个UNDO日志文件组成，数量由 innodb_undo_tablespaces 定义。
 
@@ -1765,37 +1765,29 @@ MySQL 启动后会将自己进程ID写入pid文件，默认文件名为 `<host_n
 
 增大：
 
-数据目录中ibdata1文件是默认的系统表空间，可以使用 innodb_data_file_path（配置innodb系统表空间数据文件，可以指定多个文件，使用;分隔）
-和 innodb_data_home_dir 来配置。例如一个固定大小50MB的ibdata1和一个50Mb自动扩展的ibdata2：innodb_data_file_path=ibdata1:
-50M;ibdata2:50M:autoextend
+数据目录中ibdata1文件是默认的系统表空间，可以使用 `innodb_data_file_path`（配置innodb系统表空间数据文件，可以指定多个文件，使用;分隔） 和 innodb_data_home_dir 来配置。例如一个固定大小50MB的ibdata1和一个50Mb自动扩展的ibdata2：`innodb_data_file_path=ibdata1:50M;ibdata2:50M:autoextend`
 
 缩小：
 
-如果未启用 innodb_file_per_table，那么所有的表数据都储存在系统表空间，当删除了一个表时，空间并不会回收，可以通过缩小系统表空间回收磁盘，但这需要较长停机时间，可以先将从库升级为主库再更改。
+如果未启用 `innodb_file_per_table`，那么所有的表数据都储存在系统表空间，当删除了一个表时，空间并不会回收，可以通过缩小系统表空间回收磁盘，但这需要较长停机时间，可以先将从库升级为主库再更改。
 
 1. 设置数据库为只读：`SET @@GLOABL.READ_ONLY = 1`
-2.
-
-备份数据,不包括sys数据库：`mydumper -u root --password=<password> --trx-consistency-only --kill-long-queries --long-query-guard 500 --regex '^(?!sys)' --outputdir </backups>`
-3. 删除所有的*.ibd、*.ib_log、ibdata文件，如果只使用了InnoDB表，则可以删除数据目录和存储系统表空间的所有位置(
-innodb_data_file_path)。
+2. 备份数据,不包括sys数据库：`mydumper -u root --password=<password> --trx-consistency-only --kill-long-queries --long-query-guard 500 --regex '^(?!sys)' --outputdir </backups>`
+3. 删除所有的*.ibd、*.ib_log、ibdata文件，如果只使用了InnoDB表，则可以删除数据目录和存储系统表空间的所有位置(`innodb_data_file_path`)。
 4. 初始化数据目录,`mysqld --initialize --datadir=<data-path>`
-5.
-导入数据：`myloader --directory=</backups/> --queries-per-transaction=50000 --threads=6 --user=root --password=<password> --overwrite-tables`
+5. 导入数据：`myloader --directory=</backups/> --queries-per-transaction=50000 --threads=6 --user=root --password=<password> --overwrite-tables`
 6. 恢复可读：`SET @@GLOBAL.READ_ONLY=0`
 
 ###### 管理UNDO表空间
 
-通过 innodb_max_undo_log_size(默认1GB)来管理UNDO表空间大小，innodb_undo_tablespaces(默认2GB)
-来控制表空间的数量。默认情况下innodb_undo_log_truncate被启用，超过innodb_max_undo_log_size会被截断，必须至少有两个UNDO表空间才能实现截断。
+通过 innodb_max_undo_log_size(默认1GB)来管理UNDO表空间大小，innodb_undo_tablespaces(默认2GB)来控制表空间的数量。默认情况下innodb_undo_log_truncate被启用，超过innodb_max_undo_log_size会被截断，必须至少有两个UNDO表空间才能实现截断。
 
 ###### 压缩InnoDB表
 
 适用于读多写少的、存在大字段、磁盘空间达到瓶颈的场景。
 
-1. 设置 nnodb_file_format=Barracuda。
-2. 创建表时增加 ROW_FORMAT=COMPRESSED
-   KEY_BLOCK_SIZE=8，如 `CREATE TABLE compressed_table(id INT PRIMARY KEY) ROW_FORMAT=COMPRESSED KEY_BLOCK_SIZE=8;`
+1. 设置 `innodb_file_format=Barracuda`。
+2. 创建表时增加 `ROW_FORMAT=COMPRESSED KEY_BLOCK_SIZE=8`，如 `CREATE TABLE compressed_table(id INT PRIMARY KEY) ROW_FORMAT=COMPRESSED KEY_BLOCK_SIZE=8;`
 
 ##### 重做日志文件
 

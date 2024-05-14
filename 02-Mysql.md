@@ -2043,9 +2043,7 @@ log-file和position存在于转储文件中，使用 `less <dump.sql>`查看。
 
 1. 主从复制的方法设置，然后在从数据库执行 SET @@GLOBAL.READ_ONLY=ON。
 2. 在从库上执行 SHOW MASTER STATUS。
-3.
-
-在主库上执行 `CHANGE MASTER TO MASTER_HOST=<master-ip>,MASTER_USER=<user>,MASTER_PASSWORD=<password>,MASTER_LOG_FILE=<log-file>,MASTER_LOG_POS=<position>;`
+3. 在主库上执行 `CHANGE MASTER TO MASTER_HOST=<master-ip>,MASTER_USER=<user>,MASTER_PASSWORD=<password>,MASTER_LOG_FILE=<log-file>,MASTER_LOG_POS=<position>;`
 4. 在主库上执行 START SLAVE。
 5. 在从库上执行 SET @@GLOBAL.READ_ONLY=OFF 。
 
@@ -2053,10 +2051,8 @@ log-file和position存在于转储文件中，使用 `less <dump.sql>`查看。
 
 1. 先从一个主库A备份数据，复制到另外一个主库B和从库C。
 2. 在从库C 执行 STOP SLAVE。
-3. 在从库C
-   上执行 `CHANGE MASTER TO MASTER_HOST=<master1-ip>,MASTER_USER=<user>,MASTER_PASSWORD=<password>,MASTER_LOG_FILE=<log-file>,MASTER_LOG_POS=<position> FOR CHANNEL <master1>;`
-4. 在从库C
-   上执行 `CHANGE MASTER TO MASTER_HOST=<master2-ip>,MASTER_USER=<user>,MASTER_PASSWORD=<password>,MASTER_LOG_FILE=<log-file>,MASTER_LOG_POS=<position> FOR CHANNEL <master2>;`
+3. 在从库C 上执行 `CHANGE MASTER TO MASTER_HOST=<master1-ip>,MASTER_USER=<user>,MASTER_PASSWORD=<password>,MASTER_LOG_FILE=<log-file>,MASTER_LOG_POS=<position> FOR CHANNEL <master1>;`
+4. 在从库C 上执行 `CHANGE MASTER TO MASTER_HOST=<master2-ip>,MASTER_USER=<user>,MASTER_PASSWORD=<password>,MASTER_LOG_FILE=<log-file>,MASTER_LOG_POS=<position> FOR CHANNEL <master2>;`
 5. 在从库执行 `START SLAVE FOR CHANNEL <master1>;`
 6. 在从库执行 `START SLAVE FOR CHANNEL <master2>;`
 

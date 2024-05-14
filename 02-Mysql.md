@@ -1626,8 +1626,8 @@ where * * *
 默认情况下，数据目录有三个子目录：
 
 1. mysql：MySQL系统数据库。
-2. performance_schema：提供用于在运行是检查服务器内部状态的信息。
-3. sys：提供一组能解释performance_schema信息的对象。
+2. performance_schema：用于在运行检时查服务器内部状态的信息。
+3. sys：提供一组能解释performance_schema信息的对象，performance_schema 的视图。
 
 除此之外，还包含日志文件、InnoDB表空间、InnoDB日志文件、SSL和RSA秘钥文件、pid、持久化全局系统变量的mysqld-auto.cnf。
 
@@ -1671,9 +1671,7 @@ innodb_log_file_size: redo log大小，用于数据库崩溃时重放已提交�
 
 ##### 慢查询日志
 
-使用 `SET @@GLOBAL.slow_query_log=1`开启,通过 `SET @@GLOBAL.long_query_time = <num单位秒>`来定义慢查询，slow_query_log_file
-属性可以定义日志路径，默认在数据目录下名为 `<host_name>-slow.log`，默认情况未使用索引的查询不会被记录，若开启
-log_queries_not_using_indexes,则可以使未使用索引的查询被记录。
+使用 `SET @@GLOBAL.slow_query_log=1`开启,通过 `SET @@GLOBAL.long_query_time = <num单位秒>`来定义慢查询，slow_query_log_file 属性可以定义日志路径，默认在数据目录下名为 `<host_name>-slow.log`，默认情况未使用索引的查询不会被记录，若开启`log_queries_not_using_indexes`,则可以使未使用索引的查询被记录。
 
 查询慢查询日志 `SELECT * FROM mysql.slow_log`。
 
@@ -1683,8 +1681,7 @@ log_queries_not_using_indexes,则可以使未使用索引的查询被记录。
 
 二进制日志包含数据库的所有更改记录，包括数据和结构两方面，不会记录 SELECT 或 SHOW 等不修改数据的操作。
 
-启用二进制日志需要配置 log_bin 和 server_id，并重启服务器，例如 log_bin = /data/mysql/binlogs/server1,那么二进制储存在
-/data/mysql/binlogs 文件夹中，文件名为 server1.0000001、server1.0000002等，通过 show binary logs 来查看。
+启用二进制日志需要配置 log_bin 和 server_id，并重启服务器，例如 `log_bin = /data/mysql/binlogs/server1`,那么二进制储存在 `/data/mysql/binlogs` 文件夹中，文件名为 server1.0000001、server1.0000002等，通过 show binary logs 来查看。
 
 binlog 相关的配置参数：
 
@@ -1701,8 +1698,7 @@ binlog 相关的配置参数：
   master - slave - slave 时需要开启。
 * binlog_format：日志格式，有三种：
   1. STATEMENT：5.7.6以前默认格式，记录实际的SQL语句，相比ROW格式，减少了bin-log的日志量，节省IO和储存，但是使用某些特定情况的储存过程或者函数时无法保证安全。
-  2. ROW：默认格式，记录每行所做的更改,以二进制格式对整行进行保存，比如 update
-     语句更新了10条数据，10条记录都会记录到日志中，增大了日志量，但是避免了STATEMENT的问题。
+  2. ROW：默认格式，记录每行所做的更改,以二进制格式对整行进行保存，比如 update 语句更新了10条数据，10条记录都会记录到日志中，增大了日志量，但是避免了STATEMENT的问题。
   3. MIXED：当需要时，从 STATEMENT 切换到 ROW。
 
 Binlog的作用：
@@ -1721,12 +1717,8 @@ FLUSH LOGS;
 
 清除binlog：
 
-1. 设置 binlog_expire_logs_seconds 和 expire_logs_days
-   自动到期清除，两个值都设置为0表示不清除binlog，如果一个非0值则使用该参数作为到期时间，默认binlog_expire_logs_seconds =
-   2592000，expire_logs_days = 0，即30天。
-2. 手动清除日志，`purge binary logs to <file>`。例如 purge binary logs to server1.000004 则会删除 server1.000001 到
-   server1.000003，server1.000004 不会删除。或者 `purge binary logs to <DATETIME>`。例如 purge binary logs before '
-   2017-08-03 15:45:00'。
+1. 设置 binlog_expire_logs_seconds 和 expire_logs_days自动到期清除，两个值都设置为0表示不清除binlog，如果一个非0值则使用该参数作为到期时间，默认`binlog_expire_logs_seconds =2592000`，`expire_logs_days = 0`，即30天。
+2. 手动清除日志，`purge binary logs to <file>`。例如 `purge binary logs to server1.000004` 则会删除 server1.000001 到 server1.000003，server1.000004 不会删除。或者 `purge binary logs to <DATETIME>`。例如 `purge binary logs before '2017-08-03 15:45:00'`。
 3. 删除所有二进制日志，`reset master`。
 
 使用日志：
@@ -1748,14 +1740,13 @@ cat <file> | mysql -h <hsot> -u <user> -p <db_name>
 迁移日志：
 
 1. 停止服务器。
-2. 执行 `mysqlbinlogmove --bin-log-basename=<basename> --binlog-dir=<source-path> <target-pach>`。
+2. 执行 `mysqlbinlogmove --bin-log-basename=<basename> --binlog-dir=<source-path> <target-path>`。
 3. 修改my.cnf中log_bin选项。
 4. 重启服务。
 
 #### 套接字文件
 
-在 UNIX 系统下本地连接 MySQL 可以使用 UNIX域套接字方式，这种方式需要一个套接字文件，该文件由参数 mysqlx_socket
-控制，通过 `SHOW VARIABLES LIKE '%socket%';`查询,默认存在 于/tmp/mysql.sock。
+在 UNIX 系统下本地连接 MySQL 可以使用 UNIX域套接字方式，这种方式需要一个套接字文件，该文件由参数 mysqlx_socket 控制，通过 `SHOW VARIABLES LIKE '%socket%';`查询,默认存在 于`/tmp/mysql.sock`。
 
 #### pid文件
 

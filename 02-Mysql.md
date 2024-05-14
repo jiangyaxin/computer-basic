@@ -1933,7 +1933,7 @@ undo页存在于缓冲池中，跟随checkpoint刷新(write+flush)磁盘。
 
 1. 读取未提交(read uncommitted)：当前事务可以读取由另一个未提交事务写入的数据(脏读 dirty read)。
 2. 读提交(read committed)：当前事务只能读取另一个事务提交数据(不可重复读取 non-repeatable read)，事务A读取数据a，另一个事务修改数据a并提交，事务A再次读取数据a，两次读取数据a不一样，叫不可重复读。
-3. 可重复读取(repeatable read)：InnoDB默认级别，在同一个事务内的查询都是事务开始时刻一致的，事务A只能在事务B修改数据并提交后，自己也提交事务后，才能读取到事务B修改的数据，有一种特殊情况就是事务A可以读取到自己修改的数据,不能避免幻读。
+3. 可重复读取(repeatable read)：InnoDB默认级别，同一事务的多个实例在并发读取数据时，会看到同样的数据行，事务A只能在事务B修改数据并提交后，自己也提交事务后，才能读取到事务B修改的数据，有一种特殊情况就是事务A读取某一范围的数据行时，另一个事务又在该范围内插入了新行，当事务A再读取该范围的数据行时，会发现有新的“幻影” 行。
    
    例如：事务A事务期间查询某数据返回3行，事务B在此期间插入1行，事务A在提交之后再次查询该数据发现存在4行。
 
@@ -1976,10 +1976,18 @@ WarmBackup：在数据库运行时备份，但会对数据库操作有影响，�
 # --where 添加过滤条件
 
 # --lock-all-tables 默认设置，保证数据的一致性，锁表。
-# --single-transaction 一致性的另一种方案，和上面的参数，二选一。在执行备份之前，将事务隔离模式改为 REPEATABLE READ，开启事务，在dump期间如果其他事务修改了数据，对dump的数据无影响，适用于InnoDB，可以减少锁表。
+# --single-transaction 一致性的另一种方案，和上面的参数，二选一。
+# 在执行备份之前，将事务隔离模式改为 REPEATABLE READ，开启事务，在dump期间如果其他事务修改了数据，对dump的数据无影响，适用于InnoDB，可以减少锁表。
 
-# --master-data 将当前服务器的binlog的位置和文件名追加到输出文件中，会执行FLUSH TABLES WITH READ LOCK;然后执行SHOW MASTER STATUS查询binlog的状态，并记录如 CHANGE MASTER TO MASTER_LOG_FILE='mysql-bin.000095', MASTER_LOG_POS=50607116; 如果为 1，该命令不注释，如果为2，该命令注释。若用于搭建从库，可使用 2;最后 如果加--lock-all-tables 不会解锁，等dump完再解锁，如果加--single-transaction会执行 UNLOCK TABLES 解锁。
-# --dump-slave 先stop slave停止主从复制，然后执行show slave status，记录binlog状态（这里的状态是从服务器数据复制到的节点，不是主服务器最新的节点。如 CHANGE MASTER TO MASTER_LOG_FILE='mysql-bin.000095', MASTER_LOG_POS=50607116; 如果为 1，该命令不注释，如果为2，该命令注释。默认为1。），然后执行备份，备份完成后start slave。
+# --master-data 将当前服务器的binlog的位置和文件名追加到输出文件中，会执行FLUSH TABLES WITH READ LOCK;
+# 然后执行SHOW MASTER STATUS查询binlog的状态，并记录如 CHANGE MASTER TO MASTER_LOG_FILE='mysql-bin.000095', MASTER_LOG_POS=50607116; 
+# 如果为 1，该命令不注释，如果为2，该命令注释。若用于搭建从库，可使用 2;
+# 最后 如果加--lock-all-tables 不会解锁，等dump完再解锁，
+# 如果加--single-transaction会执行 UNLOCK TABLES 解锁。
+
+# --dump-slave 先stop slave停止主从复制，然后执行show slave status，记录binlog状态
+# （这里的状态是从服务器数据复制到的节点，不是主服务器最新的节点。如 CHANGE MASTER TO MASTER_LOG_FILE='mysql-bin.000095', MASTER_LOG_POS=50607116; 
+# 如果为 1，该命令不注释，如果为2，该命令注释。默认为1。），然后执行备份，备份完成后start slave。
 
 mysqldump --all-databases -u <user> -p<password> > dump.sql
 # 或者

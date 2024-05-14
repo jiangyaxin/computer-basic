@@ -720,8 +720,7 @@ InnoDB储存引擎有多个内存块，它们组成一个大的内存池，并�
 
    每10秒一次：
 
-   * 刷新 innodb_io_capacity 个脏页到磁盘(过去10秒内IO操作小于 innodb_io_capacity 次，默认200)，**现在由PageCleanerThread来执行
-     **。
+   * 刷新 innodb_io_capacity 个脏页到磁盘(过去10秒内IO操作小于 innodb_io_capacity 次，默认200)，**现在由PageCleanerThread来执行**。
    * 合并至多 5% * innodb_io_capacity 个插入缓冲(总是)。
    * 重做日志缓冲刷新到磁盘(总是)。
    * 删除无用的undo页(总是)，**现在由PurgeThread来执行**。

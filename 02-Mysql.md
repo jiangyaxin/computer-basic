@@ -2487,7 +2487,7 @@ REPEATABLE READ 快照数据总是读取事务开始时的行数据版本。
 
    事务T1成功插入记录，并获得索引id=6上的排他记录锁`LOCK_X | LOCK_REC_NOT_GAP`。
    紧接着事务T2、T3也开始插入记录，请求排他插入意向锁`LOCK_X | LOCK_GAP | LOCK_INSERT_INTENTION`;
-   但由于发生重复唯一键冲突，各自请求的排他记录锁`LOCK_X | LOCK_REC_NOT_GAP`转成共享记录锁`LOCK_S | LOCK_REC_NOT_GAP`。
+   但由于发生重复唯一键冲突，各自请求的排他记录锁`LOCK_X | LOCK_REC_NOT_GAP`,未防止阻塞，MySQL会转成共享记录锁`LOCK_S | LOCK_REC_NOT_GAP`，这样其他事务就可以读取数据。
 
    T1回滚释放索引id=6上的排他记录锁`LOCK_X | LOCK_REC_NOT_GAP`，T2和T3都要请求索引id=6上的排他记录锁`LOCK_X | LOCK_REC_NOT_GAP`。
    由于X锁与S锁互斥，只有独占S锁的情况下才能获取X锁，T2和T3都等待对方释放S锁，死锁产生。

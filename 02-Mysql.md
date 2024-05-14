@@ -2410,9 +2410,9 @@ REPEATABLE READ 快照数据总是读取事务开始时的行数据版本。
 
 语法：
 
-SELECT ... FOR UPDATE （X锁）
+`SELECT ... FOR UPDATE` (X锁)
 
-SELECT ... LOCK IN SHARE MODE (S锁)
+`SELECT ... LOCK IN SHARE MODE` (S锁)
 
 ### 行锁的算法
 
@@ -2424,9 +2424,7 @@ SELECT ... LOCK IN SHARE MODE (S锁)
 2. Gap Lock (LOCK_GAP)：lock_mode X locks gap before rec , 锁定一个范围但不包含记录本身，
 
 > Insert Intention Lock (LOCK_INSERT_INTENTION)：lock_mode X locks gap before rec insert intention ,插入意向锁，不是意向锁，只是
-> Gap
-
-Lock的一种特殊类型，在多事务同时insert不同数据至同一间隙时候产生，只要不是相同位置就不需要等待其他事务完成，不会发生锁等待。例如：假设有一个记录索引包含键值4和7，不同的事务分别插入5和6，每个事务都会产生一个加在4-7之间的插入意向锁，再获取插入行上的排它锁，但是不会被互相锁住。
+> Gap Lock的一种特殊类型，在多事务同时insert不同数据至同一间隙时候产生，只要不是相同位置就不需要等待其他事务完成，不会发生锁等待。例如：假设有一个记录索引包含键值4和7，不同的事务分别插入5和6，每个事务都会产生一个加在4-7之间的插入意向锁，再获取插入行上的排它锁，但是不会被互相锁住。
 
 3. Next-Key Lock (LOCK_ORDINARY)：lock_mode X , 锁定一个范围并且锁定记录本身。
 

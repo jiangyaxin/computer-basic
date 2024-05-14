@@ -2519,32 +2519,27 @@ REPEATABLE READ 快照数据总是读取事务开始时的行数据版本。
 
 ### 硬件
 
-CPU：OLTP 是IO密集型操作，OLAP 是CPU密集型操作。多核CPU可以通过修改 innodb_read_io_threads 和 innodb_write_io_threads
-来增大IO线程。
+CPU：OLTP 是IO密集型操作，OLAP 是CPU密集型操作。多核CPU可以通过修改 `innodb_read_io_threads` 和 `innodb_write_io_threads` 来增大IO线程。
 
 内存：根据数据量的大小决定内存大小，mysql对缓冲池的利用较多，大内存对性能有关键性影响。
 
-硬盘：对于机械硬盘两个指标是：寻道时间、转速，对于固态硬盘可以增加 innodb_io_capacity 参数，并选择关闭邻接页刷新。
+硬盘：对于机械硬盘两个指标是：寻道时间、转速，对于固态硬盘可以增加 `innodb_io_capacity` 参数，并选择关闭邻接页刷新。
 
 ### Explain
 
-可以使用 EXPLAIN 来验证MySQL的执行计划，EXPLAIN FORMAT = JSON 可得到详细信息，`EXPLAIN <connection-id>`
-可以为正在运行的会话执行explain计划，可以使用 `SELECT CONNECTION_ID()`来获取connection ID。
+可以使用 EXPLAIN 来验证MySQL的执行计划，`EXPLAIN FORMAT = JSON` 可得到详细信息，`EXPLAIN <connection-id>` 可以为正在运行的会话执行explain计划，可以使用 `SELECT CONNECTION_ID()`来获取connection ID。
 
-另外可以在 EXPLAIN 之后执行 SHOW WARNINGS，来显示详细信息。
+另外可以在 EXPLAIN 之后执行 `SHOW WARNINGS`，来显示详细信息。
 
 ### 评估一条查询的执行时间
 
-可以使用mysqlslap模拟客户端负载，如：
-
-`mysqlslap -u <user> -p<pass> --create-schema=<employees> --query=<"SELECT e.emp_no, salary FROM salaries s JOIN employees e ON s.emp_no=e.emp_no WHERE (first_name='Adam');"> -c <1000>  i 100`
-表示 将查询sql用1000个并发和100个迭代执行。
+可以使用mysqlslap模拟客户端负载，如：`mysqlslap -u <user> -p<pass> --create-schema=<employees> --query=<"SELECT e.emp_no, salary FROM salaries s JOIN employees e ON s.emp_no=e.emp_no WHERE (first_name='Adam');"> -c <1000>  i 100` 表示 将查询sql用1000个并发和100个迭代执行。
 
 #### 如何执行关联查询
 
 先在一个表中循环取出单条数据，然后再嵌套循环到下一个表中寻找匹配的行，依次下去，直到找到所有表中匹配的行为止。然后根据各个表匹配的行，返回查询中需要的各个列。如果mysql在最后一个关联表无法找到更多的行，它将返回上一层关联表，看看能否找到更多的匹配记录，以此类推迭代执行。
 
-所以应该使用小表驱动大表，另外一半不要使用leftjoin。
+所以应该使用小表驱动大表，另外一般不要使用`left join`。
 
 数据量小使用内存排序，数据量大(max_length_for_sort_data)使用文件排序，关联查询时的文件排序：
 

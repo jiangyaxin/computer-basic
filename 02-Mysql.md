@@ -1759,7 +1759,7 @@ MySQL 启动后会将自己进程ID写入pid文件，默认文件名为 `<host_n
 1. 系统表空间：InnoDB系统表空间包含InnoDB数据字典，同时也是 doublewrite buffer、change buffer 和 UNDO 日志的储存区域，系统表空间还包含在系统表空间中创建的表以及所有用户创建的表的索引数据。系统表空间用一个和多个数据文件表示。默认情况下，将在 MySQL 数据目录中创建一个名为 ibdata1 的系统数据文件，该文件的大小和数据由 `innodb_data_file_path` 启动项控制。
 2. 独立表空间：每个独立表空间都是一个单表表空间，它在自己的数据文件中创建，而不是在系统表空间中创建，当启用`innodb_file_per_table`时，将在独立表空间中创建，否则在系统表空间中创建InnoDB表，每个独立表空间有一个.idb数据文件表示，该文件默认是在数据库目录中创建。独立表空间中只存放数据、索引、插入缓冲Bitmap页，其他数据(比如undo信息)仍存放在系统表空间中，意思就是使用了独立表空间后，系统表空间仍然会逐渐增大。
 3. 通用表空间：当使用 CREATE TABELSPACE 创建的共享InnoDB表空间，可以在MySQL数据目录之外创建，可以容纳多张表，如 `CREATE TABLESPACE ts1 ADD DATAFILE '/my/tablespace/directory/ts1.ibd' Engine=InnoDB;`
-4. UNDO表空间：由一个或多个UNDO日志文件组成，数量由 innodb_undo_tablespaces 定义。
+4. UNDO表空间：由一个或多个UNDO日志文件组成，数量由 `innodb_undo_tablespaces` 定义。
 
 ###### 调整InnoDB系统的表空间大小
 

@@ -2494,8 +2494,11 @@ REPEATABLE READ 快照数据总是读取事务开始时的行数据版本。
 
    如果此场景下，只有两个事务T1与T2或者T1与T3，则不会引发如上死锁情况产生。
 2. 先 Update 再 Insert，Gap 和 Gap 之间不冲突，但 Gap 阻止 Insert Intention。
+
    ![image.png](./assets/82.jpg)
+
    表中无数据。
+
    ![image.png](./assets/83.jpg)
 
 ### 锁的问题

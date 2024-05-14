@@ -1587,28 +1587,22 @@ loose_group_replication_start_on_boot=0
 
 ```sql
 -- 查看数据库里正在执行的sql语句
-show
-processlist;
+show processlist;
  
 -- 查看正在执行的完整sql语句，完整显示
-show full
-processlist;
+show full processlist;
  
 -- 查看数据库的配置参数信息，例如：my.cnf里参数的生效情况
-show
-variables;
+show variables;
  
 -- 查看当前会话的数据库状态信息
-show
-session status;
+show session status;
  
 -- 查看整个数据库运行状态信息，分析并做好监控
-show
-global status;
+show global status;
  
 -- 显示innodb 引擎的性能状态
-show
-engine innodb status;
+show engine innodb status;
  
 -- explain语句检查索引执行情况，将上边抓到的慢语句，进行一个索引检查
 explain

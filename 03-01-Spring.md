@@ -187,7 +187,8 @@ Resource一般包括这些实现类：`UrlResource`、`ClassPathResource`、`Fil
 ```java
 public interface ResourceLoader {
 
-    //该接口仅包含这个方法，该方法用于返回一个 Resource 实例。ApplicationContext 的实现类都实现       ResourceLoader 接口，因此 ApplicationContext 可用于直接获取 Resource 实例
+    //该接口仅包含这个方法，该方法用于返回一个 Resource 实例。
+    // ApplicationContext 的实现类都实现ResourceLoader 接口，因此 ApplicationContext 可用于直接获取 Resource 实例
     Resource getResource(String location);
 
 }

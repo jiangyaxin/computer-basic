@@ -26,7 +26,7 @@
 ## SpringBoot扩展点
 
 * `org.springframework.context.ApplicationContextInitializer`：这时候容器刚刚创建，还未load、refresh。
-  
+
   生效办法：
     1. 启动类中加入 `springApplication.addInitializers(new TestApplicationContextInitializer())`
     2. 配置文件中加入， 例如 `context.initializer.classes=com.example.demo.TestApplicationContextInitializer`
@@ -53,8 +53,8 @@
 * `org.springframework.boot.ApplicationRunner、org.springframework.boot.CommandLineRunner`：容器启动之后，顺序由 `@Order`决定，区别是参数不同。
 * `org.springframework.beans.factory.DisposableBean`：对象销毁时执行。
 * `org.springframework.context.ApplicationListener`：2种方式调用，可以实现 `ApplicationListener` 或者 使用 `@EventListener`。
-  
-   Springboot 启动过程中事件：
+
+  Springboot 启动过程中事件：
     1. `ApplicationStartingEvent`：Environment 未创建。
     2. `ApplicationEnvironmentPreparedEvent`：Environment 已创建，环境变量、JVM参数、ServletContext 已加载。
     3. `ApplicationContextInitializedEvent`：容器刚刚创建，`ApplicationContextInitializer`执行之后，还未load、refresh。
@@ -206,7 +206,7 @@ public interface ResourcePatternResolver extends ResourceLoader {
 }
 ```
 
-Spring不仅支持classpath:、file:、http:等各种前缀开头的资源文件解析，而且对于也支持Ant(路径匹配表达式)风格的通配符解析.
+Spring不仅支持`classpath:`、`file:`、`http:`等各种前缀开头的资源文件解析，而且对于也支持Ant(路径匹配表达式)风格的通配符解析.
 
 | Pattern | Description  | Example                                           | Remark                                                                                                                                                 |
 |---------|--------------|---------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------|

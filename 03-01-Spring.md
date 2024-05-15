@@ -40,8 +40,8 @@
 * `org.springframework.beans.factory.config.BeanPostProcessor`：用于扩展 实例化后初始化前后的操作。
 * `org.springframework.beans.factory.config.SmartInstantiationAwareBeanPostProcessor`：继承于 `InstantiationAwareBeanPostProcessor`，除此之外还存在额外的3个方法：
     1. `predictBeanType`：触发点发生在`postProcessBeforeInstantiation`之前，预测Bean的类型，返回第一个预测成功的Class类型，如果不能预测返回null。主要当调用`BeanFactory.getType(name)`时BeanDefinition无法确定Bean类型的时候调用该方法来确定类型。
-    2. `determineCandidateConstructors`：在`postProcessBeforeInstantiation`方法和`postProcessAfterInstantiation`方法之间调用，如果`postProcessBeforeInstantiation`方法返回了一个新的实例代替了原本该生成的实例，那么该方法会被忽略，用于确定该bean的构造函数之用，返回的是该bean的所有构造函数列表。如果返回null，会执行下一个PostProcessor的determineCandidateConstructors方法；否则选取该PostProcessor选择的构造器。
-    3. getEarlyBeanReference：主要用于解决循环引用问题，提前暴露的ObjectFactory就是通过该方法得到。
+    2. `determineCandidateConstructors`：在`postProcessBeforeInstantiation`方法和`postProcessAfterInstantiation`方法之间调用，如果`postProcessBeforeInstantiation`方法返回了一个新的实例代替了原本该生成的实例，那么该方法会被忽略，用于确定该bean的构造函数之用，返回的是该bean的所有构造函数列表。如果返回null，会执行下一个`PostProcessor`的`determineCandidateConstructors`方法；否则选取该`PostProcessor`选择的构造器。
+    3. `getEarlyBeanReference`：主要用于解决循环引用问题，提前暴露的ObjectFactory就是通过该方法得到。
 * `BeanFactoryAware`、`BeanNameAware`、`BeanClassLoaderAware`：填充属性之后，`postProcessBeforeInitialization`之前。
 * `EnvironmentAware`、`EmbeddedValueResolverAware`、`ResourceLoaderAware`、`ApplicationEventPublisherAware`、`MessageSourceAware`、`ApplicationContextAware`：属性填充之后，在postProcessBeforeInitialization中执行。
 

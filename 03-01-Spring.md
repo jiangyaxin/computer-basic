@@ -94,8 +94,8 @@
 
 * `ResourceLoader`：根据给定资源文件地址返回对应的 Resource 。
 * `DocumentLoader`：从资源文件加载转换为 Document 。
-* `BeanDefinitionDocument`：将 Document 转换为 BeanDefinition 。
-* `BeanDefinitionReader`：整合 `ResourceLoader`、`DocumentLoader`、`BeanDefinitionDocument` 功能读取资源获得 BeanDefinition 。
+* `BeanDefinitionDocumenReadert`：将 Document 转换为 BeanDefinition 。
+* `BeanDefinitionReader`：整合 `ResourceLoader`、`DocumentLoader`、`BeanDefinitionDocumentReader` 功能读取资源获得 BeanDefinition 。
 
 ## BeanDefinition：
 

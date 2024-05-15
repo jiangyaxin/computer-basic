@@ -33,35 +33,36 @@
     3. Spring SPI扩展，在`spring.factories`中加入，例如 `org.springframework.context.ApplicationContextInitializer=com.example.demo.TestApplicationContextInitializer`
 * `org.springframework.beans.factory.support.BeanDefinitionRegistryPostProcessor`
 * `org.springframework.beans.factory.config.BeanFactoryPostProcessor`：Springboot扫描注解就是通过这种方式。
-* `org.springframework.beans.factory.config.InstantiationAwareBeanPostProcessor`：继承于 BeanPostProcessor，除此之外还存在额外的3个方法：
+* `org.springframework.beans.factory.config.InstantiationAwareBeanPostProcessor`：继承于 `BeanPostProcessor`，除此之外还存在额外的3个方法：
     1. `postProcessBeforeInstantiation`：未创建实例，默认返回为null，当不为null，会用该对象替换 Bean默认的实例化过程，后续会执行 `postProcessAfterInitialization`，不会执行 `postProcessAfterInstantiation`、`postProcessProperties`，例如 `AnnotationAwareAspectJAutoProxyCreator` 实现的 AOP。
-    2. `postProcessAfterInstantiation`：Bean默认的实例化后，属性还没有被赋值；它的返回值是决定要不要调用 postProcessProperties 方法，默认为 true 。
-    3. `postProcessProperties`：对属性值进行修改，如果该方法返回的为null，则继续使用原来的 PropertyValues 对象，如果返回的不为null，则替换掉原有的 PropertyValues 对象。
+    2. `postProcessAfterInstantiation`：Bean默认的实例化后，属性还没有被赋值；它的返回值是决定要不要调用 `postProcessProperties` 方法，默认为 true 。
+    3. `postProcessProperties`：对属性值进行修改，如果该方法返回的为null，则继续使用原来的 `PropertyValues` 对象，如果返回的不为null，则替换掉原有的 `PropertyValues` 对象。
 * `org.springframework.beans.factory.config.BeanPostProcessor`：用于扩展 实例化后初始化前后的操作。
 * `org.springframework.beans.factory.config.SmartInstantiationAwareBeanPostProcessor`：继承于 `InstantiationAwareBeanPostProcessor`，除此之外还存在额外的3个方法：
-    1. `predictBeanType`：触发点发生在postProcessBeforeInstantiation之前，预测Bean的类型，返回第一个预测成功的Class类型，如果不能预测返回null。主要当调用`BeanFactory.getType(name)`时BeanDefinition无法确定Bean类型的时候调用该方法来确定类型。
+    1. `predictBeanType`：触发点发生在`postProcessBeforeInstantiation`之前，预测Bean的类型，返回第一个预测成功的Class类型，如果不能预测返回null。主要当调用`BeanFactory.getType(name)`时BeanDefinition无法确定Bean类型的时候调用该方法来确定类型。
     2. `determineCandidateConstructors`：在`postProcessBeforeInstantiation`方法和`postProcessAfterInstantiation`方法之间调用，如果`postProcessBeforeInstantiation`方法返回了一个新的实例代替了原本该生成的实例，那么该方法会被忽略，用于确定该bean的构造函数之用，返回的是该bean的所有构造函数列表。如果返回null，会执行下一个PostProcessor的determineCandidateConstructors方法；否则选取该PostProcessor选择的构造器。
     3. getEarlyBeanReference：主要用于解决循环引用问题，提前暴露的ObjectFactory就是通过该方法得到。
 * `BeanFactoryAware`、`BeanNameAware`、`BeanClassLoaderAware`：填充属性之后，`postProcessBeforeInitialization`之前。
 * `EnvironmentAware`、`EmbeddedValueResolverAware`、`ResourceLoaderAware`、`ApplicationEventPublisherAware`、`MessageSourceAware`、`ApplicationContextAware`：属性填充之后，在postProcessBeforeInitialization中执行。
 
-* `javax.annotation.PostConstruct`：在postProcessBeforeInitialization中执行，存在于InitDestroyAnnotationBeanPostProcessor中。
+* `javax.annotation.PostConstruct`：在`postProcessBeforeInitialization`中执行，存在于`InitDestroyAnnotationBeanPostProcessor`中。
 * `org.springframework.beans.factory.InitializingBean`：`postProcessBeforeInitialization`之后，`postProcessAfterInitialization`之前，`init-method` 会在随后执行。
 * `org.springframework.beans.factory.FactoryBean`：用来构建复杂的bean。
-* `org.springframework.beans.factory.SmartInitializingSingleton`：Spring容器管理的所有单例对象（非懒加载对象）初始化完成之后调用，触发时机在postProcessAfterInitialization之后。
+* `org.springframework.beans.factory.SmartInitializingSingleton`：Spring容器管理的所有单例对象（非懒加载对象）初始化完成之后调用，触发时机在`postProcessAfterInitialization`之后。
 
 * `org.springframework.boot.ApplicationRunner、org.springframework.boot.CommandLineRunner`：容器启动之后，顺序由 `@Order`决定，区别是参数不同。
 * `org.springframework.beans.factory.DisposableBean`：对象销毁时执行。
 * `org.springframework.context.ApplicationListener`：2种方式调用，可以实现 `ApplicationListener` 或者 使用 `@EventListener`。
-  Springboot 启动过程中事件：
+  
+   Springboot 启动过程中事件：
     1. `ApplicationStartingEvent`：Environment 未创建。
     2. `ApplicationEnvironmentPreparedEvent`：Environment 已创建，环境变量、JVM参数、ServletContext 已加载。
-    3. `ApplicationContextInitializedEvent`：容器刚刚创建，ApplicationContextInitializer执行之后，还未load、refresh。
+    3. `ApplicationContextInitializedEvent`：容器刚刚创建，`ApplicationContextInitializer`执行之后，还未load、refresh。
     4. `ApplicationPreparedEvent`：已经完成load，BeanPostProcessor，入口类已完成加载，注解未完成扫描。
     5. `ContextRefreshedEvent`：在refresh方法最后， refresh() 被调用时发生，所有的Bean被成功装载，后处理Bean被检测并激活，所有Singleton Bean 被预实例化。
-    6. `ApplicationStartedEvent`：容器已经完成refresh，所有bean都完成加载，ApplicationRunner、CommandLineRunner未执行。
+    6. `ApplicationStartedEvent`：容器已经完成refresh，所有bean都完成加载，`ApplicationRunner`、`CommandLineRunner`未执行。
     7. `ApplicationFailedEvent`：容器启动失败时触发。
-    8. `ApplicationReadyEven`t：ApplicationRunner、CommandLineRunner已经执行，容器成功启动后触发。
+    8. `ApplicationReadyEvent`：`ApplicationRunner`、`CommandLineRunner`已经执行，容器成功启动后触发。
 
 ## Bean 生命周期
 
@@ -69,23 +70,23 @@
 
 1. 实例化Bean：通过反射调用构造方法实例化对象。
 2. 依赖注入：装配Bean的属性。
-3. 实现了Aware接口的Bean，执行接口方法：如顺序执行BeanNameAware、BeanFactoryAware、ApplicationContextAware的接口方法。
-4. Bean对象初始化前，循环调用实现了BeanPostProcessor接口的预初始化方法（postProcessBeforeInitialization），顺序执行@PostConstruct注解方法。
-5. Bean对象初始化：InitializingBean接口方法、init-method方法。
-6. Bean对象初始化后，循环调用实现了BeanPostProcessor接口的后初始化方法（postProcessAfterInitialization）。
-7. 容器关闭时，执行Bean对象的销毁方法，顺序是：@PreDestroy注解方法、DisposableBean接口方法、destroy-method。
+3. 实现了Aware接口的Bean，执行接口方法：如顺序执行`BeanNameAware`、`BeanFactoryAware`、`ApplicationContextAware`的接口方法。
+4. Bean对象初始化前，循环调用实现了BeanPostProcessor接口的预初始化方法`postProcessBeforeInitialization`，顺序执行`@PostConstruct`注解方法。
+5. Bean对象初始化：`InitializingBean`接口方法、`init-method`方法。
+6. Bean对象初始化后，循环调用实现了`BeanPostProcessor`接口的后初始化方法`postProcessAfterInitialization`。
+7. 容器关闭时，执行Bean对象的销毁方法，顺序是：`@PreDestroy`注解方法、`DisposableBean`接口方法、`destroy-method`。
 
 # BeanFactory
 
 ![97](assets/97.png)
 
 * `AliasRegistry`：定义对alias的简单增删改等操作。
-* `BeanDefinitionRegistry`：定义对 BeanDefinition 的各种增删改操作。
-* `HierarchicalBeanFactory`：增加 BeanFactory 对 parentFactory 的缓存。
+* `BeanDefinitionRegistry`：定义对 `BeanDefinition` 的各种增删改操作。
+* `HierarchicalBeanFactory`：增加 `BeanFactory` 对 `parentFactory` 的缓存。
 * `ListableBeanFactory`：获取bean的列表。
 * `ConfigurableBeanFactory`：可以配置 BeanFactory。
 * `AutowireCapableBeanFactory`：可以手动调用完成 bean 的注入、初始化、应用后处理器，这里的自动装配不是 @Autowired 注解，而是 xml方式 的注入，也叫传统注入方式，注解驱动注入是通过 `AutowiredAnnotationBeanPostProcessor#setAutowiredAnnotationType` 提供的。
-* `ConfigurableListableBeanFactory`：继承 ConfigurableBeanFactory 和 AutowireCapableBeanFactory。
+* `ConfigurableListableBeanFactory`：继承 `ConfigurableBeanFactory` 和 `AutowireCapableBeanFactory`。
 
 ## XmlBeanDefinitionReader：
 
@@ -94,12 +95,12 @@
 * `ResourceLoader`：根据给定资源文件地址返回对应的 Resource 。
 * `DocumentLoader`：从资源文件加载转换为 Document 。
 * `BeanDefinitionDocument`：将 Document 转换为 BeanDefinition 。
-* `BeanDefinitionReader`：整合 ResourceLoader、DocumentLoader、BeanDefinitionDocument 功能读取资源获得 BeanDefinition 。
+* `BeanDefinitionReader`：整合 `ResourceLoader`、`DocumentLoader`、`BeanDefinitionDocument` 功能读取资源获得 BeanDefinition 。
 
 ## BeanDefinition：
 
 * `AnnotatedGenericBeanDefinition` ： 表示@Configuration注解注释的BeanDefinition类。
-* `ScannedGenericBeanDefinition` ：表示@Component、@Service、@Controller等注解注释的Bean类。
+* `ScannedGenericBeanDefinition` ：表示`@Component`、`@Service`、`@Controller`等注解注释的Bean类。
 
 ## Bean的加载：
 
@@ -132,9 +133,9 @@ Bean 信息实例化请求的对象，并为其注册依赖，然后将其返回
      private final Map<String, Object> earlySingletonObjects = new HashMap<>(16);
    }
    ```
-3. 如果从缓存中获取到bean，由于bean不是最终的bean，所以需要调用 getObjectForBeanInstance(...) 获取bean实例 或 FactoryBean.getObject() 的对象。
-4. 如果没有从缓存中获取到bean 先从 parentBeanFactory 获取 Bean。
-5. 如果没有从 parentBeanFactory 获取到，再获取 BeanDefinition ，先需要依赖，判断没有循环先创建依赖，再根据不同的作用域创建bean。
+3. 如果从缓存中获取到bean，由于bean不是最终的bean，所以需要调用 `getObjectForBeanInstance(...)` 获取bean实例 或 `FactoryBean.getObject()` 的对象。
+4. 如果没有从缓存中获取到bean 先从 `parentBeanFactory` 获取 Bean。
+5. 如果没有从 `parentBeanFactory` 获取到，再获取 BeanDefinition ，先需要依赖，判断没有循环先创建依赖，再根据不同的作用域创建bean。
 6. 类型转换，例如name返回为String，requiredType 要求返回 Integer，这时候会使用 ConversionService 做转换。
 
 循环依赖处理：
@@ -181,7 +182,7 @@ singletonFactories 中的数据来自于 doCreateBean 时使添加，添加的�
 
 Resource一般包括这些实现类：`UrlResource`、`ClassPathResource`、`FileSystemResource`、`ServletContextResource`、`InputStreamResource`、`ByteArrayResource`。
 
-平常使用可以使用 ResourceLoader 接口 ,可通过 ResourceLoaderAware 注入：
+平常使用可以使用 `ResourceLoader` 接口 ,可通过 `ResourceLoaderAware` 注入：
 
 ```java
 public interface ResourceLoader {

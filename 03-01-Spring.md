@@ -364,7 +364,7 @@ public class PropertiesUtil implements EmbeddedValueResolverAware {
 自定义 Placeholder 前后缀解析：
 
 ```java
-    public void test() {
+public void test() {
     PropertyPlaceholderHelper propertyPlaceholderHelper = new PropertyPlaceholderHelper("${", "}");
     Properties properties = new Properties();
     properties.put("group", "aaa");

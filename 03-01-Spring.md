@@ -322,11 +322,19 @@ public class SpelExpressionParserTest {
         // 创建解析器
         ExpressionParser parser = new SpelExpressionParser();
         // 生成表达式
-        Expression expression = parser.parseExpression("#p.name");
-        // 结合 EvaluationContext 和 rootObject 计算结果
+        Expression expression = parser.parseExpression("#user.name");
+        
+        User user = new User();
+        EvaluationContext context = new StandardEvaluationContext();
+        context.setVariable("user", user);
+        
         expression.getValue();
-        expression.getValue(EvaluationContext);
-        expression.getValue(rootObject);
+
+        // 结合 EvaluationContext 计算结果
+        expression.getValue(context);
+
+        // 结合 rootObject 计算结果
+        expression.getValue(user);
     }
 }
 ```

@@ -71,7 +71,7 @@
 1. 实例化Bean：通过反射调用构造方法实例化对象。
 2. 依赖注入：装配Bean的属性。
 3. 实现了Aware接口的Bean，执行接口方法：如顺序执行`BeanNameAware`、`BeanFactoryAware`、`ApplicationContextAware`的接口方法。
-4. Bean对象初始化前，循环调用实现了BeanPostProcessor接口的预初始化方法`postProcessBeforeInitialization`，顺序执行`@PostConstruct`注解方法。
+4. Bean对象初始化前，循环调用实现了`BeanPostProcessor`接口的预初始化方法`postProcessBeforeInitialization`，顺序执行`@PostConstruct`注解方法。
 5. Bean对象初始化：`InitializingBean`接口方法、`init-method`方法。
 6. Bean对象初始化后，循环调用实现了`BeanPostProcessor`接口的后初始化方法`postProcessAfterInitialization`。
 7. 容器关闭时，执行Bean对象的销毁方法，顺序是：`@PreDestroy`注解方法、`DisposableBean`接口方法、`destroy-method`。
@@ -94,7 +94,7 @@
 
 * `ResourceLoader`：根据给定资源文件地址返回对应的 Resource 。
 * `DocumentLoader`：从资源文件加载转换为 Document 。
-* `BeanDefinitionDocumenReadert`：将 Document 转换为 BeanDefinition 。
+* `BeanDefinitionDocumentReader`：将 Document 转换为 BeanDefinition 。
 * `BeanDefinitionReader`：整合 `ResourceLoader`、`DocumentLoader`、`BeanDefinitionDocumentReader` 功能读取资源获得 BeanDefinition 。
 
 ## BeanDefinition：
@@ -257,18 +257,16 @@ Spring 中容器存在父子关系，父容器不能访问子容器的资源，�
 # ApplicationContext
 
 ![99](assets/99.png)
-ApplicationContext 是对 BeanFactory 的扩展，Application 有两个直接子类：WebApplicationContext 和
-`ConfigurableApplicationContext`：
+`ApplicationContext` 是对 `BeanFactory` 的扩展，`Application` 有两个直接子类：`WebApplicationContext`和`ConfigurableApplicationContext`：
 
-* WebApplicationContext：可以获取ServletContext。
-* ConfigurableApplicationContext：包含主要的方法，其中就包含refresh()方法，它是 ApplicationContext 对 BeanFactory 最主要的扩展。
+* `WebApplicationContext`：可以获取ServletContext。
+* `ConfigurableApplicationContext`：包含主要的方法，其中就包含refresh()方法，它是 ApplicationContext 对 BeanFactory 最主要的扩展。
 
-ApplicationContext 继承 ResourcePatternResolver 的 getResources() 方法可以供日常使用。
+`ApplicationContext` 继承 `ResourcePatternResolver` 的 getResources() 方法可以供日常使用。
 
 * `AnnotationConfigApplicationContext`：从一个或多个基于Java的配置类中加载Spring应用上下文。
 * `AnnotationConfigWebApplicationContext`：从一个或多个基于Java的配置类中加载Spring Web应用上下文。
-* `ClassPathXmlApplicationContext`：从类路径下的一个或多个XML配置文件中加载上下文定义，把应用上下文的定义文件作为类资源，使用的是
-  class路径
+* `ClassPathXmlApplicationContext`：从类路径下的一个或多个XML配置文件中加载上下文定义，把应用上下文的定义文件作为类资源，使用的是 class路径
 * `FileSystemXmlapplicationcontext`：从文件系统下的一个或多个XML配置文件中加载上下文定义,使用的是 文件系统路径。
 * `XmlWebApplicationContext`：从Web应用下的一个或多个XML配置文件中加载上下文定义。
 
@@ -276,37 +274,38 @@ ApplicationContext 继承 ResourcePatternResolver 的 getResources() 方法可�
 
 1. 准备刷新：
 
-* Environment 并且对 Environment 中的属性进行校验，Environment 可能是 StandardEnvironment(包含 系统环境和jvm属性) 也可能是 StandardServletEnvironment(继承 StandardEnvironment,另外包含 ServletContext 的属性)
+* `Environment` 并且对 `Environment` 中的属性进行校验，`Environment` 可能是 `StandardEnvironment`(包含 系统环境和jvm属性) 也可能是 `StandardServletEnvironment`(继承 `StandardEnvironment`,另外包含 ServletContext 的属性)
 
-2. 获取 BeanFactory，对于 XmlWebApplicationContext 类型的会在这个时候创建，并加载BeanDefinition，对于 AnnotationConfigWebApplicationContext 类型的直接获取，并不会加载 BeanDefin，因为AnnotationConfigWebApplicationContext创建时就已经创建。
-3. 准备 BeanFactory
+2. 获取 `BeanFactory`，对于 `XmlWebApplicationContext` 类型的会在这个时候创建，并加载`BeanDefinition`，对于 `AnnotationConfigWebApplicationContext` 类型的直接获取，并不会加载 BeanDefin，因为`AnnotationConfigWebApplicationContext`创建时就已经创建。
+3. 准备 `BeanFactory`
 
-    * 填充 SpelExpressionParser。
-    * 添加 Resource 类型及其子类型添加 转换器。
-    * 添加 xxxAware 类型后置处理器，即创建bean后注入对应的 xxx。
-    * 将 BeanFactory、ApplicationContext 等注入到上下文。
-    * 添加 ApplicationListener 类型后置处理器，即创建bean 之后注入到 发布器。
-    * 注册 Environment、SystemProperties、SystemEnvironment。
+    * 填充 `SpelExpressionParser`。
+    * 添加 `Resource` 类型及其子类型添加 转换器。
+    * 添加 `xxxAware` 类型后置处理器，即创建bean后注入对应的 xxx。
+    * 将 `BeanFactory`、`ApplicationContext` 等注入到上下文。
+    * 添加 `ApplicationListener` 类型后置处理器，即创建bean 之后注入到 发布器。
+    * 注册 `Environment`、`SystemProperties`、`SystemEnvironment`。
 4. postProcessBeanFactory，提供给子类实现，
 
-    * 在 AbstractRefreshableWebApplicationContext 中默认实现是 处理ServletContextAware，并且设置 RequestObjectFactory，ResponseObjectFactory，SessionObjectFactory，WebRequestObjectFactory。
-    * 在 AnnotationConfigServletWebServerApplicationContext 相对上面的内容还要添加 扫描AnnotationConfigServletWebServerApplicationContext 中的basePackages和annotatedClasses。
-5. 触发 BeanFactoryPostProcessor，springboot 在该阶段会扫描所有包。
+    * 在 `AbstractRefreshableWebApplicationContext` 中默认实现是 处理`ServletContextAware`，并且设置 `RequestObjectFactory`，`ResponseObjectFactory`，`SessionObjectFactory`，`WebRequestObjectFactory`。
+    * 在 `AnnotationConfigServletWebServerApplicationContext` 相对上面的内容还要添加 扫描`AnnotationConfigServletWebServerApplicationContext` 中的`basePackages`和`annotatedClasses`。
+5. 触发 `BeanFactoryPostProcessor`，springboot 在该阶段会扫描所有包。
 
-    * ConfigurationClassPostProcessor：beanName为internalConfigurationAnnotationProcessor用于处理@configuration注解的后置处理器的bean
-    * AutowiredAnnotationBeanPostProcessor：beanName为internalAutowiredAnnotationProcessor用于处理@Autowired，@Value,@Inject以及@Lookup注解的后置处理器bean
-    * CommonAnnotationBeanPostProcessor：beanName为internalCommonAnnotationProcessor用于处理JSR-250注解，例如@Resource,@PostConstruct,@PreDestroy的后置处理器bean*EventListenerMethodProcessor：beanName为internalEventListenerProcessor用于处理@EventListener注解的后置处理器的bean
-    * DefaultEventListenerFactory：beanName为internalEventListenerFactory管理用于生产ApplicationListener对象的EventListenerFactory对象
-6. 识别所有的 BeanPostProcessor 并注册到 BeanFactory。
-7. 初始化 MessageSource。
-8. 初始化 ApplicationEventMulticaster 上下文事件广播器。
+    * `ConfigurationClassPostProcessor`：用于处理`@configuration`注解的后置处理器,beanName为`internalConfigurationAnnotationProcessor`
+    * `AutowiredAnnotationBeanPostProcessor`：用于处理`@Autowired`、`@Value`、`@Inject`以及`@Lookup`注解的后置处理器,beanName为`internalAutowiredAnnotationProcessor`
+    * `CommonAnnotationBeanPostProcessor`：用于处理JSR-250注解，例如`@Resource`、`@PostConstruct`、`@PreDestroy`的后置处理器,beanName为`internalCommonAnnotationProcessor`
+    * `EventListenerMethodProcessor`：用于处理`@EventListener`注解的后置处理器，beanName为internalEventListenerProcessor
+    * `DefaultEventListenerFactory`：用于生产`ApplicationListener`对象的`EventListenerFactory`对象,beanName为`internalEventListenerFactory`
+6. 识别所有的 `BeanPostProcessor` 并注册到 BeanFactory。
+7. 初始化 `MessageSource`。
+8. 初始化 `ApplicationEventMulticaster` 上下文事件广播器。
 9. onRefresh 留给子类扩展，
 
-* 在 AnnotationConfigServletWebServerApplicationContext 中会启动 web 容器，例如 Tomcat
+* 在 `AnnotationConfigServletWebServerApplicationContext` 中会启动 web 容器，例如 Tomcat
 
-10. 注册 ApplicationListener 到 ApplicationEventMulticaster。
-11. 初始化 ConversionService 等。
-12. 注册 DefaultLifecycleProcessor，发布 ContextRefreshedEvent 事件。
+10. 注册 `ApplicationListener` 到 `ApplicationEventMulticaster`。
+11. 初始化 `ConversionService` 等。
+12. 注册 `DefaultLifecycleProcessor`，发布 `ContextRefreshedEvent` 事件。
 
 ## SpelExpressionParser
 

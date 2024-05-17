@@ -301,7 +301,7 @@ Spring 中容器存在父子关系，父容器不能访问子容器的资源，�
 8. 初始化 `ApplicationEventMulticaster` 上下文事件广播器。
 9. onRefresh 留给子类扩展，
 
-* 在 `AnnotationConfigServletWebServerApplicationContext` 中会启动 web 容器，例如 Tomcat
+   * 在 `AnnotationConfigServletWebServerApplicationContext` 中会启动 web 容器，例如 Tomcat
 
 10. 注册 `ApplicationListener` 到 `ApplicationEventMulticaster`。
 11. 初始化 `ConversionService` 等。

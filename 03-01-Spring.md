@@ -321,20 +321,19 @@ public class SpelExpressionParserTest {
     public void test() {
         // 创建解析器
         ExpressionParser parser = new SpelExpressionParser();
-        // 生成表达式
-        Expression expression = parser.parseExpression("#user.name");
-        
-        User user = new User();
-        EvaluationContext context = new StandardEvaluationContext();
-        context.setVariable("user", user);
-        
-        expression.getValue();
+
+        Flow flow = new Flow();
+        flow.setOrderId("1111");
 
         // 结合 EvaluationContext 计算结果
-        expression.getValue(context);
+        EvaluationContext context = new StandardEvaluationContext();
+        context.setVariable("flow", flow);
+        Expression expression1 = parser.parseExpression("#flow.orderId");
+        log.info((String)expression1.getValue(context));
 
         // 结合 rootObject 计算结果
-        expression.getValue(user);
+        Expression expression2 = parser.parseExpression("orderId");
+        log.info((String)expression2.getValue(flow));
     }
 }
 ```

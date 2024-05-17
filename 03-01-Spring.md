@@ -291,11 +291,11 @@ Spring 中容器存在父子关系，父容器不能访问子容器的资源，�
     * 在 `AnnotationConfigServletWebServerApplicationContext` 相对上面的内容还要添加 扫描`AnnotationConfigServletWebServerApplicationContext` 中的`basePackages`和`annotatedClasses`。
 5. 触发 `BeanFactoryPostProcessor`，springboot 在该阶段会扫描所有包。
 
-    * `ConfigurationClassPostProcessor`：用于处理`@configuration`注解的后置处理器,beanName为`internalConfigurationAnnotationProcessor`
-    * `AutowiredAnnotationBeanPostProcessor`：用于处理`@Autowired`、`@Value`、`@Inject`以及`@Lookup`注解的后置处理器,beanName为`internalAutowiredAnnotationProcessor`
-    * `CommonAnnotationBeanPostProcessor`：用于处理JSR-250注解，例如`@Resource`、`@PostConstruct`、`@PreDestroy`的后置处理器,beanName为`internalCommonAnnotationProcessor`
-    * `EventListenerMethodProcessor`：用于处理`@EventListener`注解的后置处理器，beanName为`internalEventListenerProcessor`
-    * `DefaultEventListenerFactory`：用于生产`ApplicationListener`对象的`EventListenerFactory`对象,beanName为`internalEventListenerFactory`
+    * `ConfigurationClassPostProcessor`：用于处理`@configuration`注解,beanName为`internalConfigurationAnnotationProcessor`
+    * `AutowiredAnnotationBeanPostProcessor`：用于处理`@Autowired`、`@Value`、`@Inject`以及`@Lookup`注解,beanName为`internalAutowiredAnnotationProcessor`
+    * `CommonAnnotationBeanPostProcessor`：用于处理JSR-250注解，例如`@Resource`、`@PostConstruct`、`@PreDestroy`,beanName为`internalCommonAnnotationProcessor`
+    * `EventListenerMethodProcessor`：用于处理`@EventListener`注解，beanName为`internalEventListenerProcessor`
+    * `DefaultEventListenerFactory`：管理用于生产`ApplicationListener`对象的`EventListenerFactory`对象,beanName为`internalEventListenerFactory`
 6. 识别所有的 `BeanPostProcessor` 并注册到 BeanFactory。
 7. 初始化 `MessageSource`。
 8. 初始化 `ApplicationEventMulticaster` 上下文事件广播器。

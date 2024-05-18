@@ -301,7 +301,7 @@ Spring 中容器存在父子关系，父容器不能访问子容器的资源，�
 8. 初始化 `ApplicationEventMulticaster` 上下文事件广播器。
 9. onRefresh 留给子类扩展，
 
-   * 在 `AnnotationConfigServletWebServerApplicationContext` 中会启动 web 容器，例如 Tomcat
+    * 在 `AnnotationConfigServletWebServerApplicationContext` 中会启动 web 容器，例如 Tomcat
 
 10. 注册 `ApplicationListener` 到 `ApplicationEventMulticaster`。
 11. 初始化 `ConversionService` 等。
@@ -329,11 +329,11 @@ public class SpelExpressionParserTest {
         EvaluationContext context = new StandardEvaluationContext();
         context.setVariable("flow", flow);
         Expression expression1 = parser.parseExpression("#flow.orderId");
-        log.info((String)expression1.getValue(context));
+        log.info((String) expression1.getValue(context));
 
         // 结合 rootObject 计算结果
         Expression expression2 = parser.parseExpression("orderId");
-        log.info((String)expression2.getValue(flow));
+        log.info((String) expression2.getValue(flow));
     }
 }
 ```
@@ -835,16 +835,16 @@ public class FluxTest {
 
 自定义缓存 key：
 
-| 表达式               | 描述                                     |
-|-------------------|----------------------------------------|
-| #root.args        | 传递给缓存方法的参数，形式为数组                       |
-| #root.caches      | 该方法执行时所对应的缓存，形式为数组                     |
-| #root.target      | 目标对象                                   |
-| #root.targetClass | 目标对象的类，是 #root.target.class 的简写形式      |
-| #root.method      | 缓存方法                                   |
-| #root.methodName  | 缓存方法的名字，是 #root.method.name 的简写形式      |
-| #result           | 方法调用的返回值（不能用在 @Cacheable 注解上）          |
-| #Argument         | 任意的方法参数名（如 #argName）或参数索引（如 #a0 或 #p0） |
+| 表达式               | 描述                                |
+|-------------------|-----------------------------------|
+| #root.args        | 传递给缓存方法的参数，形式为数组                  |
+| #root.caches      | 该方法执行时所对应的缓存，形式为数组                |
+| #root.target      | 目标对象                              |
+| #root.targetClass | 目标对象的类，是 #root.target.class 的简写形式 |
+| #root.method      | 缓存方法                              |
+| #root.methodName  | 缓存方法的名字，是 #root.method.name 的简写形式 |
+| #result           | 方法调用的返回值（不能用在 @Cacheable 注解上）     |
+| #Argument         | 任意的方法参数名（如 #argName）或参数索引（如 #p0）  |
 
 @CacheEvict 属性：
 

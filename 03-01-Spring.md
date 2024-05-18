@@ -619,7 +619,7 @@ public void setDessert(Dessert dessert) {
 ```java
 public class SpELTest {
     public void test() {
-        //1. 它的最终结果是计算表达式的那一刻当前时间的毫秒数。T () 表达式会将java.lang.System视为Java中对应的类型，因此可以调用其static修饰的currentTimeMillis()方法。
+        //1. 它的最终结果是计算表达式的那一刻当前时间的毫秒数。T(...) 表达式会将java.lang.System视为Java中对应的类型，因此可以调用其static修饰的currentTimeMillis()方法。
         "#{T(System).currentTimeMillis()}"
         //2. SpEL表达式可以引用其他的bean或其他bean的属性。
         //例如，引用sgtPeppers的bean

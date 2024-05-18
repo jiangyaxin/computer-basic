@@ -902,21 +902,21 @@ public class FluxTest {
    java -jar -Dspring.profiles.active=test -Dserver.port=8081 app.jar
    java -jar -XX:MetaspaceSize=128m -XX:MaxMetaspaceSize=128m -Xms1024m -Xmx1024m -Xmn256m -Xss256k -XX:SurvivorRatio=8 -XX:+UseConcMarkSweepGC newframe-1.0.0.jar
    ```
-2. SPRING_APPLICATION_JSON 环境变量：值为一个JSON。
-3. ServletConfig 初始化参数。
-4. ServletContext 初始化参数。
-5. java:comp/env 的JNDI属性。
-6. System.getProperties() JVM系统属性。
+2. `SPRING_APPLICATION_JSON` 环境变量：值为一个JSON。
+3. `ServletConfig` 初始化参数。
+4. `ServletContext` 初始化参数。
+5. `java:comp/env` 的JNDI属性。
+6. `System.getProperties()` JVM系统属性。
 7. 操作系统环境变量。
-8. RandomValuePropertySource，例如 my.secret=${random.value}
+8. `RandomValuePropertySource`，例如 my.secret=${random.value}
 9. 读取配置文件：
 
-    * jar包外 优先 jar 包内。
-    * config下 优先 根目录下。
-    * application-{profile} 优先 application。
-    * properties 优先 yml。
-10. @PropertySource
-11. SpringApplication.setDefaultProperties
+    * `jar`包外 优先 jar 包内。
+    * `config`下 优先 根目录下。
+    * `application-{profile}` 优先 application。
+    * `properties` 优先 yml。
+10. `@PropertySource`
+11. `SpringApplication.setDefaultProperties`
 
 ymal传输到日志配置文件：
 
@@ -1057,8 +1057,8 @@ public class LogbackController {
 
 自动配置的线程池：
 
-* applicationTaskExecutor、taskExecutor：ThreadPoolTaskExecutor 类型，使用 spring.task.execution.pool 配置。
-* threadPoolTaskScheduler：ThreadPoolTaskScheduler 类型，使用 spring.task.scheduling 配置。
+* `applicationTaskExecutor`、`taskExecutor`：`ThreadPoolTaskExecutor` 类型，使用 spring.task.execution.pool 配置。
+* `threadPoolTaskScheduler`：`ThreadPoolTaskScheduler` 类型，使用 spring.task.scheduling 配置。
 
 测试：
 

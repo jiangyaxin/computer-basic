@@ -620,54 +620,54 @@ public void setDessert(Dessert dessert) {
 public class SpELTest {
     public void test() {
         //1. 它的最终结果是计算表达式的那一刻当前时间的毫秒数。T () 表达式会将java.lang.System视为Java中对应的类型，因此可以调用其static修饰的currentTimeMillis()方法。
-        "# {T(System).currentTimeMillis()}"
+        "#{T(System).currentTimeMillis()}"
         //2. SpEL表达式可以引用其他的bean或其他bean的属性。
         //例如，引用sgtPeppers的bean
-        "{ sgtPeppers }"
+        "#{sgtPeppers}"
         //例如，如下的表达式会计算得到ID为sgtPeppers的bean的artist属性：
-        "# { sgtPeppers.artist }"
+        "#{sgtPeppers.artist}"
         //3. 还可以通过systemProperties对象引用系统属性：
-        "# { systemProperties['disc.title'] }"
+        "#{systemProperties['disc.title']}"
         //4. 表示字面值：
-        "# { 3.1415926 }"
-        "# { 9.87E4 }"
-        "# { 'Hello' }"
-        "# { false }"
+        "#{3.1415926}"
+        "#{9.87E4}"
+        "#{'Hello'}"
+        "#{false}"
         //5. 引用其他的bean的方法
-        "# { artistSelector.selectArtist () }"
+        "#{artistSelector.selectArtist ()}"
         //为了防止方法值为null，抛出异常，可以使用“?.”
         //不是null，正常返回；如果是null，不执行后面的方法，直接返回null
-        "# { artistSelector.selectArtist ()?.toUpperCase() }"
+        "#{artistSelector.selectArtist ()?.toUpperCase()}"
         //6. 如果要在SpEL中访问类作用域的方法和常量的话，要依赖T() 这个关键的运算符。
-        "# { T(java.lang.Math).PI }"
-        "# { T(java.lang.Math).random() }"
+        "#{T(java.lang.Math).PI}"
+        "#{T(java.lang.Math).random()}"
         //7. 还可以将运算符用在表达式上，如：
-        "# { 2 * T(java.lang.Math).PI * circle.radius }"
-        "# { disc.title + ' by ' + disc.artist }"
+        "#{2 * T(java.lang.Math).PI * circle.radius}"
+        "#{disc.title + ' by ' + disc.artist}"
         //8. 比较数字相等的写法
-        "# { counter.total == 100 }"
-        "# { counter.total eq 100 }"
+        "#{counter.total == 100}"
+        "#{counter.total eq 100}"
         //9. 三元运算符
-        "# { scoreboard.score > 1000 ? " Winner !" : " Loser " }"
-        "# { disc.title ?: 'Rattle and Hum' } " // 如果disc.title的值为空，返回'Rattle and Hum'
+        "#{scoreboard.score > 1000 ? " Winner !" : " Loser "}"
+        "#{disc.title ?: 'Rattle and Hum' } " // 如果disc.title的值为空，返回'Rattle and Hum'
         //10. 支持正则表达式
-        "# { admin.email matches '[a-zA-Z0-9.*%+-]+@[a-zA-Z0-9.*]+\.com' }"
+        "#{admin.email matches '[a-zA-Z0-9.*%+-]+@[a-zA-Z0-9.*]+\.com'}"
         //11. 支持与集合和数组相关的表达式
-        "# { jukebox.songs[4].title }"
-        "# { jukebox.songs[T(java.lang.Math).random() * jukebox.songs.size()].title }"
-        "# { 'This is a test' [3] }" // 引用第4个字符 - “s”
+        "#{jukebox.songs[4].title}"
+        "#{jukebox.songs[T(java.lang.Math).random() * jukebox.songs.size()].title}"
+        "#{'This is a test' [3]}" // 引用第4个字符 - “s”
         //12. 支持查询运算符
         //例如你希望得到jukebox中artist属性为Aerosmith的所有歌曲：
-        "# { jukebox.songs.?[artist eq 'Aerosmith'] }"
+        "#{jukebox.songs.?[artist eq 'Aerosmith']}"
         //查找列表中第一个artist属性为Aerosmith的歌曲：
-        "# { jukebox.songs.^[artist eq 'Aerosmith'] }"
+        "#{jukebox.songs.^[artist eq 'Aerosmith']}"
         //查找列表中最后一个artist属性为Aerosmith的歌曲：
-        "# { jukebox.songs.$[artist eq 'Aerosmith'] }"
+        "#{jukebox.songs.$[artist eq 'Aerosmith']}"
         //13. 支持投影运算符
         //假设我们不想要歌曲对象的集合，而是所有歌曲名称的集合。如下表达式会将title属性投影到一个新的String类型的集合中：
-        "# { jukebox.songs.![title]}"
+        "#{jukebox.songs.![title]}"
         //获取Aerosmith所有歌曲的title
-        "# { jukebox.songs.?[artist eq 'Aerosmith'].![title] }"
+        "#{jukebox.songs.?[artist eq 'Aerosmith'].![title]}"
     }
 }
 ```

@@ -1057,8 +1057,8 @@ public class LogbackController {
 
 自动配置的线程池：
 
-* `applicationTaskExecutor`、`taskExecutor`：`ThreadPoolTaskExecutor` 类型，使用 spring.task.execution.pool 配置。
-* `threadPoolTaskScheduler`：`ThreadPoolTaskScheduler` 类型，使用 spring.task.scheduling 配置。
+* `applicationTaskExecutor`、`taskExecutor`：`ThreadPoolTaskExecutor` 类型，使用 `spring.task.execution.pool` 配置。
+* `threadPoolTaskScheduler`：`ThreadPoolTaskScheduler` 类型，使用 `spring.task.scheduling` 配置。
 
 测试：
 
@@ -1152,19 +1152,15 @@ public class SignalDownloadTest2 {
 
 ### @SpringBootApplication 注解
 
-* @SpringBootConfiguration：继承 @Configuration，和 @Configuration 功能一样。
-* @ComponentScan：自动扫描Bean，默认情况，不指定basePackages，扫描当前类包及其子包。
-* @EnableAutoConfiguration：通过 @Import({AutoConfigurationImportSelector.class}) 实现自动装配。
+* `@SpringBootConfiguration`：继承 `@Configuration`，和 `@Configuration` 功能一样。
+* `@ComponentScan`：自动扫描Bean，默认情况，不指定basePackages，扫描当前类包及其子包。
+* `@EnableAutoConfiguration`：通过 `@Import({AutoConfigurationImportSelector.class})` 实现自动装配。
 
 ### 自动装配流程
 
-1. AutoConfigurationImportSelector 实现 ImportSelector 接口，@Import 会装载 ImportSelector#selectImports 返回的Bean，由
-   ConfigurationClassParser 来实现。
-2. 在 AutoConfigurationImportSelector#selectImports 中使用 SpringFactoriesLoader.loadFactoryNames(
-   EnableAutoConfiguration.class,getBeanClassLoader()) 加载，会加载 META-INF/spring.factories 中
-   org.springframework.boot.autoconfigure.EnableAutoConfiguration 的属性。
-3. 通过 @ConditionalOnClass 来完成 添加具体starter 时完成自动加载，stater添加的只是依赖，负责引入依赖包，配置的逻辑存在于
-   spring-boot-autoconfigure 模块：例如：
+1. `AutoConfigurationImportSelector` 实现 `ImportSelector` 接口，`@Import` 会装载 `ImportSelector#selectImports` 返回的Bean，由 `ConfigurationClassParser` 来实现。
+2. 在 `AutoConfigurationImportSelector#selectImports` 中使用 `SpringFactoriesLoader.loadFactoryNames(EnableAutoConfiguration.class,getBeanClassLoader())` 加载，会加载 `META-INF/spring.factories` 中 `org.springframework.boot.autoconfigure.EnableAutoConfiguration` 的属性。
+3. 通过` @ConditionalOnClass` 来完成 添加具体starter 时完成自动加载，stater添加的只是依赖，负责引入依赖包，配置的逻辑存在于 `spring-boot-autoconfigure` 模块：例如：
 
    ```java
    // 只有引入 MongoClient 相关包时才会进行自动配置。

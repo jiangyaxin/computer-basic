@@ -9,10 +9,11 @@
 * 运行期：切面在应用运行的某个时刻被织入。一般情况下，在织入切面时，AOP容器会为目标对象动态地创建一个代理对象。SpringAOP就是以这种方式织入切面。
 
 使用切面的方式：
-* 运行期织入，spring的默认方式，使用 @EnableAspectJAutoProxy 注解开启，springboot 默认开启。
+
+* 运行期织入，spring的默认方式，使用 `@EnableAspectJAutoProxy` 注解开启，springboot 默认开启。
 * 类加载时期织入LTW(LoadTimeWeaving)：
-  1. 不使用 @EnableAspectJAutoProxy 使用 @EnableLoadTimeWeaving(aspectjWeaving=AUTODETECT) 注解。
-  2. 编写目标类
+    1. 不使用 `@EnableAspectJAutoProxy` 使用 `@EnableLoadTimeWeaving(aspectjWeaving=AUTODETECT)` 注解。
+    2. 编写目标类
 
   ```java
   @Component
@@ -25,7 +26,7 @@
   }
   ```
 
-  3. 编写切面类
+    3. 编写切面类
 
   ```java
   @Aspect
@@ -48,7 +49,7 @@
   }
   ```
 
-  4. 在META-INF文件夹下编写aop.xml文件
+    4. 在META-INF文件夹下编写aop.xml文件
 
   ```xml
   <?xml version="1.0" encoding="UTF-8"?>
@@ -71,13 +72,15 @@
 SpringAop 只支持方法级别切面。
 
 Spring使用 JDK代理 还是 CGLIB代理：
+
 * 如果目标对象实现了接口，默认情况下使用 JDK 代理。
-* 如果目标对象实现了接口，可使用 spring.aop.proxy-target-class=true 配置强制使用CGLIB代理。
+* 如果目标对象实现了接口，可使用 `spring.aop.proxy-target-class=true` 配置强制使用CGLIB代理。
 * 如果目标对象没有实现接口，必须采用 CGLIB 代理。
 
-Springboot2.x 以后默认使用 CGLIB代理，可以通过 spring.aop.proxy-target-class=false 来使用JDK代理，注解中proxyTargetClass 参数无效。
+Springboot2.x 以后默认使用 CGLIB代理，可以通过 `spring.aop.proxy-target-class=false` 来使用JDK代理，注解中proxyTargetClass 参数无效。
 
 JDK代理 和 CGLIB 代理区别：
+
 * JDK代理只能对实现接口的类生成代理；CGLib是针对类实现代理，对指定的类生成一个子类，并覆盖其中的方法，这种通过继承类的实现方式，不能代理final修饰的类。
 * JDK代理使用的是反射机制实现aop的动态代理，CGLib代理使用字节码处理框架ASM，通过修改字节码生成子类。所以jdk动态代理的方式创建代理对象效率较高，执行效率较低，CGLib创建效率较低，执行效率高。
 * JDK动态代理机制是委托机制，具体说动态实现接口类，在动态生成的实现类里面委托hanlder去调用原始实现类方法，CGLib则使用的继承机制，具体说被代理类和代理类是继承关系，所以代理类是可以赋值给被代理类的，如果被代理类有接口，那么代理类也可以赋值给接口。
@@ -87,29 +90,33 @@ JDK代理：
 ```java
 // 1. 创建接口类
 public interface UserManager {
-    void addUser(String userName,String password);
+    void addUser(String userName, String password);
+
     void delUser(String userName);
 }
+
 // 2. 实现接口类
 public class UserManagerImpl implements UserManager {
     @Override
     public void addUser(String userName, String password) {
         System.out.println("调用了新增的方法！");
-        System.out.println("传入参数为 userName: "+userName+" password: "+password);
+        System.out.println("传入参数为 userName: " + userName + " password: " + password);
     }
+
     @Override
     public void delUser(String userName) {
         System.out.println("调用了删除的方法！");
-        System.out.println("传入参数为 userName: "+userName);
+        System.out.println("传入参数为 userName: " + userName);
     }
 }
+
 // 3. 实现 InvocationHandler 代理逻辑
 // 4. 使用 Proxy.newProxyInstance 生成代理类
 public class JdkProxy implements InvocationHandler {
- 
+
     //需要代理的目标对象
     private Object target;
- 
+
     @Override
     public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
         System.out.println("JDK动态代理，监听开始！");
@@ -117,7 +124,7 @@ public class JdkProxy implements InvocationHandler {
         System.out.println("JDK动态代理，监听结束！");
         return result;
     }
- 
+
     //定义获取代理对象方法
     private Object getJDKProxy(Object targetObject) {
         //为目标对象target赋值
@@ -126,7 +133,7 @@ public class JdkProxy implements InvocationHandler {
         System.out.println(this.getClass());
         return Proxy.newProxyInstance(targetObject.getClass().getClassLoader(), targetObject.getClass().getInterfaces(), this);
     }
- 
+
     public static void main(String[] args) {
         JdkProxy jdkProxy = new JdkProxy();
         UserManager user = (UserManager) jdkProxy.getJDKProxy(new UserManagerImpl());
@@ -136,6 +143,7 @@ public class JdkProxy implements InvocationHandler {
 ```
 
 CGLIB代理：
+
 ```java
 // 1. 实现 MethodInterceptor 代理逻辑
 // 2. 使用 Enhancer 生成代理对象。
@@ -143,7 +151,7 @@ public class CglibProxy implements MethodInterceptor {
 
     //需要代理的目标对象
     private Object target;
- 
+
     @Override
     public Object intercept(Object obj, Method method, Object[] arr, MethodProxy proxy) throws Throwable {
         System.out.println("Cglib动态代理，监听开始！");
@@ -152,7 +160,7 @@ public class CglibProxy implements MethodInterceptor {
         return invoke;
     }
 
-    public Object getCglibProxy(Object objectTarget){
+    public Object getCglibProxy(Object objectTarget) {
         this.target = objectTarget;
 
         Enhancer enhancer = new Enhancer();
@@ -163,10 +171,10 @@ public class CglibProxy implements MethodInterceptor {
 
         return result;
     }
- 
+
     public static void main(String[] args) {
         CglibProxy cglib = new CglibProxy();
-        UserManager user =  (UserManager) cglib.getCglibProxy(new UserManagerImpl());
+        UserManager user = (UserManager) cglib.getCglibProxy(new UserManagerImpl());
         user.delUser("admin");
     }
 }
@@ -186,19 +194,18 @@ public class CglibProxy implements MethodInterceptor {
 
 #### 切点指示器
 
-
-| AspectJ指示器 | 描述                                                                                         |
-| --------------- | ---------------------------------------------------------------------------------------------- |
-| arg()         | 限制连接点匹配参数为指定类型的执行方法                                                       |
-| @args()       | 限制连接点匹配参数有指定注解标注的执行方法                                                   |
-| execution()   | 用于匹配是连接点的执行方法                                                                   |
-| this()        | 限制连接点匹配AOP代理的bean引用为指定类型的类                                                |
-| target        | 限制连接点匹配目标对象为指定类型的类                                                         |
-| @target()     | 限制连接点匹配特定的执行对象，这些对象对应的类要具有指定类型的注解                           |
-| within()      | 限制连接点匹配指定的类型                                                                     |
-| @within()     | 限制连接点匹配指定注解所标注的类型（当使用Spring AOP时，方法定义在由指定的注解所标注的类里） |
-| @annotation   | 限制匹配带有指定注解的连接点                                                                 |
-| bean          | 限制指定bean                                                                                 |
+| AspectJ指示器  | 描述                                                  |
+|-------------|-----------------------------------------------------|
+| arg()       | 限制连接点匹配参数为指定类型的执行方法                                 |
+| @args()     | 限制连接点匹配参数有指定注解标注的执行方法                               |
+| execution() | 用于匹配是连接点的执行方法                                       |
+| this()      | 限制连接点匹配AOP代理的bean引用为指定类型的类                          |
+| target      | 限制连接点匹配目标对象为指定类型的类                                  |
+| @target()   | 限制连接点匹配特定的执行对象，这些对象对应的类要具有指定类型的注解                   |
+| within()    | 限制连接点匹配指定的类型                                        |
+| @within()   | 限制连接点匹配指定注解所标注的类型（当使用Spring AOP时，方法定义在由指定的注解所标注的类里） |
+| @annotation | 限制匹配带有指定注解的连接点                                      |
+| bean        | 限制指定bean                                            |
 
 ![94](assets/94.png)
 

@@ -769,9 +769,8 @@ public class SpELTest {
 * 合并：`Flux.range(1,5).mergeWith(Flux.interval(Duration.ofSeconds(1)).take(5))`
 * 延迟发布：`Flux.range(1,5).delaySubscription(Duration.ofMillis(250)).delayElements(Duration.ofMillis(500))`
 * 压缩,会将多个FLUX对齐分组为 Tuple2，通过 getT1(),getT2()
-  来获取：`Flux.zip(Flux.range(1,5),Flux.interval(Duration.ofSeconds(1)).take(5))`，如果不想获得 Tuple2
-  ，可使用 `Flux.zip( flux1, flux2,mergeFunction)`
-* 只发布快的第一个flux：`Flux.first(flux1,flux2)`只会消费一个flux，另一个flux忽略。
+  来获取：`Flux.zip(Flux.range(1,5),Flux.interval(Duration.ofSeconds(1)).take(5))`，如果不想获得 Tuple2 ，可使用 `Flux.zip( flux1, flux2,mergeFunction)`
+* 只发布第一个flux：`Flux.first(flux1,flux2)`只会消费一个flux，另一个flux忽略。
 * 缓冲数据：
 
 ```java

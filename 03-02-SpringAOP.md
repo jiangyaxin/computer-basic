@@ -194,18 +194,18 @@ public class CglibProxy implements MethodInterceptor {
 
 #### 切点指示器
 
-| AspectJ指示器  | 描述                                                  |
-|-------------|-----------------------------------------------------|
-| arg()       | 限制连接点匹配参数为指定类型的执行方法                                 |
-| @args()     | 限制连接点匹配参数有指定注解标注的执行方法                               |
-| execution() | 用于匹配是连接点的执行方法                                       |
-| this()      | 限制连接点匹配AOP代理的bean引用为指定类型的类                          |
-| target      | 限制连接点匹配目标对象为指定类型的类                                  |
-| @target()   | 限制连接点匹配特定的执行对象，这些对象对应的类要具有指定类型的注解                   |
-| within()    | 限制连接点匹配指定的类型                                        |
-| @within()   | 限制连接点匹配指定注解所标注的类型（当使用Spring AOP时，方法定义在由指定的注解所标注的类里） |
-| @annotation | 限制匹配带有指定注解的连接点                                      |
-| bean        | 限制指定bean                                            |
+| AspectJ指示器  | 描述                            | 示例                                                                                                                                                                                                                                                                                                       |
+|-------------|-------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| arg()       | 匹配特定参数                        | 匹配方法中的参数  <br> `args(com.ms.aop.args.demo1.UserModel)` <br> 匹配多个参数 <br> `args(type1,type2,typeN)` <br> 匹配任意多个参数 <br> `args(com.ms.aop.args.demo1.UserModel,..)`                                                                                                                                          |
+| @args()     | 匹配参数的特定注解                     | 匹配1个参数，且第1个参数所属的类中有Anno1注解 <br> `@args(com.ms.aop.jargs.demo1.Anno1)`  <br> 匹配多个参数，且多个参数所属的类型上都有指定的注解  <br> `@args(com.ms.aop.jargs.demo1.Anno1,com.ms.aop.jargs.demo1.Anno2)`  <br> 匹配多个参数，且第一个参数所属的类中有Anno1注解 <br> `@args(com.ms.aop.jargs.demo2.Anno1,..)`                                            |
+| execution() | 匹配执行方法描述符                     | 拦截任意公共方法 <br> `execution(public * *(..))` <br> 拦截以set开头的任意方法 <br> `execution(* set*(..))` <br> 拦截类或者接口中的方法 <br> `execution(* com.xyz.service.AccountService.*(..))` <br> 拦截包中定义的方法，不包含子包中的方法 <br> `execution(* com.xyz.service.*.*(..))` <br> 拦截包或者子包中定义的方法 <br> `execution(* com.xyz.service..*.*(..))` |
+| this()      | 匹配指定类型的类，如果是代理对象，需要指定代理对象的类   | `this(com.xyz.service.AccountService)`                                                                                                                                                                                                                                                                   |
+| target      | 匹配指定类型的类,  如果是代理对象，需要指定目标对象的类 | `target(com.xyz.service.AccountService)`                                                                                                                                                                                                                                                                 |
+| @target()   | 匹配目标对象指定的注解,所有方法被拦截           | `@target(com.ms.aop.jtarget.Annotation1)`                                                                                                                                                                                                                                                                |
+| within()    | 匹配指定的类型                       | 拦截包中任意方法，不包含子包中的方法 <br> `within(com.xyz.service.*)` <br>  拦截包或者子包中定义的方法 <br> `within(com.xyz.service..*)`                                                                                                                                                                                                |
+| @within()   | 匹配调用方法所属指定的注解,所有方法被拦截         | `@within(com.ms.aop.jwithin.Annotation1)`                                                                                                                                                                                                                                                                |
+| @annotation | 匹配有指定注解的方法                    | `@annotation(com.ms.aop.jannotation.demo2.Annotation1)`                                                                                                                                                                                                                                                  |
+| bean        | 匹配指定bean的名称                   | `bean(userService)`                                                                                                                                                                                                                                                                                      |
 
 ![94](assets/94.png)
 

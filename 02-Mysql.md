@@ -34,7 +34,7 @@ AVG() 会忽略值为 NULL 的行。
 
 COUNT(*) 会统计所有行，COUNT(column) 会忽略 NULL 值。
 
-MAX()、MIN()会忽略值为 NULL 的行,如果作用于文本数据，则返回最后一行，MIN() 返回第一行。
+MAX()、MIN()会忽略值为 NULL 的行。
 
 AVG()、COUNT()、MAX()、MIN()、SUM() 都可使用 DISTINCT 关键字。
 
@@ -331,10 +331,13 @@ UNBOUNDED FOLLOWING #最后一行
 
 ```sql
 -- 通过UNION ALL来查出所有数据
-SET @last_max_id=0;
-SELECT max_id FROM (SELECT @last_max_id:=max(id) as max_id FROM (SELECT id FROM #{tableName} WHERE id > (SELECT @last_max_id) limit #{batchSize}) tmp) t1
+SET
+@last_max_id=0;
+SELECT max_id
+FROM (SELECT @last_max_id:=max(id) as max_id FROM (SELECT id FROM #{tableName} WHERE id > (SELECT @last_max_id) limit #{batchSize}) tmp) t1
 UNION ALL
-SELECT max_id FROM (SELECT @last_max_id:=max(id) as max_id FROM (SELECT id FROM #{tableName} WHERE id > (SELECT @last_max_id) limit #{batchSize}) tmp) t1
+SELECT max_id
+FROM (SELECT @last_max_id:=max(id) as max_id FROM (SELECT id FROM #{tableName} WHERE id > (SELECT @last_max_id) limit #{batchSize}) tmp) t1
 ```
 
 ```sql
@@ -388,13 +391,12 @@ where t3.rownum = 1
 * `allowPublicKeyRetrieval`：允许从服务器获取公钥。
 * `sslMode`：是否使用SSL连接，用于替换'useSSL','requireSSL','verifyServerCertificate'三个属性,默认配置为 "PREFERRED"。
 
-
-| sslMode         | useSSL | requireSSL | verifyServerCertificate | 说明                                                                     |
-| --------------- | ------ | ---------- | ----------------------- | ------------------------------------------------------------------------ |
-| disabled        | false  | false      | false                   | 不使用SSL连接                                                            |
-| preferred       | true   | false      | false                   | 先使用SSL连接,失败的话改成普通连接                                       |
-| required        | true   | true       | false                   | 先使用SSL连接,失败的话报错                                               |
-| verify_ca       | true   | true       | true                    | 使用SSL连接,并且需要验证服务端的身份(就是客户端这边需要配置CA证书)       |
+| sslMode         | useSSL | requireSSL | verifyServerCertificate | 说明                                       |
+|-----------------|--------|------------|-------------------------|------------------------------------------|
+| disabled        | false  | false      | false                   | 不使用SSL连接                                 |
+| preferred       | true   | false      | false                   | 先使用SSL连接,失败的话改成普通连接                      |
+| required        | true   | true       | false                   | 先使用SSL连接,失败的话报错                          |
+| verify_ca       | true   | true       | true                    | 使用SSL连接,并且需要验证服务端的身份(就是客户端这边需要配置CA证书)    |
 | verify_identity | true   | true       | true                    | 使用SSL连接,并且需要验证服务端的身份和域名(就是客户端这边需要配置CA证书) |
 
 * `trustCertificateKeyStoreUrl`：服务端储存在本地的证书仓库地址，例如`trustCertificateKeyStoreUrl=classpath:mysql.ks`。
@@ -495,7 +497,7 @@ keytool -importkeystore -srckeystore client-keystore.p12 -srcstoretype pkcs12 -s
 ```properties
 ssl.cert.path=/home/app/cert
 ssl.config=required&clientCertificateKeyStoreUrl=file:${ssl.cert.path}/keystoremysql&clientCertificateKeyStorePassword=password456&trustCertificateKeyStoreUrl=file:${ssl.cert.path}/truststoremysql&trustCertificateKeyStorePassword=password123 
-spring.datasource.url=jdbc:mysql://1.2.3.4:3306/db?serverTimezone=Asia/Shanghai&useUnicode=true&characterEncoding=utf-8&$sslMode={ssl.config}
+spring.datasource.url=jdbc:mysql://1.2.3.4:3306/db?serverTimezone=Asia/Shanghai&useUnicode=true&characterEncoding=utf-8&sslMode={ssl.config}
 ```
 
 ### 批量插入
@@ -714,61 +716,47 @@ InnoDB储存引擎有多个内存块，它们组成一个大的内存池，并�
 
    每秒一次：
 
-   * 重做日志缓冲刷新到磁盘，即使这个事务还没提交(总是)。
-   * 合并插入缓冲(前一秒发生的IO次数小于5次)。
-   * 刷新缓冲池中的脏页到磁盘(当前缓冲池中脏页比例超过 innodb_max_dirty_pages_pct,默认 75%)，**现在由PageCleanerThread来执行
-     **。
+    * 重做日志缓冲刷新到磁盘，即使这个事务还没提交(总是)。
+    * 合并插入缓冲(前一秒发生的IO次数小于5次)。
+    * 刷新缓冲池中的脏页到磁盘(当前缓冲池中脏页比例超过 innodb_max_dirty_pages_pct,默认 75%)，**现在由PageCleanerThread来执行**。
 
    每10秒一次：
 
-   * 刷新 innodb_io_capacity 个脏页到磁盘(过去10秒内IO操作小于 innodb_io_capacity 次，默认200)，**现在由PageCleanerThread来执行
-     **。
-   * 合并至多 5% * innodb_io_capacity 个插入缓冲(总是)。
-   * 重做日志缓冲刷新到磁盘(总是)。
-   * 删除无用的undo页(总是)，**现在由PurgeThread来执行**。
-   * 刷新 innodb_io_capacity 个(脏页超过70%)或者 10% * innodb_io_capacity个(脏页小于70%)脏页到磁盘(总是)，*
-     *现在由PageCleanerThread来执行**。
+    * 刷新 innodb_io_capacity 个脏页到磁盘(过去10秒内IO操作小于 innodb_io_capacity 次，默认200)，**现在由PageCleanerThread来执行**。
+    * 合并至多 5% * innodb_io_capacity 个插入缓冲(总是)。
+    * 重做日志缓冲刷新到磁盘(总是)。
+    * 删除无用的undo页(总是)，**现在由PurgeThread来执行**。
+    * 刷新 innodb_io_capacity 个(脏页超过70%)或者 10% * innodb_io_capacity个(脏页小于70%)脏页到磁盘(总是)，**现在由PageCleanerThread来执行**。
 2. IOThread：分为write、read、insert buffer、log IO thread，负责IO请求的回调。
-3. PurgeThread：事务提交后，其所使用的undolog可能不再需要，使用该线程来回收已经使用并分配的undo页。可以通过在[mysqld]模块添加
-   innodb_purge_threads=1来启用，默认开启。
+3. PurgeThread：事务提交后，其所使用的undolog可能不再需要，使用该线程来回收已经使用并分配的undo页。可以通过在配置文件`[mysqld]`模块添加innodb_purge_threads=1来启用，默认开启。
 4. PageCleanerThread：将脏页的刷新操作都放到单独的线程来完成。
 
 PurgeThread 和 PageCleanerThread 是后面加入的，分担 MasterThread 的部分工作。
 
 #### 内存(缓冲池、重做日志缓冲)
 
-1. 缓冲池：一块内存区域，InnoDB是基于磁盘存储，并将其中的记录按照页(默认16KB)的方式进行管理，由于CPU和磁盘速度差距较大，所有使用缓冲池来提高性能，通过
-   innodb_buffer_pool_size 来配置，包含索引页、数据页、undo页、插入缓冲（insert
-   buffer）、自适应哈希索引、锁信息、数据字典信息，缓存池可以存在多个，每个页根据哈希值平均分配到不同缓冲池，减少资源竞争，可通过
-   innodb_buffer_pool_instances 来配置，默认为1。
+1. 缓冲池：一块内存区域，InnoDB是基于磁盘存储，并将其中的记录按照页(默认16KB)的方式进行管理，由于CPU和磁盘速度差距较大，使用缓冲池来提高性能，通过 innodb_buffer_pool_size 来配置，包含索引页、数据页、undo页、插入缓冲（insert buffer）、自适应哈希索引、锁信息、数据字典信息，缓存池可以存在多个，每个页根据哈希值平均分配到不同缓冲池，减少资源竞争，可通过innodb_buffer_pool_instances 来配置，默认为1。
 
    当数据库进行读取页时，会将从磁盘读到的页放到缓存池中，称为页FIX在缓冲池，下次再读相同的页，首先判断页是否存在，若命中则直接读取，否则读取磁盘上的页。
 
    当对页中进行修改时，首先修改缓存池中的页，然后再以一定的频率采用 Checkpoint机制 刷新到磁盘上。
 
-   缓冲池通过LRU(最近最少使用)
-   来管理，使用最频繁的页放在LRU列表前端，最少使用的页放在尾端，优先释放尾端页。当新读取到的页会放在列表中部，默认位于5/8处，防止某次非热点查询，但是扫描很多页导致将热点数据移除，可用
-   innodb_old_blocks_pct 控制,默认37，即37%。
+   缓冲池通过LRU(最近最少使用)来管理，使用最频繁的页放在LRU列表前端，最少使用的页放在尾端，优先释放尾端页。当新读取到的页会放在列表中部，默认位于5/8处，防止某次非热点查询，但是扫描很多页导致将热点数据移除，可用 innodb_old_blocks_pct 控制,默认37，即37%。
 
-   可以通过 `SELECT * FROM information_schema.INNODB_BUFFER_POOL_STATS`来查看缓冲池的使用状态，Free buffers 是 Free
-   列表，Database pages是LRU列表。hit rate至缓冲池的命中率，若小于95%，需要观察是否由于全表扫描导致LRU列表被污染。
+   可以通过 `SELECT * FROM information_schema.INNODB_BUFFER_POOL_STATS`来查看缓冲池的使用状态，Free buffers 是 Free 列表，Database pages是LRU列表。hit rate至缓冲池的命中率，若小于95%，需要观察是否由于全表扫描导致LRU列表被污染。
 
-   在LRU列表中页被修改后被称为脏页(dirty page)
-   ,即缓冲池中的页和磁盘上的页的数据产生了不一致。除了LRU列表，还有Flush列表，用来管理将页刷新回磁盘，该列表在写redolog时添加，脏页同时存在于LRU列表和FLUSH列表中，可通过 `SELECT TABLE_NAME,SPACE,PAGE_NUMBER,PAGE_TYPE FROM information_schema.INNODB_BUFFER_PAGE_LRU where OLDEST_MODIFICATION > 0;`
-   来查询脏页信息，TABLE_NAME为NULL表示属于系统表空间。
+   在LRU列表中页被修改后被称为脏页(dirty page),即缓冲池中的页和磁盘上的页的数据产生了不一致。除了LRU列表，还有Flush列表，用来管理将页刷新回磁盘，该列表在写redolog时添加，脏页同时存在于LRU列表和FLUSH列表中，可通过 `SELECT TABLE_NAME,SPACE,PAGE_NUMBER,PAGE_TYPE FROM information_schema.INNODB_BUFFER_PAGE_LRU where OLDEST_MODIFICATION > 0;`来查询脏页信息，TABLE_NAME为NULL表示属于系统表空间。
 
    ![image.png](./assets/69.png)
-2. 重做日志(redo log)缓冲：InnoDB会将redo log先放入这个缓冲区，然后再按一定的频率将其刷新到重做日志文件，一般情况会一秒刷新一次。该值可由
-   innodb_log_buffer_size 控制，默认8MB，需要保证每秒内产生的事务量在这个缓冲大小内。
+2. 重做日志(redo log)缓冲：InnoDB会将redo log先放入这个缓冲区，然后再按一定的频率将其刷新到重做日志文件，一般情况会一秒刷新一次。该值可由innodb_log_buffer_size 控制，默认8MB，需要保证每秒内产生的事务量在这个缓冲大小内。
 
-   重做日志是物理日志，记录了在某个数据页上做了什么修改，是为了解决内存存在脏页时，发生宕机导致数据丢失，使用 Write Ahead
-   Log 策略，即先写重做日志，再修改页。
+   重做日志是物理日志，记录了在某个数据页上做了什么修改，是为了解决内存存在脏页时，发生宕机导致数据丢失，使用 Write Ahead Log 策略，即先写重做日志，再修改页。
 
    重做日志缓冲刷新的时机：
 
-   * Master Thread 每一秒刷新。
-   * 每个事务提交时刷新。
-   * 缓冲空间小于1/2时刷新。
+    * Master Thread 每一秒刷新。
+    * 每个事务提交时刷新。
+    * 缓冲空间小于1/2时刷新。
 
 ##### LSN
 
@@ -824,10 +812,11 @@ buffer中，然后再以一定的频率合并插入操作，这样使非聚集�
 
 ##### 双写(Double Write)
 
-解决当在进行某个页的写入操作时宕机，比如页16kB，只写入4KB，由于redolog是对页的物理操作，所以没有办法通过redolog进行重做，需要先对该页进行还原再进行重做。
+保证脏页要么是完整写入，要么是全部不写入，只要胀页是完整的就可以使用redolog进行恢复。
 
-doublewrite由两部分组成，一部分是内存中的 doublewrite buffer 大小2MB，另一部分是物理磁盘上共享表空间中连续的128页，即2个区(
-extend),大小2MB。
+解决当在进行某个页的写入操作时宕机，比如页16kB，只写入4KB就宕机，由于redolog是对页的物理操作，所以没有办法通过redolog进行重做，需要先对该页进行还原再进行重做。
+
+doublewrite由两部分组成，一部分是内存中的 doublewrite buffer 大小2MB，另一部分是物理磁盘上共享表空间中连续的128页，即2个区(extend),大小2MB。
 
 在刷脏页时，会先将脏页复制到 doublewrite buffer，然后分两次，一次1MB写入共享表空间的物理磁盘，并立即使用fsync刷盘，再将脏页写到对应的表空间中。
 
@@ -971,7 +960,7 @@ Record lock, heap no 105 PHYSICAL RECORD: n_fields 2; compact format; info bits 
 > (1) WAITING FOR THIS LOCK TO BE GRANTED:
 > (2) HOLDS THE LOCK(S):
 
-正在等待的锁、目前保存的锁
+正在等待的锁、目前保持的锁
 
 > RECORD LOCKS space id 14096 page no 57 n bits 272 index bd_index of table `mydatabase`.`table1` trx id 14235673
 > lock_mode X locks rec but not gap waiting
@@ -1080,8 +1069,11 @@ Log maximum file id is       4211
 ```
 
 Log sequence number：最新产生的日志序列号
+
 Log flushed up to：已刷到磁盘的重做日志的日志号
+
 Pages flushed up to：已刷到磁盘的页的日志号
+
 Last checkpoint at: 最后一次检查点位置，数据和日志一致的状态
 
 ##### BUFFER POOL AND MEMORY
@@ -1110,12 +1102,19 @@ I/O sum[69]:cur[8], unzip sum[0]:cur[0]
 ```
 
 Total large memory：innodb 分配的总内存（字节）。
+
 Dictionary memory allocated：innodb数据字典 分配的总内存（字节）。
+
 Buffer pool size：buffer pool 总页数。
+
 Free buffers：空闲页数。
-Database pages37：非空闲页数。
+
+Database pages：非空闲页数。
+
 Old database pages：LRU列表中后 3/8 的列表，新读取的页会插入到 5/8 处。
+
 Modified db pages：脏页数量。
+
 Pending reads：挂起读的数量。
 
 Pages made young：显示LRU列表中old list移到new list的次数，not young：显示仍在old list的次数。
@@ -1140,7 +1139,9 @@ Number of rows inserted 172887566, updated 227534242, deleted 56676133, read 709
 ```
 
 queries：表示innodb内核中有多少个线程，队列中有多少个线程。
+
 read views open inside InnoDB：表示有多少个read view 被打开，一个read view 包含事物开始点数据库内容的MVCC快照。
+
 Number of rows inserted、updated、deleted、read：表示多少行被插入，更新和删除，读取及每秒信息，可用于监控。
 
 #### 系统参数
@@ -1150,78 +1151,68 @@ Number of rows inserted、updated、deleted、read：表示多少行被插入，
 ```properties
 [ mysqld ]
 # Mysql服务的唯一编号,每个mysql服务Id需唯一,在主从同步时来标记服务的唯一身份
-server-id = 1
+server-id=1
 # 服务端口号 默认3306
-port = 3306
+port=3306
 # ip绑定,0.0.0.0标识允许所有的远程访问,127.0.0.1只能本地访问,固定ip则只能接受改ip的远程访问。
-bind_address= 0.0.0.0
-
+bind_address=0.0.0.0
 # 启动mysql服务进程的用户
-user = mysql
+user=mysql
 # mysql安装根目录
-basedir = /usr/local/mysql-8.0.31
+basedir=/usr/local/mysql-8.0.31
 # mysql数据文件所在位置
-datadir = /usr/local/mysql-8.0.31/data
+datadir=/usr/local/mysql-8.0.31/data
 # 设置socket文件地址，或者使用 mysqlx_socket，sock 文件需要有权限访问，否则会报错。
 # 连接示例：mysql -uroot -S/tmp/mysql/mysql.sock -P33060
-socket_port  = 33060
-socket  = /tmp/mysql/mysql.sock
+socket_port=33060
+socket=/tmp/mysql/mysql.sock
 # 临时目录 比如load data infile会用到,一般都是使用/tmp
-tmpdir  = /tmp/mysql
-
+tmpdir=/tmp/mysql
 # 事务的隔离级别,默认REPEATABLE-READ,（此级别下可能产生很多间隙锁，影响性能，但是修改又影响主从复制及灾难恢复，建议不要修改配置，修复代码）
 # 读未提交(READ-UNCOMMITTED),读已提交(READ-COMMITTED)
 # 可重复读(REPEATABLE-READ),序列化(SERIALIZABLE)
 # transaction_isolation = READ-COMMITTED
-transaction_isolation = REPEATABLE-READ
-
+transaction_isolation=REPEATABLE-READ
 # 默认引擎
-default_storage_engine = InnoDB
+default_storage_engine=InnoDB
 # 内存临时表默认引擎，默认InnoDB
-default_tmp_storage_engine = InnoDB
+default_tmp_storage_engine=InnoDB
 # 磁盘临时表默认引擎，默认InnoDB
-internal_tmp_disk_storage_engine = InnoDB
-
+internal_tmp_disk_storage_engine=InnoDB
 # 设置服务端默认的字符集
-character-set-server = utf8mb4
+character-set-server=utf8mb4
 # ci和cs的区别,就是大小写敏感和不敏感 ci是case ignore，cs是case senstive
-collation_server = utf8mb4_general_ci
+collation_server=utf8mb4_general_ci
 # 设置client连接时执行，可用于审计，这里用来设置连接的编码
 # init_connect='SET NAMES utf8mb4'
 # 是否对sql语句大小写敏感，默认值为0，1表示不敏感
-lower_case_table_names = 1
-
+lower_case_table_names=1
 # 最大连接数,默认值为151,上限值是16384，实际连接数是最大连接数的85%较为合适,修改此参数需要同步修改 /usr/lib/systemd/system/mysqld.service 中 LimitNOFILE=65535
-max_connections = 800
+max_connections=800
 # 最大错误连接数，阻止过多尝试失败的客户端以防止暴力破解密码
 # 默认值100，最大错误连接数，如果有超出该参数值个数的中断错误连接，则该主机将被禁止连接。如需对该主机进行解禁，执行：FLUSH HOSTS
-max_connect_errors = 100
+max_connect_errors=100
 # MySQL打开的文件描述符限制，默认最小1024;
 # 当open_files_limit没有被配置的时候，比较max_connections*5和ulimit -n的值，哪个大用哪个，
 # 当open_file_limit被配置的时候，比较open_files_limit和max_connections*5的值，哪个大用哪个。
 # open_files_limit = 65535
-
 # MySQL默认的wait_timeout  值为8个小时, interactive_timeout参数需要同时配置才能生效
 # MySQL连接闲置超过一定时间后(单位：秒，此处为1800秒)将会被强行关闭
 # interactive_timeout = 1800 
 # wait_timeout = 1800
-
 # 在MySQL暂时停止响应新请求之前的短时间内多少个请求可以被存在堆栈中 
 # 官方建议back_log = 50 + (max_connections / 5),封顶数为900
 # back_log = 900
-
 # 该参数限制服务器端，接受的数据包大小，如果有BLOB子段，建议增大此值，避免写入或者更新出错。有BLOB子段，建议改为1024M
-max_allowed_packet = 128M
-
+max_allowed_packet=128M
 # 内存临时表的最大值,默认16M,不适用于MEMORY引擎表，用户级别，超限MySQL会自动地把它转化为基于磁盘的表，存储在指定的tmpdir目录下，增大IO压力，建议内存大，增大到128M
 # 通过 show global status like '%tmp%'; 查看临时表使用情况，一般 created_tmp_disk_tables / created_tmp_tables ≈ 10%
-tmp_table_size = 64M
+tmp_table_size=64M
 # 限制MEMORY引擎表
-max_heap_table_size = 64M
-
+max_heap_table_size=64M
 # 查询缓存功能的开启的关闭，0时表示关闭，1时表示打开，2表示只要select 中明确指定SQL_CACHE才缓存。
 # 可通过 SHOW STATUS LIKE '%have_query_cache%' 查看。
-query_cache_type = 0
+query_cache_type=0
 # 默认值1M，优点是查询缓冲可以极大的提高服务器速度, 如果你有大量的相同的查询并且很少修改表。
 # 缺点：在你表经常变化的情况下或者如果你的查询原文每次都不同,查询缓冲也许引起性能下降而不是性能提升。
 # query_cache_size = 64M
@@ -1237,90 +1228,78 @@ query_cache_type = 0
 # 如果事务比此值大, 会使用磁盘上的临时文件来替代.
 # 此缓冲在每个连接的事务第一次更新状态时被创建
 # binlog_cache_size = 1M
-
 # MySQL的随机读缓冲区大小，适当增大，可以提高性能。
 # 默认值256kb；建议值：得参考连接数，16G内存，有人推荐8M
 # 注意，该缓冲区是每个连接独占的, 所以总缓冲区大小为 read_rnd_buffer_size*连接数, 极端情况 read_rnd_buffer_size*maxconnectiosns 会超级大, 所以要考虑日常平均连接数。
-read_rnd_buffer_size = 1M
-
+read_rnd_buffer_size=1M
 # order by或group by时用到 
 # 支持所有引擎，innodb和myisam有自己的innodb_sort_buffer_size和myisam_sort_buffer_size设置
 # 默认值256kb；建议值：得参考连接数，16G内存，有人推荐8M.
 # 注意，该缓冲区是每个连接独占的, 所以总缓冲区大小为 1M*连接数, 极端情况1M*maxconnectiosns, 会超级大, 所以要考虑日常平均连接数。
-sort_buffer_size = 1M
-
+sort_buffer_size=1M
 # 此缓冲被使用来优化全联合(full JOINs 不带索引的联合)
 # 类似的联合在极大多数情况下有非常糟糕的性能表现,但是将此值设大能够减轻性能影响.
 # 通过 SHOW GLOBAL STATUS LIKE '%full_join%'；  状态变量查看全联合的数量
 # 注意，该缓冲区是每个连接独占的，所以总缓冲区大小为 1M*连接数, 极端情况1M*maxconnectiosns, 会超级大, 所以要考虑日常平均连接数。
 # 默认值256kb;建议值：16G内存，设置8M.
-join_buffer_size = 1M
-
+join_buffer_size=1M
 # 缓存linux文件描述符信息，加快数据文件打开速度
 # 它影响myisam表的打开关闭，但是不影响innodb表的打开关闭。
 # 默认值2000，建议值：根据状态变量Opened_tables去设定
 # table_open_cache = 2000
-
 # 缓存表定义的相关信息，加快读取表信息速度
 # 默认值1400，最大值2000，建议值：基本不改。
 # table_definition_cache = 1400
 # 该参数是myssql 5.6后引入的，目的是提高并发。
 # 默认值1，建议值：cpu核数，并且<=16
-table_open_cache_instances = 2
-
+table_open_cache_instances=2
 # 当客户端断开之后，服务器处理此客户的线程将会缓存起来以响应下一个客户而不是销毁。可重用，减小了系统开销。
 # 默认值为9，建议值：两种取值方式
 # 方式一，根据物理内存，1G  —> 8；2G  —> 16； 3G  —> 32； 大于3G  —> 64；
 # 方式二，根据show status like  'threads%'，查看Threads_connected值。
-thread_cache_size = 16
-
+thread_cache_size=16
 # 默认值256k,建议值：16/32G内存，512kb，其他一般不改变，如果报错：Thread stack overrun，就增大看看,
 # 注意，每个线程分配内存空间，所以总内存空间。。。你懂得。
-thread_stack = 512k
-
+thread_stack=512k
 # 普通查询日志，默认值off，不开启
-general_log = 0
+general_log=0
 # 普通查询日志存放地址
-general_log_file = /usr/local/mysql-8.0.31/log/mysql-general.log
-
+general_log_file=/usr/local/mysql-8.0.31/log/mysql-general.log
 # 全局动态变量，默认3，范围：1～3
 # 表示错误日志记录的信息，1：只记录error信息；2：记录error和warnings信息；3：记录error、warnings和普通的notes信息。
-log_error_verbosity = 2
+log_error_verbosity=2
 # 错误日志文件地址
-log_error = /usr/local/mysql-8.0.31/log/mysql-error.log
-
+log_error=/usr/local/mysql-8.0.31/log/mysql-error.log
 # 开启慢查询
-slow_query_log = 1
+slow_query_log=1
 # 开启慢查询时间，此处为1秒，达到此值才记录数据
-long_query_time = 1
+long_query_time=1
 # 检索行数达到此数值，才记录慢查询日志中
-min_examined_row_limit = 100
+min_examined_row_limit=100
 # 用来表示每分钟允许记录到slow log的且未使用索引的SQL语句次数，默认值为0，不限制。
-log_throttle_queries_not_using_indexes = 0
+log_throttle_queries_not_using_indexes=0
 # 慢查询日志文件地址
-slow_query_log_file = /usr/local/mysql-8.0.31/log/mysql-slow.log
+slow_query_log_file=/usr/local/mysql-8.0.31/log/mysql-slow.log
 # 开启记录没有使用索引查询语句
-log-queries-not-using-indexes = 1
-
+log-queries-not-using-indexes=1
 # 开启二进制日志
-log_bin = /usr/local/mysql-8.0.31/log/mysql-bin.log
+log_bin=/usr/local/mysql-8.0.31/log/mysql-bin.log
 # mysql清除过期日志的时间，默认值0，不自动清理，而是使用滚动循环的方式。
-expire_logs_days = 0
+expire_logs_days=0
 # 如果二进制日志写入的内容超出给定值，日志就会发生滚动。你不能将该变量设置为大于1GB或小于4096字节。 默认值是1GB。
-max_binlog_size = 1000M
+max_binlog_size=1000M
 # binlog的格式也有三种：STATEMENT，ROW，MIXED。mysql 5.7.7后，默认值从 MIXED 改为 ROW
-binlog_format = row
+binlog_format=row
 # 默认值N=1，使binlog在每N次binlog写入后与硬盘同步，ps：1最慢
 # sync_binlog = 1
-
 # 在一个独立使用的数据库服务器上,你可以设置这个变量到服务器物理内存大小的60%-80%
 # 注意别设置的过大，会导致system的swap空间被占用，导致操作系统变慢，从而减低sql查询的效率
 # 默认值：128M，建议值：物理内存的60%-80%
-innodb_buffer_pool_size = 512M
+innodb_buffer_pool_size=512M
 # 只有当设置 innodb_buffer_pool_size 值大于1G时才有意义，小于1G，instances默认为1，大于1G，instances默认为8
 # 但是网络上有评价，最佳性能，每个实例至少1G大小。
 # 默认值：1或8，建议值：innodb_buffer_pool_size/innodb_buffer_pool_instances >= 1G
-innodb_buffer_pool_instances = 1
+innodb_buffer_pool_instances=1
 # defines the chunk size for online InnoDB buffer pool resizing operations.
 # 实际缓冲区大小必须为 innodb_buffer_pool_chunk_size*innodb_buffer_pool_instances*倍数，取略大于innodb_buffer_pool_size
 # 默认值128M，建议值：默认值就好，乱改反而容易出问题，它会影响实际buffer pool大小。
@@ -1348,32 +1327,29 @@ innodb_buffer_pool_instances = 1
 # O_DSYNC：  数据文件，buffer pool->os buffer->磁盘；日志文件，buffer pool->磁盘；
 # O_DIRECT： 数据文件，buffer pool->磁盘；           日志文件，buffer pool->os buffer->磁盘；
 # 默认值为空，建议值：使用SAN或者raid，建议用O_DIRECT，不懂测试的话，默认生产上使用O_DIRECT
-innodb_flush_method = O_DIRECT
+innodb_flush_method=O_DIRECT
 # 每张表一个独立表空间。
 # 默认值1，开启
 # innodb_file_per_table = 1
-
 # The path where InnoDB creates undo tablespaces.通常等于undo log文件的存放目录。
 # 默认值./;自行设置
-innodb_undo_directory = /usr/local/mysql-8.0.31/log
+innodb_undo_directory=/usr/local/mysql-8.0.31/log
 # 在线收缩undo log使用的空间。
 # 默认值：关闭，建议值：开启
-innodb_undo_log_truncate = 1
+innodb_undo_log_truncate=1
 # 结合innodb_undo_log_truncate，实现undo空间收缩功能
 # 默认值：1G，建议值，不改。
 # innodb_max_undo_log_size = 1G
-
 # 重作日志文件的存放目录
-innodb_log_group_home_dir = /usr/local/mysql-8.0.31/log
+innodb_log_group_home_dir=/usr/local/mysql-8.0.31/log
 # 日志文件的大小
 # 默认值:48M,建议值：根据你系统的磁盘空间和日志增长情况调整大小
-innodb_log_file_size = 128M
+innodb_log_file_size=128M
 # 日志组中的文件数量，mysql以循环方式写入日志
 # 默认值2，建议值：根据你系统的磁盘空间和日志增长情况调整大小
-innodb_log_files_in_group = 3
+innodb_log_files_in_group=3
 # 此参数确定些日志文件所用的内存大小，以M为单位。缓冲区更大能提高性能，但意外的故障将会丢失数据。MySQL开发人员建议设置为1－8M之间
-innodb_log_buffer_size = 16M
-
+innodb_log_buffer_size=16M
 # 控制log从系统buffer刷入磁盘文件的刷新频率，增大可减轻系统负荷
 # 默认值是1；建议值不改。系统性能一般够用。
 # innodb_flush_log_at_timeout = 1
@@ -1381,12 +1357,10 @@ innodb_log_buffer_size = 16M
 # 参数0：表示每秒将log buffer内容刷新到系统buffer中，再调用系统flush操作写入磁盘文件。
 # 参数1：表示每次事物提交，将log buffer内容刷新到系统buffer中，再调用系统flush操作写入磁盘文件。
 # 参数2：表示每次事物提交，将log buffer内容刷新到系统buffer中，隔1秒后再调用系统flush操作写入磁盘文件。
-innodb_flush_log_at_trx_commit = 1
-
+innodb_flush_log_at_trx_commit=1
 # 限制Innodb能打开的表的数据，如果库里的表特别多的情况，请增加这个。
 # 值默认是2000，建议值：参考数据库表总数再进行调整，一般够用不用调整。
 # innodb_open_files = 8192
-
 # innodb处理io读写的后台并发线程数量，根据cpu核来确认，取值范围：1-64
 # 默认值：4，建议值：与逻辑cpu数量的一半保持一致。
 # innodb_read_io_threads = 4
@@ -1395,7 +1369,6 @@ innodb_flush_log_at_trx_commit = 1
 # innodb_thread_concurrency = 0
 # 默认值为4，建议不变。InnoDB中的清除操作是一类定期回收无用数据的操作。mysql 5.5之后，支持多线程清除操作。
 # innodb_purge_threads = 4 
-
 # mysql缓冲区分为new blocks和old blocks；此参数表示old blocks占比；
 # 默认值：37，建议值，一般不动
 # innodb_old_blocks_pct = 37
@@ -1405,21 +1378,16 @@ innodb_flush_log_at_trx_commit = 1
 # 开启异步io，可以提高并发性，默认开启。
 # 默认值为1，建议不动
 # innodb_use_native_aio = 1
-
 # 默认为空，使用data目录，一般不改。
 # innodb_data_home_dir=/usr/local/mysql-5.7.21/data
 # 说明：Defines the name, size, and attributes of InnoDB system tablespace data files.
 # 默认值，不指定，默认为ibdata1:12M:autoextend
 # innodb_data_file_path = ibdata1:12M:autoextend
-
 # 设置InnoDB存储引擎用来存放数据字典信息以及一些内部数据结构的内存空间大小,除非你的数据对象及其多，否则一般默认不改。
 # innodb_additional_mem_pool_size = 16M
-
 # The crash recovery mode。只有紧急情况需要恢复数据的时候，才改为大于1-6之间数值，含义查下官网。
 # 默认值为0；
 # innodb_force_recovery = 0
-
-
 # 在启动时把热数据加载到内存。默认值为on，不修改
 # innodb_buffer_pool_load_at_startup = 1
 # 在关闭时把热数据dump到本地磁盘。默认值为on，不修改
@@ -1633,8 +1601,8 @@ where * * *
 默认情况下，数据目录有三个子目录：
 
 1. mysql：MySQL系统数据库。
-2. performance_schema：提供用于在运行是检查服务器内部状态的信息。
-3. sys：提供一组能解释performance_schema信息的对象。
+2. performance_schema：用于在运行检时查服务器内部状态的信息。
+3. sys：提供一组能解释performance_schema信息的对象，performance_schema 的视图。
 
 除此之外，还包含日志文件、InnoDB表空间、InnoDB日志文件、SSL和RSA秘钥文件、pid、持久化全局系统变量的mysqld-auto.cnf。
 
@@ -1678,9 +1646,7 @@ innodb_log_file_size: redo log大小，用于数据库崩溃时重放已提交�
 
 ##### 慢查询日志
 
-使用 `SET @@GLOBAL.slow_query_log=1`开启,通过 `SET @@GLOBAL.long_query_time = <num单位秒>`来定义慢查询，slow_query_log_file
-属性可以定义日志路径，默认在数据目录下名为 `<host_name>-slow.log`，默认情况未使用索引的查询不会被记录，若开启
-log_queries_not_using_indexes,则可以使未使用索引的查询被记录。
+使用 `SET @@GLOBAL.slow_query_log=1`开启,通过 `SET @@GLOBAL.long_query_time = <num单位秒>`来定义慢查询，slow_query_log_file 属性可以定义日志路径，默认在数据目录下名为 `<host_name>-slow.log`，默认情况未使用索引的查询不会被记录，若开启`log_queries_not_using_indexes`,则可以使未使用索引的查询被记录。
 
 查询慢查询日志 `SELECT * FROM mysql.slow_log`。
 
@@ -1690,8 +1656,7 @@ log_queries_not_using_indexes,则可以使未使用索引的查询被记录。
 
 二进制日志包含数据库的所有更改记录，包括数据和结构两方面，不会记录 SELECT 或 SHOW 等不修改数据的操作。
 
-启用二进制日志需要配置 log_bin 和 server_id，并重启服务器，例如 log_bin = /data/mysql/binlogs/server1,那么二进制储存在
-/data/mysql/binlogs 文件夹中，文件名为 server1.0000001、server1.0000002等，通过 show binary logs 来查看。
+启用二进制日志需要配置 log_bin 和 server_id，并重启服务器，例如 `log_bin = /data/mysql/binlogs/server1`,那么二进制储存在 `/data/mysql/binlogs` 文件夹中，文件名为 server1.0000001、server1.0000002等，通过 show binary logs 来查看。
 
 binlog 相关的配置参数：
 
@@ -1707,10 +1672,9 @@ binlog 相关的配置参数：
 * log-slave-update：正常情况下slave不会将master取得的binlog写入到自己的binlog中，该参数可以使slave也写入。当需要搭建
   master - slave - slave 时需要开启。
 * binlog_format：日志格式，有三种：
-  1. STATEMENT：5.7.6以前默认格式，记录实际的SQL语句，相比ROW格式，减少了bin-log的日志量，节省IO和储存，但是使用某些特定情况的储存过程或者函数时无法保证安全。
-  2. ROW：默认格式，记录每行所做的更改,以二进制格式对整行进行保存，比如 update
-     语句更新了10条数据，10条记录都会记录到日志中，增大了日志量，但是避免了STATEMENT的问题。
-  3. MIXED：当需要时，从 STATEMENT 切换到 ROW。
+    1. STATEMENT：5.7.6以前默认格式，记录实际的SQL语句，相比ROW格式，减少了bin-log的日志量，节省IO和储存，但是使用某些特定情况的储存过程或者函数时无法保证安全。
+    2. ROW：默认格式，记录每行所做的更改,以二进制格式对整行进行保存，比如 update 语句更新了10条数据，10条记录都会记录到日志中，增大了日志量，但是避免了STATEMENT的问题。
+    3. MIXED：当需要时，从 STATEMENT 切换到 ROW。
 
 Binlog的作用：
 
@@ -1728,12 +1692,8 @@ FLUSH LOGS;
 
 清除binlog：
 
-1. 设置 binlog_expire_logs_seconds 和 expire_logs_days
-   自动到期清除，两个值都设置为0表示不清除binlog，如果一个非0值则使用该参数作为到期时间，默认binlog_expire_logs_seconds =
-   2592000，expire_logs_days = 0，即30天。
-2. 手动清除日志，`purge binary logs to <file>`。例如 purge binary logs to server1.000004 则会删除 server1.000001 到
-   server1.000003，server1.000004 不会删除。或者 `purge binary logs to <DATETIME>`。例如 purge binary logs before '
-   2017-08-03 15:45:00'。
+1. 设置 binlog_expire_logs_seconds 和 expire_logs_days自动到期清除，两个值都设置为0表示不清除binlog，如果一个非0值则使用该参数作为到期时间，默认`binlog_expire_logs_seconds =2592000`，`expire_logs_days = 0`，即30天。
+2. 手动清除日志，`purge binary logs to <file>`。例如 `purge binary logs to server1.000004` 则会删除 server1.000001 到 server1.000003，server1.000004 不会删除。或者 `purge binary logs to <DATETIME>`。例如 `purge binary logs before '2017-08-03 15:45:00'`。
 3. 删除所有二进制日志，`reset master`。
 
 使用日志：
@@ -1755,14 +1715,13 @@ cat <file> | mysql -h <hsot> -u <user> -p <db_name>
 迁移日志：
 
 1. 停止服务器。
-2. 执行 `mysqlbinlogmove --bin-log-basename=<basename> --binlog-dir=<source-path> <target-pach>`。
+2. 执行 `mysqlbinlogmove --bin-log-basename=<basename> --binlog-dir=<source-path> <target-path>`。
 3. 修改my.cnf中log_bin选项。
 4. 重启服务。
 
 #### 套接字文件
 
-在 UNIX 系统下本地连接 MySQL 可以使用 UNIX域套接字方式，这种方式需要一个套接字文件，该文件由参数 mysqlx_socket
-控制，通过 `SHOW VARIABLES LIKE '%socket%';`查询,默认存在 于/tmp/mysql.sock。
+在 UNIX 系统下本地连接 MySQL 可以使用 UNIX域套接字方式，这种方式需要一个套接字文件，该文件由参数 mysqlx_socket 控制，通过 `SHOW VARIABLES LIKE '%socket%';`查询,默认存在 于`/tmp/mysql.sock`。
 
 #### pid文件
 
@@ -1772,59 +1731,44 @@ MySQL 启动后会将自己进程ID写入pid文件，默认文件名为 `<host_n
 
 ##### 表空间文件
 
-1. 系统表空间：InnoDB系统表空间包含InnoDB数据字典，同时也是 doublewrite buffer、change buffer 和 UNDO
-   日志的储存区域，系统表空间还包含在系统表空间中创建的表以及所有用户创建的表的索引数据。系统表空间用一个和多个数据文件表示。默认情况下，将在
-   MySQL 数据目录中创建一个名为 ibdata1 的系统数据文件，该文件的大小和数据由 innodb_data_file_path 启动项控制。
-2.
-
-独立表空间：每个独立表空间都是一个单表表空间，它在自己的数据文件中创建，而不是在系统表空间中创建，当启用innodb_file_per_table时，将在独立表空间中创建，否则在系统表空间中创建InnoDB表，每个独立表空间有一个.idb数据文件表示，该文件默认是在数据库目录中创建。独立表空间中只存放数据、索引、插入缓冲Bitmap页，其他数据(
-比如undo信息)仍存放在系统表空间中，意思就是使用了独立表空间后，系统表空间仍然会逐渐增大。
-3. 通用表空间：当使用 CREATE TABELSPACE
-创建的共享InnoDB表空间，可以在MySQL数据目录之外创建，可以容纳多张表，如 `CREATE TABLESPACE ts1 ADD DATAFILE '/my/tablespace/directory/ts1.ibd' Engine=InnoDB;`
-4. UNDO表空间：由一个或多个UNDO日志文件组成，数量由 innodb_undo_tablespaces 定义。
+1. 系统表空间：InnoDB系统表空间包含InnoDB数据字典，同时也是 doublewrite buffer、change buffer 和 UNDO 日志的储存区域，系统表空间还包含在系统表空间中创建的表以及所有用户创建的表的索引数据。系统表空间用一个和多个数据文件表示。默认情况下，将在 MySQL 数据目录中创建一个名为 ibdata1 的系统数据文件，该文件的大小和数据由 `innodb_data_file_path` 启动项控制。
+2. 独立表空间：每个独立表空间都是一个单表表空间，它在自己的数据文件中创建，而不是在系统表空间中创建，当启用`innodb_file_per_table`时，将在独立表空间中创建，否则在系统表空间中创建InnoDB表，每个独立表空间有一个.idb数据文件表示，该文件默认是在数据库目录中创建。独立表空间中只存放数据、索引、插入缓冲Bitmap页，其他数据(比如undo信息)仍存放在系统表空间中，意思就是使用了独立表空间后，系统表空间仍然会逐渐增大。
+3. 通用表空间：当使用 CREATE TABELSPACE 创建的共享InnoDB表空间，可以在MySQL数据目录之外创建，可以容纳多张表，如 `CREATE TABLESPACE ts1 ADD DATAFILE '/my/tablespace/directory/ts1.ibd' Engine=InnoDB;`
+4. UNDO表空间：由一个或多个UNDO日志文件组成，数量由 `innodb_undo_tablespaces` 定义。
 
 ###### 调整InnoDB系统的表空间大小
 
 增大：
 
-数据目录中ibdata1文件是默认的系统表空间，可以使用 innodb_data_file_path（配置innodb系统表空间数据文件，可以指定多个文件，使用;分隔）
-和 innodb_data_home_dir 来配置。例如一个固定大小50MB的ibdata1和一个50Mb自动扩展的ibdata2：innodb_data_file_path=ibdata1:
-50M;ibdata2:50M:autoextend
+数据目录中ibdata1文件是默认的系统表空间，可以使用 `innodb_data_file_path`（配置innodb系统表空间数据文件，可以指定多个文件，使用;分隔） 和 `innodb_data_home_dir` 来配置。例如一个固定大小50MB的ibdata1和一个50Mb自动扩展的ibdata2：`innodb_data_file_path=ibdata1:50M;ibdata2:50M:autoextend`
 
 缩小：
 
-如果未启用 innodb_file_per_table，那么所有的表数据都储存在系统表空间，当删除了一个表时，空间并不会回收，可以通过缩小系统表空间回收磁盘，但这需要较长停机时间，可以先将从库升级为主库再更改。
+如果未启用 `innodb_file_per_table`，那么所有的表数据都储存在系统表空间，当删除了一个表时，空间并不会回收，可以通过缩小系统表空间回收磁盘，但这需要较长停机时间，可以先将从库升级为主库再更改。
 
 1. 设置数据库为只读：`SET @@GLOABL.READ_ONLY = 1`
-2.
-
-备份数据,不包括sys数据库：`mydumper -u root --password=<password> --trx-consistency-only --kill-long-queries --long-query-guard 500 --regex '^(?!sys)' --outputdir </backups>`
-3. 删除所有的*.ibd、*.ib_log、ibdata文件，如果只使用了InnoDB表，则可以删除数据目录和存储系统表空间的所有位置(
-innodb_data_file_path)。
+2. 备份数据,不包括sys数据库：`mydumper -u root --password=<password> --trx-consistency-only --kill-long-queries --long-query-guard 500 --regex '^(?!sys)' --outputdir </backups>`
+3. 删除所有的`*.ibd`、`*.ib_log`、`ibdata`文件，如果只使用了InnoDB表，则可以删除数据目录和存储系统表空间的所有位置(`innodb_data_file_path`)。
 4. 初始化数据目录,`mysqld --initialize --datadir=<data-path>`
-5.
-导入数据：`myloader --directory=</backups/> --queries-per-transaction=50000 --threads=6 --user=root --password=<password> --overwrite-tables`
+5. 导入数据：`myloader --directory=</backups/> --queries-per-transaction=50000 --threads=6 --user=root --password=<password> --overwrite-tables`
 6. 恢复可读：`SET @@GLOBAL.READ_ONLY=0`
 
 ###### 管理UNDO表空间
 
-通过 innodb_max_undo_log_size(默认1GB)来管理UNDO表空间大小，innodb_undo_tablespaces(默认2GB)
-来控制表空间的数量。默认情况下innodb_undo_log_truncate被启用，超过innodb_max_undo_log_size会被截断，必须至少有两个UNDO表空间才能实现截断。
+通过 `innodb_max_undo_log_size`(默认1GB)来管理UNDO表空间大小，`innodb_undo_tablespaces`(默认2GB)来控制表空间的数量。默认情况下`innodb_undo_log_truncate`被启用，超过`innodb_max_undo_log_size`会被截断，必须至少有两个UNDO表空间才能实现截断。
 
 ###### 压缩InnoDB表
 
 适用于读多写少的、存在大字段、磁盘空间达到瓶颈的场景。
 
-1. 设置 nnodb_file_format=Barracuda。
-2. 创建表时增加 ROW_FORMAT=COMPRESSED
-   KEY_BLOCK_SIZE=8，如 `CREATE TABLE compressed_table(id INT PRIMARY KEY) ROW_FORMAT=COMPRESSED KEY_BLOCK_SIZE=8;`
+1. 设置 `innodb_file_format=Barracuda`。
+2. 创建表时增加 `ROW_FORMAT=COMPRESSED KEY_BLOCK_SIZE=8`，如 `CREATE TABLE compressed_table(id INT PRIMARY KEY) ROW_FORMAT=COMPRESSED KEY_BLOCK_SIZE=8;`
 
 ##### 重做日志文件
 
 ![71.png](./assets/71.png)
 
-默认情况下，存在于数据目录中 ib_logfile0 和 ib_logfile1,每个InnoDB储存引擎至少存在一组重做日志，每组存在两个重做日志文件，组中每个redolog
-大小一致，并以循环写入的方式运行。从重做日志缓冲刷新到磁盘时，按扇区大小写入，也就是512B，扇区是磁盘的最小物理单位，写入必定成功。
+默认情况下，存在于数据目录中 `ib_logfile0` 和 `ib_logfile1`,每个InnoDB储存引擎至少存在一组重做日志，每组存在两个重做日志文件，组中每个redolog 大小一致，并以循环写入的方式运行。从重做日志缓冲刷新到磁盘时，按扇区大小写入，也就是512B，扇区是磁盘的最小物理单位，写入必定成功。
 
 与 binlog 区别：
 
@@ -1870,12 +1814,10 @@ redolog 相关配置参数：
 5. innodb_flush_log_at_trx_commit：表示 commit 操作时，处理重做日志的方式：
 
 * 0 表示 commit 时，并不将事务的重做日志写入磁盘上的日志文件，而是等待主线程的每秒刷新。
-* 1 表示 commit 时，将重做日志同步写入磁盘，即 写入 page buffer，并调用 fsync。
-* 2 表示 commit 时，将重做日志异步写到磁盘，即写入page buffer ，并不调用 fsync。
+* 1 表示 commit 时，将重做日志同步写入磁盘，即写入page buffer，并调用 fsync。
+* 2 表示 commit 时，将重做日志异步写到磁盘，即写入page buffer，并不调用 fsync。
 
-  **为保证事务的持久性，必须将该值设为 1
-  ，确保事务都已经写入redolog，即使发生宕机也可以恢复，设置为0或者2都有可能导致事务丢失，不同的是设置为2时，如果数据库宕机，但是服务器没有宕机，数据仍然可以写入磁盘，保证数据不丢失。
-  **
+  **为保证事务的持久性，必须将该值设为 1，确保事务都已经写入redolog，即使发生宕机也可以恢复，设置为0或者2都有可能导致事务丢失，不同的是设置为2时，如果数据库宕机，但是服务器没有宕机，数据仍然可以写入磁盘，保证数据不丢失。**
 
 ## 事务
 
@@ -1889,8 +1831,7 @@ InnoDB 支持事务，MyISAM不支持事务。
 
 持久性：数据库是否故障，已经保存的数据不会丢失。
 
-事务的隔离性是通过锁来实现，原子性、一致性、持久性通过 redo log 和 undo log 来完成。redo log 保证事务的持久性，是物理日志，记录页的物理修改操作，undo
-log保证事务的一致性和原子性，帮助事务回滚以及MVCC，是逻辑日志，根据每行记录进行记录，需要进行随机读写。
+事务的隔离性是通过锁来实现，原子性、一致性、持久性通过 redo log 和 undo log 来完成。redo log 保证事务的持久性，是物理日志，记录页的物理修改操作，undo log保证事务的一致性和原子性，帮助事务回滚以及MVCC，是逻辑日志，根据每行记录进行记录，需要进行随机读写。
 
 ```bash
 # 开启、回滚、提交一个事务
@@ -1906,11 +1847,9 @@ ROLLBACK TO <savepoint>;
 
 重做日志包含两部分：重做日志缓冲(易失的) 和 重做日志文件(持久的)。
 
-在事务提交时，必须先将该事务的所有重做日志写入文件进行持久化，待事务的提交操作完成才算完成，每次将重做日志缓冲写入文件后都会调用fsync操作，因此磁盘的性能影响事务提交的性能，可以
-通过改变 innodb_flush_log_at_trx_commit 来改变fsync操作时机。
+在事务提交时，必须先将该事务的所有重做日志写入文件进行持久化，待事务的提交操作完成才算完成，每次将重做日志缓冲写入文件后都会调用fsync操作，因此磁盘的性能影响事务提交的性能，可以 通过改变 `innodb_flush_log_at_trx_commit` 来改变fsync操作时机。
 
-重做日志以 512B 储存，意味着重做日志缓存、重做日志文件都是以 块(block)
-进行保存，由于块的大小和磁盘扇区大小一致，因此日志的写入可以保证原子性，不需要doublewrite，日志头占用12字节、日志尾占用8字节，实际储存492字节。
+重做日志以 512B 储存，意味着重做日志缓存、重做日志文件都是以 块(block) 进行保存，由于块的大小和磁盘扇区大小一致，因此日志的写入可以保证原子性，不需要doublewrite，日志头占用12字节、日志尾占用8字节，实际储存492字节。
 
 ### undo
 
@@ -1925,8 +1864,7 @@ undo 存放在数据库内部的一个特殊段中，称为 undo 段，undo 段�
 分类：
 
 * insert undo log：因为是insert操作的记录，只对当前事务可见，对其他事务不可见，所以在事务提交后直接删除，不需要 purge操作。
-* update undo log：记录delete和update操作产生的undo log，该undo log可能需要提供MVCC机制，因此不能在事务提交的时候删除，而是放入一个链表中，等待
-  purge 线程进行删除。
+* update undo log：记录delete和update操作产生的undo log，该undo log可能需要提供MVCC机制，因此不能在事务提交的时候删除，而是放入一个链表中，等待 purge 线程进行删除。
 
 当事务提交后，对于 undo log 会做两件事：
 
@@ -1956,24 +1894,24 @@ undo页存在于缓冲池中，跟随checkpoint刷新(write+flush)磁盘。
 
 相关配置：
 
-innodb_undo_directory：用于 设置 undo段文件 的路径，意味着 undo段 可以存放在共享表空间之外的位置。
+`innodb_undo_directory`：用于 设置 undo段文件 的路径，意味着 undo段 可以存放在共享表空间之外的位置。
 
-innodb_rollback_segments：设置 undo段 的个数，默认128。
+`innodb_rollback_segments`：设置 undo段 的个数，默认128。
 
-innodb_undo_tablespaces：用来设置 undo段文件 的数量，默认为2，这样 undo段 可以较均匀的分布在多个文件。
+`innodb_undo_tablespaces`：用来设置 undo段文件 的数量，默认为2，这样 undo段 可以较均匀的分布在多个文件。
 
-innodb_max_undo_log_size：控制 undo tablespace 最大值大小，默认1G
+`innodb_max_undo_log_size`：控制 undo tablespace 最大值大小，默认1G
 
-innodb_undo_log_truncate：当启动该字段时，如果 undo tablespace 超过 innodb_max_undo_log_size 会尝试 truncate。
+`innodb_undo_log_truncate`：当启动该字段时，如果 undo tablespace 超过 innodb_max_undo_log_size 会尝试 truncate。
 
 ### 隔离级别
 
 1. 读取未提交(read uncommitted)：当前事务可以读取由另一个未提交事务写入的数据(脏读 dirty read)。
-2. 读提交(read committed)：当前事务只能读取另一个事务提交数据(不可重复读取 non-repeatable read)
-   ，事务A读取数据a，另一个事务修改数据a并提交，事务A再次读取数据a，两次读取数据a不一样，叫不可重复读。
-3. 可重复读取(repeatable read)
-   ：InnoDB默认级别，在同一个事务内的查询都是事务开始时刻一致的，事务A只能在事务B修改数据并提交后，自己也提交事务后，才能读取到事务B修改的数据，有一种特殊情况就是事务A可以读取到自己修改的数据,不能避免幻读(
-   例如：事务A事务期间查询某数据返回3行，事务B在此期间插入1行，事务A在提交之后再次查询该数据发现存在4行)。
+2. 读提交(read committed)：当前事务只能读取另一个事务提交数据(不可重复读取 non-repeatable read)，事务A读取数据a，另一个事务修改数据a并提交，事务A再次读取数据a，两次读取数据a不一样，叫不可重复读。
+3. 可重复读取(repeatable read)：InnoDB默认级别，同一事务的多个实例在并发读取数据时，会看到同样的数据行，事务A只能在事务B修改数据并提交后，自己也提交事务后，才能读取到事务B修改的数据，有一种特殊情况就是事务A读取某一范围的数据行时，另一个事务又在该范围内插入了新行，当事务A再读取该范围的数据行时，会发现有新的“幻影” 行。
+
+   例如：事务A事务期间查询某数据返回3行，事务B在此期间插入1行，事务A在提交之后再次查询该数据发现存在4行。
+
 4. 序列化：在每个SELECT操作后自动加上 LOCK IN SHARE MODE，事务顺序执行。
 
 ## 备份
@@ -2013,10 +1951,18 @@ WarmBackup：在数据库运行时备份，但会对数据库操作有影响，�
 # --where 添加过滤条件
 
 # --lock-all-tables 默认设置，保证数据的一致性，锁表。
-# --single-transaction 一致性的另一种方案，和上面的参数，二选一。在执行备份之前，将事务隔离模式改为 REPEATABLE READ，开启事务，在dump期间如果其他事务修改了数据，对dump的数据无影响，适用于InnoDB，可以减少锁表。
+# --single-transaction 一致性的另一种方案，和上面的参数，二选一。
+# 在执行备份之前，将事务隔离模式改为 REPEATABLE READ，开启事务，在dump期间如果其他事务修改了数据，对dump的数据无影响，适用于InnoDB，可以减少锁表。
 
-# --master-data 将当前服务器的binlog的位置和文件名追加到输出文件中，会执行FLUSH TABLES WITH READ LOCK;然后执行SHOW MASTER STATUS查询binlog的状态，并记录如 CHANGE MASTER TO MASTER_LOG_FILE='mysql-bin.000095', MASTER_LOG_POS=50607116; 如果为 1，该命令不注释，如果为2，该命令注释。若用于搭建从库，可使用 2;最后 如果加--lock-all-tables 不会解锁，等dump完再解锁，如果加--single-transaction会执行 UNLOCK TABLES 解锁。
-# --dump-slave 先stop slave停止主从复制，然后执行show slave status，记录binlog状态（这里的状态是从服务器数据复制到的节点，不是主服务器最新的节点。如 CHANGE MASTER TO MASTER_LOG_FILE='mysql-bin.000095', MASTER_LOG_POS=50607116; 如果为 1，该命令不注释，如果为2，该命令注释。默认为1。），然后执行备份，备份完成后start slave。
+# --master-data 将当前服务器的binlog的位置和文件名追加到输出文件中，会执行FLUSH TABLES WITH READ LOCK;
+# 然后执行SHOW MASTER STATUS查询binlog的状态，并记录如 CHANGE MASTER TO MASTER_LOG_FILE='mysql-bin.000095', MASTER_LOG_POS=50607116; 
+# 如果为 1，该命令不注释，如果为2，该命令注释。若用于搭建从库，可使用 2;
+# 最后 如果加--lock-all-tables 不会解锁，等dump完再解锁，
+# 如果加--single-transaction会执行 UNLOCK TABLES 解锁。
+
+# --dump-slave 先stop slave停止主从复制，然后执行show slave status，记录binlog状态
+# （这里的状态是从服务器数据复制到的节点，不是主服务器最新的节点。如 CHANGE MASTER TO MASTER_LOG_FILE='mysql-bin.000095', MASTER_LOG_POS=50607116; 
+# 如果为 1，该命令不注释，如果为2，该命令注释。默认为1。），然后执行备份，备份完成后start slave。
 
 mysqldump --all-databases -u <user> -p<password> > dump.sql
 # 或者
@@ -2060,10 +2006,7 @@ grant replication slave,replication client on *.* to <user>@<ip> identified by <
 2. 在主库上，创建一个复制用户，`grant replication slave on *.* to <user>@<ip> identified by <password>;`
 3. 在主库上，进行备份。
 4. 在从库上，恢复此备份。
-5.
-
-在从库上，恢复备份好，执行 `CHANGE MASTER TO MASTER_HOST=<master-ip>,MASTER_USER=<user>,MASTER_PASSWORD=<password>,MASTER_LOG_FILE=<log-file>,MASTER_LOG_POS=<position>;`
-log-file和position存在于转储文件中，使用 `less <dump.sql>`查看。
+5. 在从库上，恢复备份好，执行 `CHANGE MASTER TO MASTER_HOST=<master-ip>,MASTER_USER=<user>,MASTER_PASSWORD=<password>,MASTER_LOG_FILE=<log-file>,MASTER_LOG_POS=<position>;`log-file和position存在于转储文件中，使用 `less <dump.sql>`查看。
 6. 在从库上，start slave。
 
 链式复制：主库和从位于数据中心A内，中继主库位于数据中心B，中继主库从数据中心A的主库复制，数据中心B的从库复制中继主库。
@@ -2072,9 +2015,7 @@ log-file和position存在于转储文件中，使用 `less <dump.sql>`查看。
 
 1. 主从复制的方法设置，然后在从数据库执行 SET @@GLOBAL.READ_ONLY=ON。
 2. 在从库上执行 SHOW MASTER STATUS。
-3.
-
-在主库上执行 `CHANGE MASTER TO MASTER_HOST=<master-ip>,MASTER_USER=<user>,MASTER_PASSWORD=<password>,MASTER_LOG_FILE=<log-file>,MASTER_LOG_POS=<position>;`
+3. 在主库上执行 `CHANGE MASTER TO MASTER_HOST=<master-ip>,MASTER_USER=<user>,MASTER_PASSWORD=<password>,MASTER_LOG_FILE=<log-file>,MASTER_LOG_POS=<position>;`
 4. 在主库上执行 START SLAVE。
 5. 在从库上执行 SET @@GLOBAL.READ_ONLY=OFF 。
 
@@ -2082,10 +2023,8 @@ log-file和position存在于转储文件中，使用 `less <dump.sql>`查看。
 
 1. 先从一个主库A备份数据，复制到另外一个主库B和从库C。
 2. 在从库C 执行 STOP SLAVE。
-3. 在从库C
-   上执行 `CHANGE MASTER TO MASTER_HOST=<master1-ip>,MASTER_USER=<user>,MASTER_PASSWORD=<password>,MASTER_LOG_FILE=<log-file>,MASTER_LOG_POS=<position> FOR CHANNEL <master1>;`
-4. 在从库C
-   上执行 `CHANGE MASTER TO MASTER_HOST=<master2-ip>,MASTER_USER=<user>,MASTER_PASSWORD=<password>,MASTER_LOG_FILE=<log-file>,MASTER_LOG_POS=<position> FOR CHANNEL <master2>;`
+3. 在从库C 上执行 `CHANGE MASTER TO MASTER_HOST=<master1-ip>,MASTER_USER=<user>,MASTER_PASSWORD=<password>,MASTER_LOG_FILE=<log-file>,MASTER_LOG_POS=<position> FOR CHANNEL <master1>;`
+4. 在从库C 上执行 `CHANGE MASTER TO MASTER_HOST=<master2-ip>,MASTER_USER=<user>,MASTER_PASSWORD=<password>,MASTER_LOG_FILE=<log-file>,MASTER_LOG_POS=<position> FOR CHANNEL <master2>;`
 5. 在从库执行 `START SLAVE FOR CHANNEL <master1>;`
 6. 在从库执行 `START SLAVE FOR CHANNEL <master2>;`
 
@@ -2118,9 +2057,7 @@ log-file和position存在于转储文件中，使用 `less <dump.sql>`查看。
 默认情况下复制是异步的，主库不知道写入操作是否已经到达从库，半同步复制中主库会一直等待，直到至少有一个从库收到写入的数据。配置如下：
 
 1. 在主库安装插件：`INSTALL PLUGIN rpl_semi_sync_master SONAME 'semisync_master.so';`
-2.
-
-在主库上启用半同步复制并调整超时：`SET @@GLOBAL.rpl_semi_sync_master_enabled=1; SET @@GLOBAL.rpl_semi_sync_master_timeout=1000; `
+2. 在主库上启用半同步复制并调整超时：`SET @@GLOBAL.rpl_semi_sync_master_enabled=1; SET @@GLOBAL.rpl_semi_sync_master_timeout=1000; `
 3. 在从库安装插件：`INSTALL PLUGIN rpl_semi_sync_slave SONAME 'semisync_slave.so';`
 4. 在从库上启动半同步复制：`SET GLOBAL rpl_semi_sync_slave_enabled=1; STOP SLAVE IO_THREAD; START SLAVE IO_THREAD;`
 
@@ -2212,12 +2149,11 @@ InnoDB数据是按行来存放，并规定每页最少储存两行记录(否则B
 create table t
 (
     idint
-)engine=innodb
-
-  partition by range(id)(
-     partition  p0  values  less  than(10),
-     partition  p1  values  less  than(20),
-     partition  p2  values  less than(maxvalue)
+) ENGINE=InnoDB
+    PARTITION BY RANGE(id)(
+     PARTITION p0 VALUES LESS THAN(10),
+     PARTITION p1 VALUES LESS THAN(20),
+     PARTITION p2 VALUES LESS THAN(maxvalue)
 );
 ```
 
@@ -2285,10 +2221,12 @@ alter table my_user
 alter table my_user drop partition p30;
 -- 删除表的所有分区，不会丢失数据
 alter table my_user remove partitioning;
+
 -- 通过此语句来显示扫描哪些分区，及他们是如何使用的
 explain
 partitions
 select 语句
+
 --重新定义range分区表，不会丢失数据
 Alter table my_user partition by range (salary)(
     partition p1 values less than (2000),
@@ -2329,13 +2267,14 @@ B+ 树索引高扇出性，在数据库中一般2-4层，意思就是查找一�
 
 对表中的多个列进行索引。
 
-例如：对 a、b、c 三个字段进行索引，以前情况可以使用索引：
+例如：对 a、b、c 三个字段进行索引，以下情况可以使用索引：
 
 ```sql
 SELECT *
 FROM TABLE
 WHERE a = 'xxxx'
 ORDER BY b;
+
 SELECT *
 FROM TABLE
 WHERE a = 'xxxx'
@@ -2370,9 +2309,9 @@ ORDER BY c;
 2. 减少乱序条件下缓冲池中的同一个页被反复替换。
 3. 可以批量处理对键值对的查询操作。
 
-该优化通过 optimizer_switch 中的 mrr(是否启用）、mrr_cost_based(由优化器判断是否使用) 参数配置。
+该优化通过 `SELECT @@optimizer_switch` 中的 mrr(是否启用）、mrr_cost_based(由优化器判断是否使用) 参数配置。
 
-read_rnd_buffer-size 控制缓冲区大小，默认256k。
+`read_rnd_buffer-size` 控制缓冲区大小，默认256k。
 
 ### Index Condition Pushdown优化
 
@@ -2448,9 +2387,9 @@ REPEATABLE READ 快照数据总是读取事务开始时的行数据版本。
 
 语法：
 
-SELECT ... FOR UPDATE （X锁）
+`SELECT ... FOR UPDATE` (X锁)
 
-SELECT ... LOCK IN SHARE MODE (S锁)
+`SELECT ... LOCK IN SHARE MODE` (S锁)
 
 ### 行锁的算法
 
@@ -2462,9 +2401,7 @@ SELECT ... LOCK IN SHARE MODE (S锁)
 2. Gap Lock (LOCK_GAP)：lock_mode X locks gap before rec , 锁定一个范围但不包含记录本身，
 
 > Insert Intention Lock (LOCK_INSERT_INTENTION)：lock_mode X locks gap before rec insert intention ,插入意向锁，不是意向锁，只是
-> Gap
-
-Lock的一种特殊类型，在多事务同时insert不同数据至同一间隙时候产生，只要不是相同位置就不需要等待其他事务完成，不会发生锁等待。例如：假设有一个记录索引包含键值4和7，不同的事务分别插入5和6，每个事务都会产生一个加在4-7之间的插入意向锁，再获取插入行上的排它锁，但是不会被互相锁住。
+> Gap Lock的一种特殊类型，在多事务同时insert不同数据至同一间隙时候产生，只要不是相同位置就不需要等待其他事务完成，不会发生锁等待。例如：假设有一个记录索引包含键值4和7，不同的事务分别插入5和6，每个事务都会产生一个加在4-7之间的插入意向锁，再获取插入行上的排它锁，但是不会被互相锁住。
 
 3. Next-Key Lock (LOCK_ORDINARY)：lock_mode X , 锁定一个范围并且锁定记录本身。
 
@@ -2475,13 +2412,12 @@ Lock的一种特殊类型，在多事务同时insert不同数据至同一间隙�
 
 当事务A上锁后，事务B能否在某个范围加锁：
 
-
-| 事务B\事务A      | Gap | Insert Intention | Record | Next-Key |
-| ---------------- | --- | ---------------- | ------ | -------- |
-| Gap              | 是  | 是               | 是     | 是       |
-| Insert Intention | 否  | 是               | 是     | 否       |
-| Record           | 是  | 是               | 否     | 否       |
-| Next-Key         | 是  | 是               | 否     | 否       |
+| 事务B\事务A          | Gap | Insert Intention | Record | Next-Key |
+|------------------|-----|------------------|--------|----------|
+| Gap              | 能   | 能                | 能      | 能        |
+| Insert Intention | 否   | 能                | 能      | 否        |
+| Record           | 能   | 能                | 否      | 否        |
+| Next-Key         | 能   | 能                | 否      | 否        |
 
 所以：
 
@@ -2496,11 +2432,11 @@ Lock的一种特殊类型，在多事务同时insert不同数据至同一间隙�
 在RC隔离级别下：
 
 * Delete：
-  * 如果记录存在，where条件为主键且为精准查询，则记录上加 Record Lock，如果是范围查询，则在符合条件的记录上加 Record Lock。
-  * 如果记录存在，where条件为非主键唯一索引，则在符合条件的记录的 唯一索引 和 主键 上都加上 Record Lock。
-  * 如果记录存在，where条件为非主键非唯一索引，则在符合条件的 索引 和 主键 上都加上 Record Lock。
-  * 如果记录存在，where条件没有索引，则走主键索引，进行全表扫描，扫描过的记录都会加 Record Lock，发现不符合条件后会解锁，留下符合条件记录的锁。
-  * 如果记录不存在，需要 Next-Key Lock。
+    * 如果记录存在，where条件为主键且为精准查询，则记录上加 Record Lock，如果是范围查询，则在符合条件的记录上加 Record Lock。
+    * 如果记录存在，where条件为非主键唯一索引，则在符合条件的记录的 唯一索引 和 主键 上都加上 Record Lock。
+    * 如果记录存在，where条件为非主键非唯一索引，则在符合条件的 索引 和 主键 上都加上 Record Lock。
+    * 如果记录存在，where条件没有索引，则走主键索引，进行全表扫描，扫描过的记录都会加 Record Lock，发现不符合条件后会解锁，留下符合条件记录的锁。
+    * 如果记录不存在，需要 Next-Key Lock。
 * Update：和 Delete 表现一样。
 
 在RR隔离级别(MySQL默认隔离级别)下：
@@ -2508,19 +2444,18 @@ Lock的一种特殊类型，在多事务同时insert不同数据至同一间隙�
 * Insert：对范围加Insert Intention，对行对应的索引记录加一个 Record Lock，当发生唯一键冲突时，会在冲突键前后加上 Next-Key
   Lock。
 * Delete：
-  * 如果记录存在，where条件为主键且为精准查询，则记录上加Record Lock，如果是范围查询，则在符合条件的记录上加 Next-key
-    Lock。
-  * 如果记录存在，where条件为非主键唯一索引，如果是精准查询，则在记录的 唯一索引 和 主键 上都加上 Record
-    Lock，如果是范围查询，则在所有符合条件的记录上加 Next-key Lock。
-  * 如果记录存在，where条件为非主键非唯一索引，则在符合条件的 索引 和 主键 上都加上 Next-Key Lock。
-  * 如果记录存在，where条件没有索引，则走主键索引，进行全表扫描，扫描过的记录都会加 Next-Key Lock，发现不符合条件后会解锁，留下符合条件记录的锁。
-  * 如果记录不存在，需要 Next-Key Lock。
+    * 如果记录存在，where条件为主键且为精准查询，则记录上加Record Lock，如果是范围查询，则在符合条件的记录上加 Next-key
+      Lock。
+    * 如果记录存在，where条件为非主键唯一索引，如果是精准查询，则在记录的 唯一索引 和 主键 上都加上 Record
+      Lock，如果是范围查询，则在所有符合条件的记录上加 Next-key Lock。
+    * 如果记录存在，where条件为非主键非唯一索引，则在符合条件的 索引 和 主键 上都加上 Next-Key Lock。
+    * 如果记录存在，where条件没有索引，则走主键索引，进行全表扫描，扫描过的记录都会加 Next-Key Lock，发现不符合条件后会解锁，留下符合条件记录的锁。
+    * 如果记录不存在，需要 Next-Key Lock。
 * Update：和 Delete 表现一样。
 * Select：正常情况不存在锁，除非使用 lock in share mode 或者 for update，在所有索引扫描范围的索引记录上加上
   Next-key，如果是唯一索引，只需要在相应记录上加 Record Lock。
 
-在默认的 REPEATABLE READ 模式下，InnoDB 采用 Next-Key Lock
-来解决不可重复读的问题，指在同一事物下，连续执行两次同样的SQL语句可能导致不同的结果，第二次的SQL语句可能返回之前不存在的行，这些行由其他事务新插入。
+在默认的 REPEATABLE READ 模式下，InnoDB 采用 Next-Key Lock 来解决不可重复读的问题，指在同一事物下，连续执行两次同样的SQL语句可能导致不同的结果，第二次的SQL语句可能返回之前不存在的行，这些行由其他事务新插入。
 
 当where条件是point类型查询，查询唯一键值，Next-Key Lock 会降级为Record Lock。
 
@@ -2550,18 +2485,20 @@ Lock的一种特殊类型，在多事务同时insert不同数据至同一间隙�
 1. Insert 唯一键冲突，造成 Next-key。
    ![image.png](./assets/80.jpg)
 
-   事务T1成功插入记录，并获得索引id=6上的排他记录锁(LOCK_X | LOCK_REC_NOT_GAP)。
-   紧接着事务T2、T3也开始插入记录，请求排他插入意向锁(LOCK_X | LOCK_GAP | LOCK_INSERT_INTENTION)
-   ；但由于发生重复唯一键冲突，各自请求的排他记录锁(LOCK_X | LOCK_REC_NOT_GAP)转成共享记录锁(LOCK_S | LOCK_REC_NOT_GAP)。
+   事务T1成功插入记录，并获得索引id=6上的排他记录锁`LOCK_X | LOCK_REC_NOT_GAP`。
+   紧接着事务T2、T3也开始插入记录，请求排他插入意向锁`LOCK_X | LOCK_GAP | LOCK_INSERT_INTENTION`;
+   但由于发生重复唯一键冲突，各自请求的排他记录锁`LOCK_X | LOCK_REC_NOT_GAP`,未防止阻塞，MySQL会转成共享记录锁`LOCK_S | LOCK_REC_NOT_GAP`，这样其他事务就可以读取数据。
 
-   T1回滚释放索引id=6上的排他记录锁(LOCK_X | LOCK_REC_NOT_GAP)，T2和T3都要请求索引id=6上的排他记录锁(LOCK_X |
-   LOCK_REC_NOT_GAP)。
+   T1回滚释放索引id=6上的排他记录锁`LOCK_X | LOCK_REC_NOT_GAP`，T2和T3都要请求索引id=6上的排他记录锁`LOCK_X | LOCK_REC_NOT_GAP`。
    由于X锁与S锁互斥，只有独占S锁的情况下才能获取X锁，T2和T3都等待对方释放S锁，死锁产生。
 
    如果此场景下，只有两个事务T1与T2或者T1与T3，则不会引发如上死锁情况产生。
 2. 先 Update 再 Insert，Gap 和 Gap 之间不冲突，但 Gap 阻止 Insert Intention。
+
    ![image.png](./assets/82.jpg)
+
    表中无数据。
+
    ![image.png](./assets/83.jpg)
 
 ### 锁的问题
@@ -2569,48 +2506,40 @@ Lock的一种特殊类型，在多事务同时insert不同数据至同一间隙�
 锁的机制实现事务的隔离性要求，但也存在一些问题。
 
 1. 脏读：在一个事务中未提交的数据被另外一个事务读取到，使用 MVCC 进行非锁定一致性读来解决。
-2.
+2. 不可重复读：在一个事务中多次读取同一个数据集合期间，另外一个事务修改了这个数据集合，导致这个数据集合在同一事物中返回结果不一样，使用非锁定一致性读(防止数据修改) + Next-Key Lock(防止数据插入)来解决，但读取的快照数据总是事务开始时的行数据版本。
 
-不可重复读：在一个事务中多次读取同一个数据集合期间，另外一个事务修改了这个数据集合，导致这个数据集合在同一事物中返回结果不一样，使用非锁定一致性读(
-防止数据修改) + Next-Key Lock(防止数据插入)来解决，但读取的快照数据总是事务开始时的行数据版本。
-3.
-丢失更新：一个事务的更新操作会被另一个事务的更新操作所覆盖，在数据库意义上这是不可能的，因为更新操作需要对行或更粗粒度的对象加锁，在一个事务更新操作未提交前另一个事务更新操作会被阻塞等待，两次更新会先后发生不可能同时发生。但是在应用中存在另一种逻辑意义，比如
-用户1 修改记录A，用户2随后也修改记录A，之后用户1查询到的记录A不是自己修改的样子，这时候对于用户1来说，数据就 "丢失了"。
+3. 丢失更新：一个事务的更新操作会被另一个事务的更新操作所覆盖，在数据库意义上这是不可能的，因为更新操作需要对行或更粗粒度的对象加锁，在一个事务更新操作未提交前另一个事务更新操作会被阻塞等待，两次更新会先后发生，不可能同时发生。
+   但是在应用中存在另一种逻辑意义，比如 用户1 修改记录A，用户2随后也修改记录A，之后用户1查询到的记录A不是自己修改的样子，这时候对于用户1来说，数据就 "丢失了"。
 
-存在两种解决方案：
+   存在两种解决方案：
+    * 使用悲观锁,在用户1查询记录A时加一个排它锁，完成修改后再释放锁，这时候用户2的操作需要等用户1完全完成才能使用。
+    * 使用乐观锁，在表中添加版本号字段，每次修改使用 CAS 的方式修改。
 
-* 使用悲观锁,在用户1查询记录A时加一个排它锁，完成修改后再释放锁，这时候用户2的操作需要等用户1完全完成才能使用。
-* 使用乐观锁，在表中添加版本号字段，每次修改使用 CAS 的方式修改。
 ## 性能优化
 
 ### 硬件
 
-CPU：OLTP 是IO密集型操作，OLAP 是CPU密集型操作。多核CPU可以通过修改 innodb_read_io_threads 和 innodb_write_io_threads
-来增大IO线程。
+CPU：OLTP 是IO密集型操作，OLAP 是CPU密集型操作。多核CPU可以通过修改 `innodb_read_io_threads` 和 `innodb_write_io_threads` 来增大IO线程。
 
 内存：根据数据量的大小决定内存大小，mysql对缓冲池的利用较多，大内存对性能有关键性影响。
 
-硬盘：对于机械硬盘两个指标是：寻道时间、转速，对于固态硬盘可以增加 innodb_io_capacity 参数，并选择关闭邻接页刷新。
+硬盘：对于机械硬盘两个指标是：寻道时间、转速，对于固态硬盘可以增加 `innodb_io_capacity` 参数，并选择关闭邻接页刷新。
 
 ### Explain
 
-可以使用 EXPLAIN 来验证MySQL的执行计划，EXPLAIN FORMAT = JSON 可得到详细信息，`EXPLAIN <connection-id>`
-可以为正在运行的会话执行explain计划，可以使用 `SELECT CONNECTION_ID()`来获取connection ID。
+可以使用 EXPLAIN 来验证MySQL的执行计划，`EXPLAIN FORMAT = JSON` 可得到详细信息，`EXPLAIN <connection-id>` 可以为正在运行的会话执行explain计划，可以使用 `SELECT CONNECTION_ID()`来获取connection ID。
 
-另外可以在 EXPLAIN 之后执行 SHOW WARNINGS，来显示详细信息。
+另外可以在 EXPLAIN 之后执行 `SHOW WARNINGS`，来显示详细信息。
 
 ### 评估一条查询的执行时间
 
-可以使用mysqlslap模拟客户端负载，如：
-
-`mysqlslap -u <user> -p<pass> --create-schema=<employees> --query=<"SELECT e.emp_no, salary FROM salaries s JOIN employees e ON s.emp_no=e.emp_no WHERE (first_name='Adam');"> -c <1000>  i 100`
-表示 将查询sql用1000个并发和100个迭代执行。
+可以使用mysqlslap模拟客户端负载，如：`mysqlslap -u <user> -p<pass> --create-schema=<employees> --query=<"SELECT e.emp_no, salary FROM salaries s JOIN employees e ON s.emp_no=e.emp_no WHERE (first_name='Adam');"> -c <1000>  i 100` 表示 将查询sql用1000个并发和100个迭代执行。
 
 #### 如何执行关联查询
 
 先在一个表中循环取出单条数据，然后再嵌套循环到下一个表中寻找匹配的行，依次下去，直到找到所有表中匹配的行为止。然后根据各个表匹配的行，返回查询中需要的各个列。如果mysql在最后一个关联表无法找到更多的行，它将返回上一层关联表，看看能否找到更多的匹配记录，以此类推迭代执行。
 
-所以应该使用小表驱动大表，另外一半不要使用leftjoin。
+所以应该使用小表驱动大表，另外一般不要使用`left join`。
 
 数据量小使用内存排序，数据量大(max_length_for_sort_data)使用文件排序，关联查询时的文件排序：
 
@@ -2672,10 +2601,10 @@ optimizer_switch：包含启多个优化器行为，用逗号分隔，可以启�
 3. 对于联合索引，优化索引列顺序，通常选择性最高的列放在前面，同时要考虑where查询条件分支数据基数的大小,将需要做范围查询的列放在索引后面。
 4. 使用索引顺序扫描来排序，如果 EXPLAIN 的 type 列值为 index，则说明使用了索引扫描来排序。
    使用索引排序的条件：
-   * 当索引的列顺序和order by 子句的顺序完全一致，并且所有列的排序方向都一样。
-   * 如果查询需要关联多张表，order by子句 引用字段全部为第一个表。
-   * 对于联合索引，满足索引的最左前缀要求，或者前导量为常量。例如：表A存在索引(a,b,c)
-     ,查询 `select * from A where a = '1' order by b,c;`
+    * 当索引的列顺序和order by 子句的顺序完全一致，并且所有列的排序方向都一样。
+    * 如果查询需要关联多张表，order by子句 引用字段全部为第一个表。
+    * 对于联合索引，满足索引的最左前缀要求，或者前导量为常量。例如：表A存在索引(a,b,c)
+      ,查询 `select * from A where a = '1' order by b,c;`
 5. 删除重复索引(相同的列、相同的列顺序、相同的键顺序)和冗余索引(部分最左边的列重复)。
 
 ### 慢查询日志分析
@@ -2699,15 +2628,15 @@ SHOW PROCESSLIST，线程状态：
 2. 是否扫描了额外的记录，扫描的类型分为 全表扫描、索引扫描、范围扫描、唯一索引查询、常数索引。
    where条件的处理方式，效率从好到坏：
 
-   * 在索引中使用WHERE条件过滤不匹配记录，在储存引擎完成。
-   * 使用覆盖索引扫描(Extra中出现Using index)返回记录，直接从索引中过滤不需要的记录并返回命中结果，在服务层完成，不需回表查询。
-   * 从数据表中返回数据，然后过滤不满足条件的记录(Extra中出现Using where)，在服务层完成，先从数据表读取记录再过滤。
+    * 在索引中使用WHERE条件过滤不匹配记录，在储存引擎完成。
+    * 使用覆盖索引扫描(Extra中出现Using index)返回记录，直接从索引中过滤不需要的记录并返回命中结果，在服务层完成，不需回表查询。
+    * 从数据表中返回数据，然后过滤不满足条件的记录(Extra中出现Using where)，在服务层完成，先从数据表读取记录再过滤。
 
    当发现扫描了大量数据值返回少数的行时，可以进行下面操作：
 
-   * 使用索引覆盖扫描。
-   * 改变表结构，如冗余数据、使用汇总表等。
-   * 重写复杂查询。
+    * 使用索引覆盖扫描。
+    * 改变表结构，如冗余数据、使用汇总表等。
+    * 重写复杂查询。
 
 #### 重写复杂查询
 
@@ -2725,6 +2654,7 @@ rpm -ivh percona-toolkit-3.3.1-1.el7.x86_64.rpm
 # 测试是否安装成功
 pt-query-digest --help
 ```
+
 ### 优化数据类型
 
 定义表时，应使用储存空间最小的数据类型，因为向磁盘写入或读取的数据越少，查询起来就越快，占用内存也越小，被索引占用的空间也就越小。

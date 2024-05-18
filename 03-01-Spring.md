@@ -634,10 +634,10 @@ public class SpELTest {
         "#{'Hello'}"
         "#{false}"
         //5. 引用其他的bean的方法
-        "#{artistSelector.selectArtist ()}"
+        "#{artistSelector.selectArtist()}"
         //为了防止方法值为null，抛出异常，可以使用“?.”
         //不是null，正常返回；如果是null，不执行后面的方法，直接返回null
-        "#{artistSelector.selectArtist ()?.toUpperCase()}"
+        "#{artistSelector.selectArtist()?.toUpperCase()}"
         //6. 如果要在SpEL中访问类作用域的方法和常量的话，要依赖T() 这个关键的运算符。
         "#{T(java.lang.Math).PI}"
         "#{T(java.lang.Math).random()}"

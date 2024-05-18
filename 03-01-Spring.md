@@ -247,9 +247,9 @@ public class BeanWrapperTest {
 
 上下文分为4类：
 
-* ServletContext : 由 Servlet 容器初始化，为项目提供宿主环境，例如 Tomcat，在 web 项目启动的时候他就初始化这样的上下文环境，为后续的 Spring 容器，SpringMvc 容器提供宿主环境。
-* WebApplicationContext ：Spring 上下文，也是根上下文，是 SpringMvc servlet 的父级上下文，当我们启动 Spring 的时候，那么就需要初始化 IOC 容器，而这个上下文就是用于管理这些 bean，把他们放到容器里。
-* SpringMVC 上下文 ：DispatchServlet 初始化的时候会创建自己的上下文，并从 ServletContext 中取出 WebApplicationContext 作为自己上下文的父容器。
+* `ServletContext`: 由 Servlet 容器初始化，为项目提供宿主环境，例如 Tomcat，在 web 项目启动的时候他就初始化这样的上下文环境，为后续的 Spring 容器，SpringMvc 容器提供宿主环境。
+* `WebApplicationContext`：Spring 上下文，也是根上下文，是 SpringMvc servlet 的父级上下文，当我们启动 Spring 的时候，那么就需要初始化 IOC 容器，而这个上下文就是用于管理这些 bean，把他们放到容器里。
+* `SpringMVC` 上下文 ：`DispatchServlet` 初始化的时候会创建自己的上下文，并从 ServletContext 中取出 WebApplicationContext 作为自己上下文的父容器。
 * 其他上下文：servlet 可以有多个，自然也存在多个上下文。
 
 Spring 中容器存在父子关系，父容器不能访问子容器的资源，而子容器可以访问父容器的资源。
@@ -285,7 +285,7 @@ Spring 中容器存在父子关系，父容器不能访问子容器的资源，�
     * 将 `BeanFactory`、`ApplicationContext` 等注入到上下文。
     * 添加 `ApplicationListener` 类型后置处理器，即创建bean 之后注入到 发布器。
     * 注册 `Environment`、`SystemProperties`、`SystemEnvironment`。
-4. postProcessBeanFactory，提供给子类实现，
+4. `postProcessBeanFactory`，提供给子类实现，
 
     * 在 `AbstractRefreshableWebApplicationContext` 中默认实现是 处理`ServletContextAware`，并且设置 `RequestObjectFactory`，`ResponseObjectFactory`，`SessionObjectFactory`，`WebRequestObjectFactory`。
     * 在 `AnnotationConfigServletWebServerApplicationContext` 相对上面的内容还要添加 扫描`AnnotationConfigServletWebServerApplicationContext` 中的`basePackages`和`annotatedClasses`。
@@ -309,9 +309,9 @@ Spring 中容器存在父子关系，父容器不能访问子容器的资源，�
 
 ## SpelExpressionParser
 
-1. Expression 表达式（“干什么”）：SpEL的核心，所以表达式语言都是围绕表达式进行的
-2. ExpressionParser 解析器（“谁来干”）：用于将字符串表达式解析为表达式对象
-3. EvaluationContext 上下文（“在哪干”）：表达式对象执行的环境，该环境可能定义变量、定义自定义函数、提供类型转换等等
+1. `Expression` 表达式（“干什么”）：SpEL的核心，所以表达式语言都是围绕表达式进行的
+2. `ExpressionParser` 解析器（“谁来干”）：用于将字符串表达式解析为表达式对象
+3. `EvaluationContext` 上下文（“在哪干”）：表达式对象执行的环境，该环境可能定义变量、定义自定义函数、提供类型转换等等
 4. root根对象及活动上下文对象（“对谁干”）：root根对象是默认的活动上下文对象，活动上下文对象表示了当前表达式操作的对象，例如 application.yml 所生成的root对象，表示表达式在这个跟对象取数据。
 
 表达的变量可能从 EvaluationContext 和 rootObject 取。
@@ -361,7 +361,7 @@ public class PropertiesUtil implements EmbeddedValueResolverAware {
 }
 ```
 
-自定义 Placeholder 前后缀解析：
+自定义 `Placeholder` 前后缀解析：
 
 ```java
 public void test() {
@@ -481,18 +481,18 @@ public class CDPlayerConfig {
 
 ### 激活 Profile
 
-* 如果设置了spring.profiles.active属性的话，那么它的值就会用来确定哪个profile是激活的。
-* 但如果没有设置spring.profiles.active属性的话，那Spring将会查找spring.profiles.default的值。
-* 如果spring.profiles.active和spring.profiles.default均没有设置的话，那就没有激活的profile，因此只会创建那些没有定义在profile中的bean。
+* 如果设置了`spring.profiles.active`属性的话，那么它的值就会用来确定哪个profile是激活的。
+* 但如果没有设置`spring.profiles.active`属性的话，那Spring将会查找`spring.profiles.default`的值。
+* 如果`spring.profiles.active`和`spring.profiles.default`均没有设置的话，那就没有激活的profile，因此只会创建那些没有定义在profile中的bean。
 
 设置的方式：
 
-* 作为DispatcherServlet的初始化参数。
+* 作为`DispatcherServlet`的初始化参数。
 * 作为Web应用的上下文参数。
 * 作为JNDI条目。
 * 作为环境变量。
 * 作为JVM的系统属性。
-* 在集成测试类 @SpringBootTest 上，使用@ActiveProfiles注解设置。
+* 在集成测试类 `@SpringBootTest` 上，使用`@ActiveProfiles`注解设置。
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
@@ -541,8 +541,8 @@ public class CDPlayerConfig {
 
 自定义条件注解：
 
-1. 实现 org.springframework.context.annotation.Condition 接口。
-2. 使用 org.springframework.context.annotation.Conditional 定义注解。
+1. 实现 `org.springframework.context.annotation.Condition` 接口。
+2. 使用 `org.springframework.context.annotation.Conditional` 定义注解。
 
 ```java
 public class MagicExistsCondition implements Condition {
@@ -583,8 +583,8 @@ public interface AnnotatedTypeMetadata {
 
 ## 消除 Bean 歧义性
 
-1. 使用 @Primary 确定首选bean。
-2. 使用 @Qualifier 指定使用具体的bean。
+1. 使用 `@Primary` 确定首选bean。
+2. 使用 `@Qualifier` 指定使用具体的bean。
 
 ```java
 
@@ -602,7 +602,7 @@ public void setDessert(Dessert dessert) {
 
 ## bean 作用域
 
-使用 @Scope(ConfigurableBeanFactory.SCOPE_PROTOTYPE) 注解来控制作用域。
+使用 `@Scope(ConfigurableBeanFactory.SCOPE_PROTOTYPE)` 注解来控制作用域。
 
 默认情况下，Spring应用上下文所有bean都是作为以单例的形式创建的。
 
@@ -613,8 +613,8 @@ public void setDessert(Dessert dessert) {
 
 ## Spring 运行时求值
 
-* 属性占位符 （Property placeholder）: ${...} 形式
-* Spring表达式语言（SpEL）：#{...} 形式,例如
+* 属性占位符 （Property placeholder）: `${...}` 形式
+* Spring表达式语言（SpEL）：`#{...}` 形式,例如
 
 ```java
 public class SpELTest {

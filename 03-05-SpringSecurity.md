@@ -247,47 +247,47 @@ public class ExceptionTranslationFilter {
 
 ### WebSecurityConfigurerAdapter配置
 
-| 方法                                    | 描述                                                         |
-| ----------------------------------------- | -------------------------------------------------------------- |
+| 方法                                      | 描述                                          |
+|-----------------------------------------|---------------------------------------------|
 | configure(WebSecurity)                  | 通过重载，配置 Spring Security 的 Filter 链,比如忽略某些资源 |
-| configure(HttpSecurity)                 | 通过重载，配置如何通过拦截器保护请求                         |
-| configure(AuthenticationManagerBuilder) | 通过重载，配置 user-detail 服务                              |
+| configure(HttpSecurity)                 | 通过重载，配置如何通过拦截器保护请求                          |
+| configure(AuthenticationManagerBuilder) | 通过重载，配置 user-detail 服务                      |
 
 安全配置：
 首先通过authorizeRequests()方法来开始请求权限配置,再使用 anyRequest() 或 antMatchers() 来匹配请求，最后使用下面方法进行权限配置
 
 
-| 方法                       | 能够做什么                                                           |
-| ---------------------------- | ---------------------------------------------------------------------- |
-| access(String)             | 如果给定的 SpEL 表达式计算结果为 true，就允许访问                    |
-| anonymous()                | 允许匿名用户访问 authenticated() 允许认证过的用户访问                |
-| denyAll()                  | 无条件拒绝所有访问                                                   |
+| 方法                         | 能够做什么                                    |
+|----------------------------|------------------------------------------|
+| access(String)             | 如果给定的 SpEL 表达式计算结果为 true，就允许访问           |
+| anonymous()                | 允许匿名用户访问 authenticated() 允许认证过的用户访问      |
+| denyAll()                  | 无条件拒绝所有访问                                |
 | fullyAuthenticated()       | 如果用户是完整认证的话（不是通过Remember-me 功能认证的），就允许访问 |
-| hasAnyAuthority(String...) | 如果用户具备给定权限中的某一个的话，就允许访问                       |
-| hasAnyRole(String...)      | 如果用户具备给定角色中的某一个的话，就允许访问                       |
-| hasAuthority(String)       | 如果用户具备给定权限的话，就允许访问                                 |
-| hasIpAddress(String)       | 如果请求来自给定 IP 地址的话，就允许访问                             |
-| hasRole(String)            | 如果用户具备给定角色的话，就允许访问                                 |
-| not()                      | 对其他访问方法的结果求反                                             |
-| permitAll()                | 无条件允许访问                                                       |
-| rememberMe()               | 如果用户是通过 Remember-me 功能认证的，就允许访问                    |
+| hasAnyAuthority(String...) | 如果用户具备给定权限中的某一个的话，就允许访问                  |
+| hasAnyRole(String...)      | 如果用户具备给定角色中的某一个的话，就允许访问                  |
+| hasAuthority(String)       | 如果用户具备给定权限的话，就允许访问                       |
+| hasIpAddress(String)       | 如果请求来自给定 IP 地址的话，就允许访问                   |
+| hasRole(String)            | 如果用户具备给定角色的话，就允许访问                       |
+| not()                      | 对其他访问方法的结果求反                             |
+| permitAll()                | 无条件允许访问                                  |
+| rememberMe()               | 如果用户是通过 Remember-me 功能认证的，就允许访问          |
 
 access 接受的表达式：
 
 
-| 安全表达式                | 计算结果                                                                           |
-| --------------------------- | ------------------------------------------------------------------------------------ |
-| authentication            | 用户的认证对象                                                                     |
-| denyAll                   | 结果始终为 false                                                                   |
-| hasAnyRole(list of roles) | 如果用户被授予了列表中任意的指定角色，结果为 true                                  |
-| hasRole(role)             | 如果用户被授予了指定的角色，结果为 true                                            |
-| hasIpAddress(IP Address)  | 如果请求来自指定 IP 的话，结果为 true                                              |
-| isAnonymous()             | 如果当前用户为匿名用户，结果为 true                                                |
-| isAuthenticated()         | 如果当前用户进行了认证的话，结果为 true                                            |
+| 安全表达式                     | 计算结果                                               |
+|---------------------------|----------------------------------------------------|
+| authentication            | 用户的认证对象                                            |
+| denyAll                   | 结果始终为 false                                        |
+| hasAnyRole(list of roles) | 如果用户被授予了列表中任意的指定角色，结果为 true                        |
+| hasRole(role)             | 如果用户被授予了指定的角色，结果为 true                             |
+| hasIpAddress(IP Address)  | 如果请求来自指定 IP 的话，结果为 true                            |
+| isAnonymous()             | 如果当前用户为匿名用户，结果为 true                               |
+| isAuthenticated()         | 如果当前用户进行了认证的话，结果为 true                             |
 | isFullyAuthenticated()    | 如果当前用户进行了完整认证的话（不是通过 Remember-me 功能进行的认证），结果为 true |
-| isRememberMe()            | 如果当前用户是通过 Remember-me 自动认证的，结果为 true                             |
-| permitAll                 | 结果始终为true                                                                     |
-| principal                 | 用户的principal对象                                                                |
+| isRememberMe()            | 如果当前用户是通过 Remember-me 自动认证的，结果为 true               |
+| permitAll                 | 结果始终为true                                          |
+| principal                 | 用户的principal对象                                     |
 
 除了 authorizeRequests() 之外，还可以使用 requeresChannel() 来限制请求必须是https
 
@@ -412,7 +412,6 @@ final class ThreadLocalSecurityContextHolderStrategy implements SecurityContextH
 }
 ```
 
-**`SecurityContextHolder.getContext().setAuthentication(authentication)`可能会引起多线程竞争。**
 
 ## SecurityContext
 
@@ -573,7 +572,7 @@ public class ProviderManager implements AuthenticationManager, MessageSourceAwar
 
 多个`ProviderManager`可能拥有同一个`parent`，表示它们拥有一些相同的认证机制。这在多个`SecurityFilterChain`的场景中比较常见。
 
-默认情况下，`ProviderManager`将尝试从验证成功的`Authentication `中清楚凭据信息，可以通过配置`eraseCredentialsAfterAuthentication`来改变。
+默认情况下，`ProviderManager`将尝试从验证成功的`Authentication `中清除凭据信息，可以通过配置`eraseCredentialsAfterAuthentication`来改变。
 
 ## AuthenticationProvider
 

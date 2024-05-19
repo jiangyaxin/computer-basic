@@ -6,31 +6,31 @@
 
 1. 自定义Filter: 例如 自定义用户名密码校验规则
    * 直接实现Filter。
-   * 继承GenericFilterBean，该类继承 Filter, BeanNameAware, EnvironmentAware,EnvironmentCapable, ServletContextAware, InitializingBean, DisposableBean。
-   * 继承OncePerRequestFilter重写doFilterInternal，该类保证在一次请求中只会经过一次。
-   * 继承AbstractAuthenticationProcessingFilter重写attemptAuthentication，添加了认证失败，认证成功等处理，但是它没有处理一次请求可能多次调用的问题。
-   * 继承UsernamePasswordAuthenticationFilter重写attemptAuthentication。
+   * 继承`GenericFilterBean`，该类继承`Filter`,`BeanNameAware`,`EnvironmentAware`,`EnvironmentCapable`,`ServletContextAware`,`InitializingBean`,`DisposableBean`。
+   * 继承`OncePerRequestFilter`重写`doFilterInternal`，该类保证在一次请求中只会经过一次。
+   * 继承`AbstractAuthenticationProcessingFilter`重写`attemptAuthentication`，添加了认证失败，认证成功等处理，但是它没有处理一次请求可能多次调用的问题。
+   * 继承`UsernamePasswordAuthenticationFilter`重写`attemptAuthentication`。
    * 所有的Filter都可以继承，具体功能具体分析。
-   * 继承 AbstractAuthenticationFilterConfigurer。
+   * 继承`AbstractAuthenticationFilterConfigurer`。
 
    Filter如何添加：
-   * http.addFilter 添加到最后，但并不是最终的最后，因为后面的流程还会添加其他Filter。
-   * http.addFilterAfter 添加在指定Filter之后。
-   * http.addFilterBefore 添加在指定Filter之前。
-   * http.addFilterAt 添加在指定Filter之前，不会覆盖和删除指定的Filter。
-   * http.apply(new xxxConfigurer())，可自行在 init(http)、config(http) 设置顺序。
-2. 实现 LogoutSuccessHandler： 登出成功后处理器，比如返回json数据，使用 http.logout().logoutSuccessHandler(new xxxLogoutSuccessHandler()) 配置。
-3. 实现 AuthenticationFailureHandler ：AbstractAuthenticationProcessingFilter 认证失败后处理器，使用 http.formLogin().failureHandler(new xxxAuthenticationFailureHandler ) 配置。
-4. 实现 AuthenticationSuccessHandler ：AbstractAuthenticationProcessingFilter 认证成功后处理器， 使用 http.formLogin().successHandler(new xxxAuthenticationSuccessHandler ) 配置。
-5. 实现 AuthenticationEntryPoint ：ExceptionTranslationFilter 认证异常后调转处理器，可参考 LoginUrlAuthenticationEntryPoint，使用 http.exceptionHandling(exceptionHandling -> exceptionHandling.authenticationEntryPoint(new xxxAuthenticationEntryPoint())) 配置默认处理器，还有 defaultAuthenticationEntryPointFor 配合 RequestMatcher 使用。
-6. 实现 AccessDeniedHandler ：ExceptionTranslationFilter 鉴权异常后调转处理器，可使用 http..exceptionHandling(exceptionHandling -> exceptionHandling.accessDeniedHandler(new xxxAccessDeniedHandler()))。
-7. 继承AbstractAuthenticationToken、实现Authentication：自定义认证凭证，一般与自定义认证器一起使用。
-8. 实现AuthenticationProvider、继承DaoAuthenticationProvider：自定义认证器，例如 继承DaoAuthenticationProvider 实现验证码登录，使用 http.authenticationProvider(new xxxAuthenticationProvider()) 或configure(AuthenticationManagerBuilder auth) 配置。
-9. 实现AccessDecisionVoter、继承WebExpressionVoter：自定义投票器，可使用 http.authorizeRequests(authorizeRequests -> authorizeRequests.accessDecisionManager()) 设置。
-10. 实现UserDetailsService：被DaoAuthenticationProvider使用，用于载入用户信息，使用 configure(AuthenticationManagerBuilder auth) 配置。
-11. 实现AccessDecisionManager： 用来鉴权计算投票，例如特定`AccessDecisionVoter `具有额外的权重，或者某个`AccessDecisionVoter`具有一票否决权。
-12. 实现PermissionEvaluator：定义@PostFilter注解中 hasPermission 表达式，详情见下文 自定义权限计算器.
-13. 配置 PasswordEncoder ：自定义加密规则，通过注入到 DaoAuthenticationProvider 使用。
+   * `http.addFilter` 添加到最后，但并不是最终的最后，因为后面的流程还会添加其他Filter。
+   * `http.addFilterAfter` 添加在指定Filter之后。
+   * `http.addFilterBefore` 添加在指定Filter之前。
+   * `http.addFilterAt` 添加在指定Filter之前，不会覆盖和删除指定的Filter。
+   * `http.apply(new xxxConfigurer())`，可自行在 `init(http)`、`config(http)` 设置顺序。
+2. 实现`LogoutSuccessHandler`： 登出成功后处理器，比如返回json数据，使用 `http.logout().logoutSuccessHandler(new xxxLogoutSuccessHandler())` 配置。
+3. 实现`AuthenticationFailureHandler`：`AbstractAuthenticationProcessingFilter` 认证失败后处理器，使用`http.formLogin().failureHandler(new xxxAuthenticationFailureHandler )` 配置。
+4. 实现`AuthenticationSuccessHandler`：`AbstractAuthenticationProcessingFilter` 认证成功后处理器， 使用`http.formLogin().successHandler(new xxxAuthenticationSuccessHandler )` 配置。
+5. 实现`AuthenticationEntryPoint`：`ExceptionTranslationFilter` 认证异常后调转处理器，可参考`LoginUrlAuthenticationEntryPoint`，使用 `http.exceptionHandling(exceptionHandling -> exceptionHandling.authenticationEntryPoint(new xxxAuthenticationEntryPoint()))` 配置默认处理器，还有 `defaultAuthenticationEntryPointFor` 配合 `RequestMatcher` 使用。
+6. 实现`AccessDeniedHandler`：`ExceptionTranslationFilter` 鉴权异常后调转处理器，可使用`http..exceptionHandling(exceptionHandling -> exceptionHandling.accessDeniedHandler(new xxxAccessDeniedHandler()))`。
+7. 继承`AbstractAuthenticationToken`、实现`Authentication`：自定义认证凭证，一般与自定义认证器一起使用。
+8. 实现`AuthenticationProvider`、继承`DaoAuthenticationProvider`：自定义认证器，例如 继承`DaoAuthenticationProvider`实现验证码登录，使用 `http.authenticationProvider(new xxxAuthenticationProvider()) 或configure(AuthenticationManagerBuilder auth)` 配置。
+9. 实现`AccessDecisionVoter`、继承`WebExpressionVoter`：自定义投票器，可使用 `http.authorizeRequests(authorizeRequests -> authorizeRequests.accessDecisionManager())` 设置。
+10. 实现`UserDetailsService`：被`DaoAuthenticationProvider`使用，用于载入用户信息，使用 `configure(AuthenticationManagerBuilder auth)` 配置。
+11. 实现`AccessDecisionManager`： 用来鉴权计算投票，例如特定`AccessDecisionVoter `具有额外的权重，或者某个`AccessDecisionVoter`具有一票否决权。
+12. 实现`PermissionEvaluator`：定义`@PostFilter`注解中 `hasPermission` 表达式，详情见下文 自定义权限计算器.
+13. 配置`PasswordEncoder`：自定义加密规则，通过注入到 `DaoAuthenticationProvider` 使用。
 
 ## SpringSecurityFilter
 
@@ -41,55 +41,55 @@
 ### 入口
 
 spring.factories 中 security 的相关配置为：
-* org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration：自动配置Security，使用@EnableWebSecurity注解。
-* org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration：配置 UserDetailsService，默认使用 InMemoryUserDetailsManager。
-* org.springframework.boot.autoconfigure.security.servlet.SecurityFilterAutoConfiguration：晚于 SecurityAutoConfiguration， 配置 DelegatingFilterProxyRegistrationBean，负责生成Filter的代理类。
-* org.springframework.boot.autoconfigure.security.reactive.ReactiveSecurityAutoConfiguration
-* org.springframework.boot.autoconfigure.security.reactive.ReactiveUserDetailsServiceAutoConfiguration
-* org.springframework.boot.autoconfigure.security.rsocket.RSocketSecurityAutoConfiguration
-* org.springframework.boot.autoconfigure.security.saml2.Saml2RelyingPartyAutoConfiguration
-* org.springframework.boot.autoconfigure.security.oauth2.client.servlet.OAuth2ClientAutoConfiguration
-* org.springframework.boot.autoconfigure.security.oauth2.client.reactive.ReactiveOAuth2ClientAutoConfiguration
-* org.springframework.boot.autoconfigure.security.oauth2.resource.servlet.OAuth2ResourceServerAutoConfiguration
-* org.springframework.boot.autoconfigure.security.oauth2.resource.reactive.ReactiveOAuth2ResourceServerAutoConfiguration
+* `org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration`：自动配置Security，使用`@EnableWebSecurity`注解。
+* `org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration`：配置`UserDetailsService`，默认使用`InMemoryUserDetailsManager`。
+* `org.springframework.boot.autoconfigure.security.servlet.SecurityFilterAutoConfiguration`：晚于 `SecurityAutoConfiguration`， 配置`DelegatingFilterProxyRegistrationBean`，负责生成Filter的代理类。
+* `org.springframework.boot.autoconfigure.security.reactive.ReactiveSecurityAutoConfiguration`
+* `org.springframework.boot.autoconfigure.security.reactive.ReactiveUserDetailsServiceAutoConfiguration`
+* `org.springframework.boot.autoconfigure.security.rsocket.RSocketSecurityAutoConfiguration`
+* `org.springframework.boot.autoconfigure.security.saml2.Saml2RelyingPartyAutoConfiguration`
+* `org.springframework.boot.autoconfigure.security.oauth2.client.servlet.OAuth2ClientAutoConfiguration`
+* `org.springframework.boot.autoconfigure.security.oauth2.client.reactive.ReactiveOAuth2ClientAutoConfiguration`
+* `org.springframework.boot.autoconfigure.security.oauth2.resource.servlet.OAuth2ResourceServerAutoConfiguration`
+* `org.springframework.boot.autoconfigure.security.oauth2.resource.reactive.ReactiveOAuth2ResourceServerAutoConfiguration`
 
 ### SecurityAutoConfiguration
 
 Import 3个类：
-* SpringBootWebSecurityConfiguration：当 WebSecurityConfigurerAdapter 不存在时 生成默认的 WebSecurityConfigurerAdapter。
-* WebSecurityEnablerConfiguration 负责开启 @EnableWebSecurity。
+* `SpringBootWebSecurityConfiguration`：当`WebSecurityConfigurerAdapter`不存在时 生成默认的`WebSecurityConfigurerAdapter`。
+* `WebSecurityEnablerConfiguration`负责开启 `@EnableWebSecurity`。
 
 #### @EnableWebSecurity
 
-Import 3个类，继承 EnableGlobalAuthentication：
-  * SpringWebMvcImportSelector：添加MVC支持，即添加 AuthenticationPrincipalArgumentResolver、CurrentSecurityContextArgumentResolver、CsrfTokenArgumentResolver，分别负责向Controller中 @AuthenticationPrincipal、 @CurrentSecurityContext、CsrfToken类型 的参数注入值。
-  * OAuth2ImportSelector：添加OAuth2支持。
-  * WebSecurityConfiguration：负责建立过滤器链。
-  * @EnableGlobalAuthentication：负责注入AuthenticationManagerBuilder。
+Import 3个类，继承 `EnableGlobalAuthentication` ：
+  * `SpringWebMvcImportSelector`：添加MVC支持，即添加 `AuthenticationPrincipalArgumentResolver`、`CurrentSecurityContextArgumentResolver`、`CsrfTokenArgumentResolver`，分别负责向Controller中 `@AuthenticationPrincipal`、 `@CurrentSecurityContext`、`CsrfToken`类型 的参数注入值。
+  * `OAuth2ImportSelector`：添加OAuth2支持。
+  * `WebSecurityConfiguration`：负责建立过滤器链。
+  * `@EnableGlobalAuthentication`：负责注入`AuthenticationManagerBuilder`。
 
 #### WebSecurityConfiguration
 
-  1. autowiredWebSecurityConfigurersIgnoreParents: 最先执行，因为需要被下面依赖。
-  2. setFilterChainProxySecurityConfigurer：负责创建 WebSecurity ,并通过 autowiredWebSecurityConfigurersIgnoreParents 从 BeanFactory 查找所有的 WebSecurityConfigurer，并将其加入到 WebSecurity:
-      * 值得注意的是 WebSecurity 实现 SecurityBuilder<Filter> ，表明它拥有创建 Filter的能力。
-      * WebSecurityConfigurer<T extends SecurityBuilder<Filter>> 继承 SecurityConfigurer<Filter, T> ,这里的T为 WebSecurity。
-      * 所以 WebSecurityConfigurer#init(WebSecurity) 和 WebSecurityConfigurer#config(configure) 可以配置  WebSecurity，最后改变  WebSecurity 创建的 Filter。
-      * WebSecurityConfigurerAdapter 是 WebSecurityConfigurer 默认实现，所有我们通过继承 WebSecurityConfigurerAdapter 可以修改最后的 Filter。
-  3. springSecurityFilterChain：应用 WebSecurityConfigurerAdapter 配置，并build Filter：
-      * 调用 WebSecurityConfigurerAdapter#init(WebSecurity) 方法：
-        1. 创建 HttpSecurity，HttpSecurity 实现  SecurityBuilder<DefaultSecurityFilterChain>，表明它负责创建 DefaultSecurityFilterChain，DefaultSecurityFilterChain包含一个 List<Filter> 过滤器链。
-        2. HttpSecurity 应用 从 SpringFactoriesLoader 获取的 AbstractHttpConfigurer：AbstractHttpConfigurer 继承 SecurityConfigurerAdapter<DefaultSecurityFilterChain, B>，这里 B 为 HttpSecurity，表明 AbstractHttpConfigurer 通过修改 HttpSecurity 最后改变 DefaultSecurityFilterChain。
-        3. WebSecurityConfigurerAdapte#configure(HttpSecurity)：该方法是我们常覆盖的，用来配置过滤器链。
-        4. WebSecurity 设置 已经创建的 FilterSecurityInterceptor ，若 FilterSecurityInterceptor 这时不存在则为空。
-     * 调用 WebSecurityConfigurerAdapter#configure(WebSecurity) 方法：空方法，常常覆盖用来配置 WebSecurity，例如忽略某些请求 `webSecurity.ignoring().antMatchers("/sms/send");`
-     * 调用 WebSecurity#performBuild() 方法：
-        1. 使用 configure(WebSecurity) 配置的 ignoredRequests 生成 DefaultSecurityFilterChain。
-        2. 使用 configure(HttpSecurity) 配置的 HttpSecurity#build 生成 DefaultSecurityFilterChain。
-        3. 将 两个 DefaultSecurityFilterChain 合并生成 FilterChainProxy，FilterChainProxy 继承 GenericFilterBean，但是FilterChainProxy#doFilter没有直接链式调用，最后调用的是 VirtualFilterChain#doFilter完成链式调用。
+  1. `autowiredWebSecurityConfigurersIgnoreParents`: 最先执行，因为需要被下面依赖。
+  2. `setFilterChainProxySecurityConfigurer`：负责创建 `WebSecurity` ,并通过 `autowiredWebSecurityConfigurersIgnoreParents` 从 BeanFactory 查找所有的 `WebSecurityConfigurer`，并将其加入到 WebSecurity:
+      * 值得注意的是 WebSecurity 实现 `SecurityBuilder<Filter>` ，表明它拥有创建 Filter的能力。
+      * `WebSecurityConfigurer<T extends SecurityBuilder<Filter>>` 继承 `SecurityConfigurer<Filter, T>` ,这里的T为 WebSecurity。
+      * 所以 `WebSecurityConfigurer#init(WebSecurity)` 和 `WebSecurityConfigurer#config(configure)` 可以配置  WebSecurity，最后改变  WebSecurity 创建的 Filter。
+      * `WebSecurityConfigurerAdapter` 是 `WebSecurityConfigurer` 默认实现，所有我们通过继承 `WebSecurityConfigurerAdapter` 可以修改最后的 Filter。
+  3. `springSecurityFilterChain`：应用 `WebSecurityConfigurerAdapter` 配置，并build Filter：
+      * 调用 `WebSecurityConfigurerAdapter#init(WebSecurity)` 方法：
+        1. 创建 `HttpSecurity`，`HttpSecurity` 实现  `SecurityBuilder<DefaultSecurityFilterChain>`，表明它负责创建 `DefaultSecurityFilterChain`，`DefaultSecurityFilterChain`包含一个 List<Filter> 过滤器链。
+        2. `HttpSecurity` 应用 从 `SpringFactoriesLoader` 获取的 AbstractHttpConfigurer：`AbstractHttpConfigurer` 继承 `SecurityConfigurerAdapter<DefaultSecurityFilterChain, B>`，这里 B 为 HttpSecurity，表明 `AbstractHttpConfigurer` 通过修改 `HttpSecurity` 最后改变 `DefaultSecurityFilterChain`。
+        3. `WebSecurityConfigurerAdapte#configure(HttpSecurity)`：该方法是我们常覆盖的，用来配置过滤器链。
+        4. `WebSecurity` 设置 已经创建的 `FilterSecurityInterceptor` ，若 `FilterSecurityInterceptor`这时不存在则为空。
+     * 调用 `WebSecurityConfigurerAdapter#configure(WebSecurity)` 方法：空方法，常常覆盖用来配置 WebSecurity，例如忽略某些请求 `webSecurity.ignoring().antMatchers("/sms/send");`
+     * 调用 `WebSecurity#performBuild()` 方法：
+        1. 使用 `configure(WebSecurity)` 配置的 `ignoredRequests` 生成 `DefaultSecurityFilterChain`。
+        2. 使用 `configure(HttpSecurity)` 配置的 `HttpSecurity#build` 生成 `DefaultSecurityFilterChain`。
+        3. 将 两个 `DefaultSecurityFilterChain` 合并生成 `FilterChainProxy`，`FilterChainProxy` 继承 `GenericFilterBean`，但是`FilterChainProxy#doFilter`没有直接链式调用，最后调用的是`VirtualFilterChain#doFilter`完成链式调用。
 
 ### SecurityFilterAutoConfiguration
 
-SecurityFilterAutoConfiguration在SecurityAutoConfiguration后执行，配置 DelegatingFilterProxyRegistrationBean，继承 AbstractFilterRegistrationBean，负责生成DelegatingFilterProxy(FilterChainProxy 的代理)，注册到 ServletContext，并设置过滤条件为 /** 。
+`SecurityFilterAutoConfiguration`在`SecurityAutoConfiguration`后执行，配置` `DelegatingFilterProxyRegistrationBean`，继承` `AbstractFilterRegistrationBean`，负责生成`DelegatingFilterProxy(FilterChainProxy 的代理)`，注册到 `ServletContext`，并设置过滤条件为 `/**` 。
 
 
 ## 调用链路
@@ -98,7 +98,7 @@ SecurityFilterAutoConfiguration在SecurityAutoConfiguration后执行，配置 De
 
 ## Filters
 
-FilterComparator 中同一对 Filters 进行排序。
+`FilterComparator` 中同一对 Filters 进行排序。
 
 | Filter                                   | Configurer                                    | Method                                                    | 默认配置 | 功能                                                                                                                                                                                           |
 | ---------------------------------------- | --------------------------------------------- | --------------------------------------------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

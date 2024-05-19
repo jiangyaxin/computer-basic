@@ -54,13 +54,13 @@ spring.factories 中 security 的相关配置为：
 
 ### SecurityAutoConfiguration
 
-Import 3个类：
+Import：
 * `SpringBootWebSecurityConfiguration`：当`WebSecurityConfigurerAdapter`不存在时 生成默认的`WebSecurityConfigurerAdapter`。
 * `WebSecurityEnablerConfiguration`负责开启 `@EnableWebSecurity`。
 
 #### @EnableWebSecurity
 
-Import 3个类，继承 `EnableGlobalAuthentication` ：
+继承 `EnableGlobalAuthentication`,Import：
   * `SpringWebMvcImportSelector`：添加MVC支持，即添加 `AuthenticationPrincipalArgumentResolver`、`CurrentSecurityContextArgumentResolver`、`CsrfTokenArgumentResolver`，分别负责向Controller中 `@AuthenticationPrincipal`、 `@CurrentSecurityContext`、`CsrfToken`类型 的参数注入值。
   * `OAuth2ImportSelector`：添加OAuth2支持。
   * `WebSecurityConfiguration`：负责建立过滤器链。

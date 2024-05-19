@@ -10,7 +10,6 @@
    * 继承`OncePerRequestFilter`重写`doFilterInternal`，该类保证在一次请求中只会经过一次。
    * 继承`AbstractAuthenticationProcessingFilter`重写`attemptAuthentication`，添加了认证失败，认证成功等处理，但是它没有处理一次请求可能多次调用的问题。
    * 继承`UsernamePasswordAuthenticationFilter`重写`attemptAuthentication`。
-   * 所有的Filter都可以继承，具体功能具体分析。
    * 继承`AbstractAuthenticationFilterConfigurer`。
 
    Filter如何添加：
@@ -78,7 +77,7 @@ Import 3个类，继承 `EnableGlobalAuthentication` ：
   3. `springSecurityFilterChain`：应用 `WebSecurityConfigurerAdapter` 配置，并build Filter：
       * 调用 `WebSecurityConfigurerAdapter#init(WebSecurity)` 方法：
         1. 创建 `HttpSecurity`，`HttpSecurity` 实现  `SecurityBuilder<DefaultSecurityFilterChain>`，表明它负责创建 `DefaultSecurityFilterChain`，`DefaultSecurityFilterChain`包含一个 List<Filter> 过滤器链。
-        2. `HttpSecurity` 应用 从 `SpringFactoriesLoader` 获取的 AbstractHttpConfigurer：`AbstractHttpConfigurer` 继承 `SecurityConfigurerAdapter<DefaultSecurityFilterChain, B>`，这里 B 为 HttpSecurity，表明 `AbstractHttpConfigurer` 通过修改 `HttpSecurity` 最后改变 `DefaultSecurityFilterChain`。
+        2. `HttpSecurity` 应用 从 `SpringFactoriesLoader` 获取的 `AbstractHttpConfigurer`：`AbstractHttpConfigurer` 继承 `SecurityConfigurerAdapter<DefaultSecurityFilterChain, B>`，这里 B 为 HttpSecurity，表明 `AbstractHttpConfigurer` 通过修改 `HttpSecurity` 最后改变 `DefaultSecurityFilterChain`。
         3. `WebSecurityConfigurerAdapte#configure(HttpSecurity)`：该方法是我们常覆盖的，用来配置过滤器链。
         4. `WebSecurity` 设置 已经创建的 `FilterSecurityInterceptor` ，若 `FilterSecurityInterceptor`这时不存在则为空。
      * 调用 `WebSecurityConfigurerAdapter#configure(WebSecurity)` 方法：空方法，常常覆盖用来配置 WebSecurity，例如忽略某些请求 `webSecurity.ignoring().antMatchers("/sms/send");`
@@ -445,10 +444,10 @@ final class ThreadLocalSecurityContextHolderStrategy implements SecurityContextH
   > the `GrantedAuthority`  are high level permissions the user is granted. A few examples are roles or scopes.
 
 获取用户：
-* controller 可以使用 @AuthenticationPrincipal 注解在参数上 来接收 Authentication.getPrincipal() 的值，还可以使用 @CurrentSecurityContext 注解在参数上 来接收 Authentication 的值。
-* 使用 Principal 参数 接收。
-* 使用 Authentication 参数 接收。
-* 使用 SecurityContextHolder 来获取。
+* controller 可以使用 `@AuthenticationPrincipal` 注解在参数上 来接收 `Authentication.getPrincipal()` 的值，还可以使用 `@CurrentSecurityContext` 注解在参数上 来接收 `Authentication` 的值。
+* 使用 `Principal` 参数 接收。
+* 使用 `Authentication` 参数 接收。
+* 使用 `SecurityContextHolder` 来获取。
 
 ## GrantedAuthority
 

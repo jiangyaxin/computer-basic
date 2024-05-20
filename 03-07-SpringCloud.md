@@ -444,7 +444,7 @@ SpringCloud 抽象：在 `AutoServiceRegistrationAutoConfiguration` 中注入 `A
 nacos 实现：
 
 1. `NacosAutoServiceRegistration` 继承 `AbstractAutoServiceRegistration`，由 `NacosServiceRegistryAutoConfiguration` 负责配置。
-2. `NacosServiceRegistry` ，实现 `ServiceRegistry` 负责客户端注册，nacos 负责注册由 `NamingService` 负责，`NamingService` 中`NamingProxy` 负责使用 `HttpClient` 与服务端通信，完成注册等功能，`BeatReactor` 负责维持心跳，重连等功能，`HostReactor`会定时查询服务信息，缓存服务信息。
+2. `NacosServiceRegistry` ，实现 `ServiceRegistry` 负责客户端注册，nacos 注册由 `NamingService` 负责，`NamingService` 中`NamingProxy` 负责使用 `HttpClient` 与服务端通信，完成注册等功能，`BeatReactor` 负责维持心跳，重连等功能，`HostReactor`会定时查询服务信息，缓存服务信息。
 3. `NacosRegistration` 实现 `Registration` 定义客户端元数据。
 
 ![302](assets/302.png)
@@ -453,9 +453,9 @@ nacos 实现：
 
 这几个数值可通过 `spring.cloud.nacos.discovery.metadata` 设置,常量定义在 `PreservedMetadataKeys` ，如下：
 
-* `preserved.heart.beat.interval`: 5000 #该实例在客户端上报心跳的间隔时间。（单位:毫秒）
-* `preserved.heart.beat.timeout`: 15000 #该实例在不发送心跳后，从健康到不健康的时间。（单位:毫秒）
-* `preserved.ip.delete.timeout`: 30000 #该实例在不发送心跳后，被nacos下掉该实例的时间。（单位:毫秒）
+* `preserved.heart.beat.interval: 5000` #该实例在客户端上报心跳的间隔时间。（单位:毫秒）
+* `preserved.heart.beat.timeout: 15000` #该实例在不发送心跳后，从健康到不健康的时间。（单位:毫秒）
+* `preserved.ip.delete.timeout: 30000` #该实例在不发送心跳后，被nacos下掉该实例的时间。（单位:毫秒）
 
 #### 服务发现
 

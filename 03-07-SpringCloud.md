@@ -755,8 +755,8 @@ org.springframework.cloud.openfeign.loadbalancer.FeignLoadBalancerAutoConfigurat
 #### FeignAutoConfiguration
 
 1. 注入3个配置类 `FeignClientProperties`，`FeignHttpClientProperties`，`FeignEncoderProperties`,不建议在yml配置文件中配置重试器和请求拦截器。
-2. 注入 `FeignContext` ，`FeignContext#createContext(String name) `会生成一个A`nnotationConfigApplicationContext`，并将`FeignClientsConfiguration` 注册进去，每个Client都有独立的容器。
-3. 根据配置选择创建 `HttpURLConnection`、Apache HttpClient、okhttp，默认 HttpURLConnection
+2. 注入 `FeignContext` ，`FeignContext#createContext(String name) `会生成一个`AnnotationConfigApplicationContext`，并将`FeignClientsConfiguration` 注册进去，每个Client都有独立的容器。
+3. 根据配置选择创建 `HttpURLConnection`、`Apache HttpClient`、`okhttp`，默认 `HttpURLConnection`
 4. 根据 `feign.circuitbreaker.enabled` 选择是否使用断路器包装OpenFeign客户端。
 
 #### FeignAcceptGzipEncodingAutoConfiguration、FeignContentGzipEncodingAutoConfiguration

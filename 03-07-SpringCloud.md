@@ -152,7 +152,6 @@ eureka:
 
 ```yaml
 # 节点2
-
 server:
   port: 30015
 

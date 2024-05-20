@@ -157,7 +157,6 @@ eureka:
 
 ```yaml
 # 节点3
-
 server:
   port: 30016
 
@@ -324,16 +323,16 @@ eureka:
 
 定义在 `org.springframework.cloud.netflix.eureka.EurekaClientConfigBean` 。
 
-| 参数名称                                                             | 说明                                                                                                                | 默认值  |
-|------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------|------|
-| eureka.client.serviceUrl.defaultZone                             | 可用区域映射到与eureka服务器通信的完全限定URL列表。每个值可以是单个URL或逗号分隔的备用位置列表。(http://${eureka.instance.hostname}:${server.port}/eureka/) |      |
-| eureka.client.register-with-eureka                               | 指示此实例是否应将其信息注册到eureka服务器以供其他服务发现                                                                                  | True |
-| eureka.client.fetch-registry                                     | 客户端是否获取eureka服务器注册表上的注册信息                                                                                         | true |
-| eureka.client.registry-fetch-interval-seconds                    | 指示从eureka服务器获取注册表信息的频率（s）                                                                                         | 30   |
-| eureka.client.initial-instance-info-replication-interval-seconds | 初始化实例信息到Eureka服务端的间隔时间（s）                                                                                         | 40   |
-| eureka.client.eureka-service-url-poll-interval-seconds           | 询问Eureka Server信息变化的时间间隔（s）                                                                                       | 300  |
-| eureka.client.eureka-server-read-timeout-seconds                 | 读取Eureka Server 超时时间（s）                                                                                           | 8    |
-| eureka.client.eureka-server-connect-timeout-seconds              | 连接Eureka Server 超时时间（s）                                                                                           | 5    |
+| 参数名称                                                             | 说明                                                                                                                       | 默认值  |
+|------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------|------|
+| eureka.client.serviceUrl.defaultZone                             | 可用区域映射到与eureka服务器通信的完全限定URL列表。每个值可以是单个URL或逗号分隔的备用位置列表。<br> (`http://${eureka.instance.hostname}:${server.port}/eureka/`) |      |
+| eureka.client.register-with-eureka                               | 指示此实例是否应将其信息注册到eureka服务器以供其他服务发现                                                                                         | True |
+| eureka.client.fetch-registry                                     | 客户端是否获取eureka服务器注册表上的注册信息                                                                                                | true |
+| eureka.client.registry-fetch-interval-seconds                    | 指示从eureka服务器获取注册表信息的频率（s）                                                                                                | 30   |
+| eureka.client.initial-instance-info-replication-interval-seconds | 初始化实例信息到Eureka服务端的间隔时间（s）                                                                                                | 40   |
+| eureka.client.eureka-service-url-poll-interval-seconds           | 询问Eureka Server信息变化的时间间隔（s）                                                                                              | 300  |
+| eureka.client.eureka-server-read-timeout-seconds                 | 读取Eureka Server 超时时间（s）                                                                                                  | 8    |
+| eureka.client.eureka-server-connect-timeout-seconds              | 连接Eureka Server 超时时间（s）                                                                                                  | 5    |
 
 #### 元数据 常用配置
 

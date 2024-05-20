@@ -1623,14 +1623,13 @@ dubbo:
     address: spring-cloud://localhost # 挂载到 SpringCloud 注册中心。
 ```
 
-3. 使用 @DubboComponentScan 开启注册。
-4. 使用 @DubboService 注册服务提供者实现类。
-5. 使用 @DubboReference 注入服务消费者。
+3. 使用 `@DubboComponentScan` 开启注册。
+4. 使用 `@DubboService` 注册服务提供者实现类。
+5. 使用 `@DubboReference` 注入服务消费者。
 
-Dubbo 的容错模式: 通过 @DubboService(cluster = "failfast") 配置。
+Dubbo 的容错模式: 通过 `@DubboService(cluster = "failfast")` 配置。
 
-1. `FailoverCluster`：失败自动切换，当服务调用失败后，会切换到集群 的其他机器重试，默认重试次数为 2 次，常用于
-   读操作，写操作可能会造成重复数据，通过 retries = 2 来配置
+1. `FailoverCluster`：失败自动切换，当服务调用失败后，会切换到集群 的其他机器重试，默认重试次数为 2 次，常用于 读操作，写操作可能会造成重复数据，通过 retries = 2 来配置
 2. `FailfastCluster`：快速失败，当服务调用失败后，立即报错，只会调用一次，常用于幂等的写操作。
 3. `FailsafeCluster`：出现异常直接忽略。
 4. `FailbackCluster`：服务调用失败时，后台记录并定时重发，适用于消息通知操作，保证请求一定成功。
@@ -1639,10 +1638,10 @@ Dubbo 的容错模式: 通过 @DubboService(cluster = "failfast") 配置。
 
 Dubbo 的负载均衡算法：默认策略时 random , 可通过 Dubbo 的 SPI 机制来扩展，示例：`@Service(cluster = "failfast",loadBalance = "roundrobin")`
 
-1. Random LoadBalance：随机算法，可以针对性能较好的服务器设置较大的权重值。
-2. RoundRobin LoadBalance：轮询，按照权重设置轮询比例。
-3. LeastActive LoadBalance：最少活跃调用，处理较慢的节点会收到较少的请求。
-4. ConsistentHash LoadBalance：相同的参数总是发送给同一个服务请求者。
+1. `Random LoadBalance`：随机算法，可以针对性能较好的服务器设置较大的权重值。
+2. `RoundRobin LoadBalance`：轮询，按照权重设置轮询比例。
+3. `LeastActive LoadBalance`：最少活跃调用，处理较慢的节点会收到较少的请求。
+4. `ConsistentHash LoadBalance`：相同的参数总是发送给同一个服务请求者。
 
 Dubbo 的服务降级：分为故障降级、限流降级，通过 `@DubboReference(mock="xx.xxxService")` 配置
 
@@ -1657,15 +1656,15 @@ Dubbo 的主机绑定规则：
 
 ![307](assets/307.png)
 
-1. Dubbo 服务启动时，向 Zookeeper 服务器 注册 service 节点，并且在 /providers 节点下注册 url 节点，这个节点时临时节点。
-2. 当消费者启动时，会向 service 节点下 /consumers 注册自己的url节点，并且会 对 /providers 注册子节点监听，这样当服务方发生变化时，消费方能够动态感知。
-3. 服务调用时， 获取 /providers 下所有子节点，通过负载均衡算法计算出一个地址进行远程访问。
+1. Dubbo 服务启动时，向 `Zookeeper` 服务器 注册 `service` 节点，并且在 `/providers` 节点下注册 url 节点，这个节点时临时节点。
+2. 当消费者启动时，会向 `service` 节点下 `/consumers` 注册自己的url节点，并且会 对 /providers 注册子节点监听，这样当服务方发生变化时，消费方能够动态感知。
+3. 服务调用时， 获取 `/providers` 下所有子节点，通过负载均衡算法计算出一个地址进行远程访问。
 
 ## 原理
 
 ### SPI 机制
 
-JDK 扩展机制：通过插拔的方式加载，例如 java.sql.Driver 接口并没有实现，而是由不同的数据库厂商来实现。
+JDK 扩展机制：通过插拔的方式加载，例如 `java.sql.Driver` 接口并没有实现，而是由不同的数据库厂商来实现。
 
 示例：
 

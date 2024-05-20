@@ -131,7 +131,7 @@ public @interface Transactional {
 事务失效：
 * 方法必须是 public 。
 * 方法不能被 final 修饰，由于 CGLIB 是创建子类。
-* 实例必须通过 容器注入，因为依赖AOP，同一个类中，非事务方法A调用事务方法B，事务失效，可使用 ((ServiceA)AopContext.currentProxy()).B() 来调用。
+* 实例必须通过 容器注入，因为依赖AOP，同一个类中，非事务方法A调用事务方法B，事务失效，可使用 `((ServiceA)AopContext.currentProxy()).B()` 来调用。
 * 实例必须被 容器 管理。
 * 使用多线程时每个线程事务都不是同一个。
 * 表不支持事务。

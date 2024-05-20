@@ -50,7 +50,6 @@
   Server获取到其他服务的信息达到发现和调用其他服务的目的。
 * 服务消费者：Eureka client，通过Eureka Server获取注册的其他服务信息，从而找到所需要的服务发起远程调用。
 * 注册：client向server注册时提供自身的元数据以供服务发现。
-*
 
 续约：通过发送心跳到Server以维持和更新注册表中服务实例元数据的有效性。在一定时长内，Server没有收到Client的心跳信息，将默认下线，会把服务实例信息从注册表中删除。默认情况下为每30秒发送一次，90秒未收到心跳sever会将client剔除。
 
@@ -59,29 +58,22 @@
 
 #### 服务注册、续约
 
-默认情况下会使用 eureka.instance.appname > spring.application.name 作为服务名。
+默认情况下会使用 `eureka.instance.appname` > `spring.application.name` 作为服务名。
 
-在客户端注册、续约的功能主要通过 com.netflix.discovery.EurekaClient
-实现，主要由com.netflix.discovery.EurekaClient.HeartbeatThread 来完成，根据配置
-eureka.instance.lease-renewal-interval-in-seconds 来配置续约的间隔时间，默认30秒，eureka.instance.lease-expiration-duration-in-seconds
-配置多长时间没有收到心跳就剔除，默认90秒，不建议修改。
+在客户端注册、续约的功能主要通过 `com.netflix.discovery.EurekaClient`实现，主要由`com.netflix.discovery.EurekaClient.HeartbeatThread` 来完成，根据配置`eureka.instance.lease-renewal-interval-in-seconds` 来配置续约的间隔时间，默认30秒，`eureka.instance.lease-expiration-duration-in-seconds`配置多长时间没有收到心跳就剔除，默认90秒，不建议修改。
 
-在服务端由 com.netflix.eureka.resources 包来暴露接口，调用
-org.springframework.cloud.netflix.eureka.server.InstanceRegistry 来负责注册、续约、下线逻辑，处理完成会立即同步到其他节点，同步到其他节点是通过
-com.netflix.eureka.cluster.PeerEurekaNode 来完成的。
+在服务端由 `com.netflix.eureka.resources` 包来暴露接口，调用`org.springframework.cloud.netflix.eureka.server.InstanceRegistry` 来负责注册、续约、下线逻辑，处理完成会立即同步到其他节点，同步到其他节点是通过`com.netflix.eureka.cluster.PeerEurekaNode` 来完成的。
 
 为什么 client 获取服务实例慢？
 
-1. 注册延迟：client启动后不会立即注册，而是有一个延迟时间，默认 40 秒，可通过
-   eureka.client.initial-instance-info-replication-interval-seconds 配置。
-2. Server缓存：Server维护每30秒更新一次响应缓存，可通过 eureka.server.response-cache-update-interval-ms 配置。
-3. Client缓存：Client保留注册表信息的缓存，每30秒更新一次，可通过 eureka.client.registry-fetch-interval-seconds 配置。
-4. Loadbalancer缓存：可通过 spring.cloud.loadbalancer.cache.ttl 配置，默认35秒。
+1. 注册延迟：client启动后不会立即注册，而是有一个延迟时间，默认 40 秒，可通过`eureka.client.initial-instance-info-replication-interval-seconds` 配置。
+2. Server缓存：Server维护每30秒更新一次响应缓存，可通过 `eureka.server.response-cache-update-interval-ms` 配置。
+3. Client缓存：Client保留注册表信息的缓存，每30秒更新一次，可通过 `eureka.client.registry-fetch-interval-seconds` 配置。
+4. Loadbalancer缓存：可通过 `spring.cloud.loadbalancer.cache.ttl` 配置，默认35秒。
 
 Eureka 的自我保护模式：
 
-如果 Server 在 15 分钟内接收到的服务续约低于 85%，将进入 自我保护模式，不再剔除注册表信息，认为可能是 Server 自身的网络问题导致
-Client 不能续约，默认情况下，自我保护模式开启，可使用 eureka.server.enable-self-preservation 配置。
+如果 Server 在 15 分钟内接收到的服务续约低于 85%，将进入 自我保护模式，不再剔除注册表信息，认为可能是 Server 自身的网络问题导致 Client 不能续约，默认情况下，自我保护模式开启，可使用 `eureka.server.enable-self-preservation` 配置。
 
 ### 服务端
 
@@ -113,8 +105,8 @@ Client 不能续约，默认情况下，自我保护模式开启，可使用 eur
 </project>
 ```
 
-2. 使用 @EnableEurekaServer 注解开启注册服务。
-3. 向 application.yml 添加配置。
+2. 使用 `@EnableEurekaServer` 注解开启注册服务。
+3. 向 `application.yml` 添加配置。
 
 单机模式:
 
@@ -180,7 +172,7 @@ eureka:
 
 #### 启动
 
-1. 入口为 EurekaServerAutoConfiguration，通过 @EnableEurekaServer 激活。
+1. 入口为 `EurekaServerAutoConfiguration`，通过 `@EnableEurekaServer` 激活。
 
 ```java
 
@@ -210,14 +202,14 @@ public class EurekaServerAutoConfiguration implements WebMvcConfigurer {
 }
 ```
 
-2. 初始化 EurekaServerConfig，可使用 EurekaServerConfigBean.PREFIX = eureka.server 自定义配置。
-3. 初始化 EurekaController，提供给 dashboard 访问。
-4. 初始化 InstanceRegistry，客户通过该类进行注册。
-5. 初始化 PeerEurekaNodes ，负责当有节点注册上来时，通知哪些节点。
-6. 初始化 EurekaServerContext 。
-7. 初始化 EurekaServerBootstrap ，会同步其他注册中心的数据到当前注册中心。
+2. 初始化 `EurekaServerConfig`，可使用 `EurekaServerConfigBean.PREFIX = eureka.server` 自定义配置。
+3. 初始化 `EurekaController`，提供给 dashboard 访问。
+4. 初始化 `InstanceRegistry`，客户通过该类进行注册。
+5. 初始化 `PeerEurekaNodes` ，负责当有节点注册上来时，通知哪些节点。
+6. 初始化 `EurekaServerContext` 。
+7. 初始化 `EurekaServerBootstrap` ，会同步其他注册中心的数据到当前注册中心。
 8. 初始化 jersey框架，实现 EurekaServer 对外的 restful 接口
-9. 加载 EurekaServerInitializerConfiguration ，启动 EurekaServerBootstrap 。
+9. 加载 `EurekaServerInitializerConfiguration` ，启动 `EurekaServerBootstrap` 。
 
 #### 常用配置
 
@@ -330,7 +322,7 @@ eureka:
 
 #### CLIENT 常用配置
 
-定义在 org.springframework.cloud.netflix.eureka.EurekaClientConfigBean 。
+定义在 `org.springframework.cloud.netflix.eureka.EurekaClientConfigBean` 。
 
 | 参数名称                                                             | 说明                                                                                                                | 默认值  |
 |------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------|------|
@@ -345,8 +337,7 @@ eureka:
 
 #### 元数据 常用配置
 
-定义在 org.springframework.cloud.netflix.eureka.EurekaInstanceConfigBean ，服务注册时会包装成
-com.netflix.appinfo.InstanceInfo 注册。
+定义在 `org.springframework.cloud.netflix.eureka.EurekaInstanceConfigBean` ，服务注册时会包装成`com.netflix.appinfo.InstanceInfo` 注册。
 
 | 参数名称                                                 | 说明                                    | 默认值                     |
 |------------------------------------------------------|---------------------------------------|-------------------------|
@@ -371,8 +362,8 @@ com.netflix.appinfo.InstanceInfo 注册。
 
 单机模式：
 
-1. 可配置 Mysql 数据库，先执行 nacos-mysql.sql。
-2. 再修改 conf/application.properties
+1. 可配置 Mysql 数据库，先执行 `nacos-mysql.sql`。
+2. 再修改 `conf/application.properties`
 
 ```properties
 spring.datasource.platform=mysql
@@ -382,12 +373,12 @@ db.user=nacos_devtest
 db.password=youdontknow
 ```
 
-3. 执行 sh startup.sh -m standalone 。
+3. 执行 `sh startup.sh -m standalone` 。
 
 集群模式:
 
-1. 配置 conf/cluster.conf , 需要 3个 或 3个以上节点。
-2. 再修改 conf/application.properties
+1. 配置 `conf/cluster.conf` , 需要 3个 或 3个以上节点。
+2. 再修改 `conf/application.properties`
 
 ```properties
 spring.datasource.platform=mysql
@@ -397,7 +388,7 @@ db.user=nacos_devtest
 db.password=youdontknow
 ```
 
-3. 执行 sh startup.sh。
+3. 执行 `sh startup.sh`。
 4. 集群使用 nginx 做负载均衡。
 
 #### 客户端
@@ -432,14 +423,12 @@ spring:
 
 ### 配置
 
-nacos 配置管理将服务划分为 Namespace + Group + Data ID， Data ID 由 ${prefix}-${spring.profiles.active}.${file-extension}
+nacos 配置管理将服务划分为 Namespace + Group + Data ID， Data ID 由 `${prefix}-${spring.profiles.active}.${file-extension}`
 构成：
 
-* prefix 默认为 spring.application.name 的值，也可以通过配置项 spring.cloud.nacos.config.prefix来配置。
-* spring.profiles.active 即为当前环境对应的 profile，当 spring.profiles.active 为空时，dataId 的拼接格式变成
-  ${prefix}.${file-extension}
-* file-exetension 为配置内容的数据格式，可以通过配置项 spring.cloud.nacos.config.file-extension 来配置，默认使用
-  properties。
+* prefix 默认为 `spring.application.name` 的值，也可以通过配置项 `spring.cloud.nacos.config.prefix`来配置。
+* `spring.profiles.active` 即为当前环境对应的 profile，当 `spring.profiles.active` 为空时，dataId 的拼接格式变成`${prefix}.${file-extension}`
+* `file-exetension` 为配置内容的数据格式，可以通过配置项 `spring.cloud.nacos.config.file-extension` 来配置，默认使用 properties。
 
 实际使用中可Namespace 区分不同的租户，比如深圳环境、佛山环境，使用 Group
 区分不同的开发者，也可用来在同一个Namespace分区不同的Group，例如在深圳环境下部署了两套系统。
@@ -448,47 +437,42 @@ nacos 配置管理将服务划分为 Namespace + Group + Data ID， Data ID 由 
 
 #### 服务注册
 
-SpringCloud 抽象：在 AutoServiceRegistrationAutoConfiguration 中注入 AutoServiceRegistration。
+SpringCloud 抽象：在 `AutoServiceRegistrationAutoConfiguration` 中注入 `AutoServiceRegistration`。
 
-1. AutoServiceRegistration 的子类 AbstractAutoServiceRegistration 会监听 WebServerInitializedEvent 事件，服务启动后会调用
-   ServiceRegistry.register(Registration) 向注册中心注册。
-2. 只需继承 AbstractAutoServiceRegistration ，实现 ServiceRegistry 、Registration 即可完成启动时注册。
+1. `AutoServiceRegistration` 的子类 `AbstractAutoServiceRegistration` 会监听 `WebServerInitializedEvent` 事件，服务启动后会调用`ServiceRegistry.register(Registration)` 向注册中心注册。
+2. 只需继承 `AbstractAutoServiceRegistration` ，实现 `ServiceRegistry` 、`Registration` 即可完成启动时注册。
 
 nacos 实现：
 
-1. NacosAutoServiceRegistration 继承 AbstractAutoServiceRegistration，由 NacosServiceRegistryAutoConfiguration 负责配置。
-2. NacosServiceRegistry ，实现 ServiceRegistry 负责客户端注册，nacos 负责注册由 NamingService 负责，NamingService 中
-   NamingProxy 负责使用 HttpClient 与服务端通信，完成注册等功能，BeatReactor 负责维持心跳，重连等功能，HostReactor
-   会定时查询服务信息，缓存服务信息。
-3. NacosRegistration 实现 Registration 定义客户端元数据。
+1. `NacosAutoServiceRegistration` 继承 `AbstractAutoServiceRegistration`，由 `NacosServiceRegistryAutoConfiguration` 负责配置。
+2. `NacosServiceRegistry` ，实现 `ServiceRegistry` 负责客户端注册，nacos 负责注册由 `NamingService` 负责，`NamingService` 中`NamingProxy` 负责使用 `HttpClient` 与服务端通信，完成注册等功能，`BeatReactor` 负责维持心跳，重连等功能，`HostReactor`会定时查询服务信息，缓存服务信息。
+3. `NacosRegistration` 实现 `Registration` 定义客户端元数据。
 
 ![302](assets/302.png)
 
 客户端每隔 5 秒会发送一次心跳，服务端每隔15秒没收到心跳视为服务不健康，并通知所有消费者更新服务列表，30秒没收到心跳则剔除服务。
 
-这几个数值可通过 spring.cloud.nacos.discovery.metadata 设置,常量定义在 PreservedMetadataKeys ，如下：
+这几个数值可通过 `spring.cloud.nacos.discovery.metadata` 设置,常量定义在 `PreservedMetadataKeys` ，如下：
 
-* preserved.heart.beat.interval: 5000 #该实例在客户端上报心跳的间隔时间。（单位:毫秒）
-* preserved.heart.beat.timeout: 15000 #该实例在不发送心跳后，从健康到不健康的时间。（单位:毫秒）
-* preserved.ip.delete.timeout: 30000 #该实例在不发送心跳后，被nacos下掉该实例的时间。（单位:毫秒）
+* `preserved.heart.beat.interval`: 5000 #该实例在客户端上报心跳的间隔时间。（单位:毫秒）
+* `preserved.heart.beat.timeout`: 15000 #该实例在不发送心跳后，从健康到不健康的时间。（单位:毫秒）
+* `preserved.ip.delete.timeout`: 30000 #该实例在不发送心跳后，被nacos下掉该实例的时间。（单位:毫秒）
 
 #### 服务发现
 
-SpringCloud 抽象了 DiscoveryClient 的接口，NacosDiscoveryClient 实现该接口，并在 NacosDiscoveryClientConfiguration 配置。
+SpringCloud 抽象了 `DiscoveryClient` 的接口，`NacosDiscoveryClient` 实现该接口，并在 `NacosDiscoveryClientConfiguration` 配置。
 
-NacosDiscoveryClient 使用 NacosServiceDiscovery 中的 NamingService 获取服务列表，NamingService 的服务列表由 HostReactor
-负责维护，HostReactor 每个10秒会请求服务列表缓存起来，当服务端感知服务变化时也会推送给 HostReactor 。
+`NacosDiscoveryClient` 使用 `NacosServiceDiscovery` 中的 `NamingService` 获取服务列表，`NamingService` 的服务列表由 `HostReactor`负责维护，HostReactor 每个10秒会请求服务列表缓存起来，当服务端感知服务变化时也会推送给 HostReactor 。
 
-LoadBalancerClient 通过 ReactiveLoadBalancer 从 ServiceInstanceListSupplier 获取 服务，ServiceInstanceListSupplier 通过
-NacosDiscoveryClient 获取 服务列表。
+`LoadBalancerClient` 通过 `ReactiveLoadBalancer` 从 `ServiceInstanceListSupplier` 获取 服务，`ServiceInstanceListSupplier` 通过`NacosDiscoveryClient` 获取 服务列表。
 
-OpenFeign 调用 LoadBalancerClient 完成远程访问。
+`OpenFeign` 调用 `LoadBalancerClient` 完成远程访问。
 
 ![304](assets/304.png)
 
 #### Raft
 
-RAFT算法有三种基本的状态：follower、candidate、leader。
+RAFT算法有三种基本的状态：`follower`、`candidate`、`leader`。
 
 * 处于follower状态的server不会发起任何的request，只是被动的响应leader和candidate。
 
@@ -519,7 +503,7 @@ Ribbon：Netflix开源的基于HTTP和TCP等协议负载均衡组件，需要手
 Feign：内置Ribbon，用来做客户端负载均衡，去调用服务注册中心的服务，不支持Spring MVC的注解，它有一套自己的注解，已不推荐使用。
 
 OpenFeign：在Feign的基础上支持了Spring
-MVC的注解，如@RequesMapping等等，可以使用@FeignClient解析SpringMVC的@RequestMapping注解下的接口，并通过动态代理的方式产生实现类，实现类中做负载均衡并调用其他服务。
+MVC的注解，如@RequesMapping等等，可以使用@FeignClient解析SpringMVC的`@RequestMapping`注解下的接口，并通过动态代理的方式产生实现类，实现类中做负载均衡并调用其他服务。
 
 loadbalancer：用于替代Ribbon，负责负载均衡。
 
@@ -546,8 +530,8 @@ SpringCloud 高版本 openfeign 已经移除 Hystrix 和 Ribbon，内置 loadbal
 </dependencies>
 ```
 
-2. 使用 @EnableFeignClients 启用 OpenFeign。
-3. 向 application.yml 添加配置。
+2. 使用 `@EnableFeignClients` 启用 `OpenFeign`。
+3. 向 `application.yml` 添加配置。
 
 ```yaml
 server:
@@ -583,11 +567,11 @@ public interface InstanceFeign {
 }
 ```
 
-默认使用 HttpURLConnection，没有连接池，可使用 Apache HttpClient 或 okhttp 优化性能。
+默认使用 `HttpURLConnection`，没有连接池，可使用 Apache HttpClient 或 okhttp 优化性能。
 
-可以使用 @SpringQueryMap 给 GET 请求映射 POJO 参数。
+可以使用 `@SpringQueryMap` 给 GET 请求映射 POJO 参数。
 
-可以使用 @MatrixVariable ，例如
+可以使用 `@MatrixVariable` ，例如
 
 ```java
 
@@ -641,7 +625,7 @@ feign:
 
 #### 配置configruation
 
-注意 DefaultFeignConfig 不需要 @Configuration 注释,@Configuration 表示给所有FeignCLient配置
+注意 `DefaultFeignConfig` 不需要 `@Configuration` 注释,`@Configuration` 表示给所有FeignCLient配置
 
 ```java
 public class DefaultFeignConfig {
@@ -670,12 +654,12 @@ public interface DemoService {
 
 OpenFeign 默认配置在 FeignClientsConfiguration：
 
-* Decoder：new OptionalDecoder(new ResponseEntityDecoder(new SpringDecoder(messageConverters, customizers)));
-* Encoder：new SpringEncoder(new SpringFormEncoder(), messageConverters, encoderProperties, customizers);
-* Logger：new Slf4jLogger(type);
-* Contract：new SpringMvcContract(parameterProcessors, feignConversionService, decodeSlash);
-* Feign.Builder：FeignCircuitBreaker.builder();
-* CachingCapability：可使用 @Cacheable 注解。
+* Decoder：`new OptionalDecoder(new ResponseEntityDecoder(new SpringDecoder(messageConverters, customizers)));`
+* Encoder：`new SpringEncoder(new SpringFormEncoder(), messageConverters, encoderProperties, customizers);`
+* Logger：`new Slf4jLogger(type);`
+* Contract：`new SpringMvcContract(parameterProcessors, feignConversionService, decodeSlash);`
+* Feign.Builder：`FeignCircuitBreaker.builder();`
+* CachingCapability：可使用 `@Cacheable` 注解。
 
 可以自己添加的配置：
 
@@ -684,8 +668,8 @@ OpenFeign 默认配置在 FeignClientsConfiguration：
     - BASIC, 只记录请求方法和 URL 以及响应状态码和执行时间。
     - HEADERS, 记录基本信息以及请求和响应标头。
     - FULL, 记录请求和响应的标头、正文和元数据。
-* Retryer：会重试 IOException 和 ErrorDecoder 返回的 RetryableException。
-* ErrorDecoder：默认情况下直接抛出 RetryableException。
+* Retryer：会重试 `IOException` 和 `ErrorDecoder` 返回的 `RetryableException`。
+* ErrorDecoder：默认情况下直接抛出 `RetryableException`。
 * Request.Options：设置读写超时
 * Collection<RequestInterceptor>：可以在远程调用前修改 RestTemplate 。
 * SetterFactory
@@ -734,32 +718,30 @@ public interface DemoService {
 
 Retryer.Default 的三个参数：
 
-* maxAttempts：重试次数
-* period：重试间隔时间
-* maxPeriod：最大周期，重试间隔时间按照一定的规则(1.5倍)逐渐增大，但不能超过最大周期。
+* `maxAttempts`：重试次数
+* `period`：重试间隔时间
+* `maxPeriod`：最大周期，重试间隔时间按照一定的规则(1.5倍)逐渐增大，但不能超过最大周期。
 
 #### 配置ErrorDecoder
 
 #### @FeignClient详解
 
-* contextId : 当 name 相同时，可通过 contextId 区分。
-* name ：指定FeignClient的名称，name属性会作为微服务的名称，用于服务发现。
-* url ：一般用于调试，可以手动指定@FeignClient调用的地址。
-* decode404 ：当发生http 404错误时，如果该字段位true，会调用Decoder进行解码，默认调用 ErrorCoder 解码。
-* configuration: Feign配置类，可以自定义Feign的Encoder、Decoder、LogLevel、Contract。
-* fallback:
-  定义容错的处理类，当调用远程接口失败或超时，会调用对应接口的容错逻辑，fallback指定的类必须实现@FeignClient标记的接口。在使用fallback属性时，需要使用@Component注解，保证fallback类被Spring容器扫描到。
-* fallbackFactory：工厂类，用于生成fallback类示例，通过这个属性我们可以实现每个接口通用的容错逻辑，减少重复的代码。
-* path：定义当前FeignClient的统一前缀，例如controller上有加接口前缀的话就要写在这里。
+* `contextId` : 当 name 相同时，可通过 contextId 区分。
+* `name` ：指定FeignClient的名称，name属性会作为微服务的名称，用于服务发现。
+* `url` ：一般用于调试，可以手动指定@FeignClient调用的地址。
+* `decode404` ：当发生http 404错误时，如果该字段位true，会调用Decoder进行解码，默认调用 ErrorCoder 解码。
+* `configuration`: Feign配置类，可以自定义Feign的Encoder、Decoder、LogLevel、Contract。
+* `fallback`: 定义容错的处理类，当调用远程接口失败或超时，会调用对应接口的容错逻辑，fallback指定的类必须实现@FeignClient标记的接口。在使用fallback属性时，需要使用@Component注解，保证fallback类被Spring容器扫描到。
+* `fallbackFactory`：工厂类，用于生成fallback类示例，通过这个属性我们可以实现每个接口通用的容错逻辑，减少重复的代码。
+* `path`：定义当前FeignClient的统一前缀，例如controller上有加接口前缀的话就要写在这里。
 
-fallback 、fallbackFactory 需要 feign.circuitbreaker.enabled = true 配置。
+fallback 、fallbackFactory 需要 `feign.circuitbreaker.enabled = true` 配置。
 
 ### 启动
 
-1. @EnableFeignClients 导入 FeignClientsRegistrar ，FeignClientsRegistrar 实现
-   ImportBeanDefinitionRegistrar，ImportBeanDefinitionRegistrar 由 ConfigurationClassPostProcessor 调用。
-2. 使用 @EnableFeignClients 中 defaultConfiguration 设置为所有 Feign 的默认 Configuration。
-3. 扫描所有的 @FeignClient 组装为 FeignClientFactoryBean ，注入到容器里。
+1. `@EnableFeignClients` 导入 `FeignClientsRegistrar` ，`FeignClientsRegistrar` 实现 `ImportBeanDefinitionRegistrar`，`ImportBeanDefinitionRegistrar` 由 `ConfigurationClassPostProcessor` 调用。
+2. 使用 `@EnableFeignClients` 中 `defaultConfiguration` 设置为所有 Feign 的默认 Configuration。
+3. 扫描所有的 `@FeignClient` 组装为 `FeignClientFactoryBean` ，注入到容器里。
 4. 自动装配。
 
 ```text
@@ -773,26 +755,25 @@ org.springframework.cloud.openfeign.loadbalancer.FeignLoadBalancerAutoConfigurat
 
 #### FeignAutoConfiguration
 
-1. 注入3个配置类 FeignClientProperties，FeignHttpClientProperties，FeignEncoderProperties,不建议在yml配置文件中配置重试器和请求拦截器。
-2. 注入 FeignContext ，FeignContext#createContext(String name) 会生成一个AnnotationConfigApplicationContext，并将
-   FeignClientsConfiguration 注册进去，每个Client都有独立的容器。
-3. 根据配置选择创建 HttpURLConnection、Apache HttpClient、okhttp，默认 HttpURLConnection
-4. 根据 feign.circuitbreaker.enabled 选择是否使用断路器包装OpenFeign客户端。
+1. 注入3个配置类 `FeignClientProperties`，`FeignHttpClientProperties`，`FeignEncoderProperties`,不建议在yml配置文件中配置重试器和请求拦截器。
+2. 注入 `FeignContext` ，`FeignContext#createContext(String name) `会生成一个A`nnotationConfigApplicationContext`，并将`FeignClientsConfiguration` 注册进去，每个Client都有独立的容器。
+3. 根据配置选择创建 `HttpURLConnection`、Apache HttpClient、okhttp，默认 HttpURLConnection
+4. 根据 `feign.circuitbreaker.enabled` 选择是否使用断路器包装OpenFeign客户端。
 
 #### FeignAcceptGzipEncodingAutoConfiguration、FeignContentGzipEncodingAutoConfiguration
 
-负责处理 feign.compression.request.enabled 、feign.compression.response.enabled
+负责处理 `feign.compression.request.enabled` 、`feign.compression.response.enabled`
 
 #### FeignLoadBalancerAutoConfiguration
 
 负责配置 LoadBalancer。
 
-1. HttpClientFeignLoadBalancerConfiguration 处理 Apache HttpClient。
-2. OkHttpFeignLoadBalancerConfiguration 处理 okhttp。
-3. HttpClient5FeignLoadBalancerConfiguration 处理 ApacheHttp5Client。
-4. DefaultFeignLoadBalancerConfiguration 处理 HttpURLConnection、Apache。
+1. `HttpClientFeignLoadBalancerConfiguration` 处理 Apache HttpClient。
+2. `OkHttpFeignLoadBalancerConfiguration` 处理 okhttp。
+3. `HttpClient5FeignLoadBalancerConfiguration` 处理 ApacheHttp5Client。
+4. `DefaultFeignLoadBalancerConfiguration` 处理 HttpURLConnection、Apache。
 
-默认使用 FeignBlockingLoadBalancerClient 包装 客户端
+默认使用 `FeignBlockingLoadBalancerClient` 包装 客户端
 
 如果添加依赖
 
@@ -804,17 +785,13 @@ org.springframework.cloud.openfeign.loadbalancer.FeignLoadBalancerAutoConfigurat
 </dependency>
 ```
 
-并且设置 spring.cloud.loadbalancer.retry.enabled = true ，使用 RetryableFeignBlockingLoadBalancerClient 包装客户端。
+并且设置 `spring.cloud.loadbalancer.retry.enabled = true` ，使用 `RetryableFeignBlockingLoadBalancerClient` 包装客户端。
 
 ### 调用
 
-1. 调用 FeignClientFactoryBean#getObject() 生成 feign.ReflectiveFeign.FeignInvocationHandler，注入 FeignClient，其中
-   FeignClientFactoryBean#feign() 负责注入配置在 configuration 的Bean，包括 Decoder、Request.Options等等。
-2. 每个FeignInvocationHandler中包含多个 SynchronousMethodHandler 对应 FeignClient 的方法。
-3. 最终由 SynchronousMethodHandler 执行，如果抛出IOException，会直接包装成RetryableException然后重试，如果正常返回则由AsyncResponseHandler
-   负责处理 Response，值得注意的是状态码200 - 300 调用 Decoder 解码，其他状态码调用 ErrorCoder 解码，默认 ErrorCoder 会抛出
-   FeignException ，如果 reponse head 包含 Retry-After 会抛出 RetryableException 进行重试，另外默认情况下 404 状态码也是使用
-   ErrorCoder 解码，可通过配置 decode404 = true 来使其调用 Decoder 解码。
+1. 调用 `FeignClientFactoryBean#getObject()` 生成 `feign.ReflectiveFeign.FeignInvocationHandler`，注入 FeignClient，其中`FeignClientFactoryBean#feign()` 负责注入配置在 configuration 的Bean，包括 Decoder、Request.Options等等。
+2. 每个`FeignInvocationHandler`中包含多个 `SynchronousMethodHandler` 对应 FeignClient 的方法。
+3. 最终由 `SynchronousMethodHandler` 执行，如果抛出IOException，会直接包装成`RetryableException`然后重试，如果正常返回则由`AsyncResponseHandler`负责处理 Response，值得注意的是状态码200 - 300 调用 Decoder 解码，其他状态码调用 ErrorCoder 解码，默认 ErrorCoder 会抛出 FeignException ，如果 reponse head 包含 Retry-After 会抛出 RetryableException 进行重试，另外默认情况下 404 状态码也是使用 ErrorCoder 解码，可通过配置 decode404 = true 来使其调用 Decoder 解码。
 
 ##### 配置
 
@@ -944,9 +921,9 @@ public void test() {
 }
 ```
 
-* usePlaintext()：表示使用明文传输。
-* BlockingStub：会一直等待，直到接收服务器的响应为止。
-* NonBlockingStub：不会等待服务器的响应，会注册一个观察者（observer）来接收响应。
+* `usePlaintext()`：表示使用明文传输。
+* `BlockingStub`：会一直等待，直到接收服务器的响应为止。
+* `NonBlockingStub`：不会等待服务器的响应，会注册一个观察者（observer）来接收响应。
 
 通信模式：
 
@@ -1008,7 +985,7 @@ public static xxxxStub newFutureStub(io.grpc.Channel channel);
 
 实例：
 
-1. 客户端流式：withDeadlineAfter 当超出该时间，客户端会关闭，服务端也会停止调用，和timeout不一样，timeout 服务器会继续执行，只是返回不到客户端。
+1. 客户端流式：`withDeadlineAfter` 当超出该时间，客户端会关闭，服务端也会停止调用，和timeout不一样，timeout 服务器会继续执行，只是返回不到客户端。
 
 ```protobuf
 syntax = "proto3";
@@ -1658,30 +1635,29 @@ dubbo:
 
 Dubbo 的容错模式: 通过 @DubboService(cluster = "failfast") 配置。
 
-1. FailoverCluster：失败自动切换，当服务调用失败后，会切换到集群 的其他机器重试，默认重试次数为 2 次，常用于
+1. `FailoverCluster`：失败自动切换，当服务调用失败后，会切换到集群 的其他机器重试，默认重试次数为 2 次，常用于
    读操作，写操作可能会造成重复数据，通过 retries = 2 来配置
-2. FailfastCluster：快速失败，当服务调用失败后，立即报错，只会调用一次，常用于幂等的写操作。
-3. FailsafeCluster：出现异常直接忽略。
-4. FailbackCluster：服务调用失败时，后台记录并定时重发，适用于消息通知操作，保证请求一定成功。
-5. ForkingCluster：并行调用多个服务，只要其中一个成功就返回，通过 fork = 2 设置最大并行数。
-6. BroadcastCluster：广播调用所有的服务提供者，任意一个服务报错则表示调用失败，常用于通知所有的服务提供者更新缓存或本地资源信息。
+2. `FailfastCluster`：快速失败，当服务调用失败后，立即报错，只会调用一次，常用于幂等的写操作。
+3. `FailsafeCluster`：出现异常直接忽略。
+4. `FailbackCluster`：服务调用失败时，后台记录并定时重发，适用于消息通知操作，保证请求一定成功。
+5. `ForkingCluster`：并行调用多个服务，只要其中一个成功就返回，通过 fork = 2 设置最大并行数。
+6. `BroadcastCluster`：广播调用所有的服务提供者，任意一个服务报错则表示调用失败，常用于通知所有的服务提供者更新缓存或本地资源信息。
 
-Dubbo 的负载均衡算法：默认策略时 random , 可通过 Dubbo 的 SPI 机制来扩展，示例：@Service(cluster = "failfast"
-,loadBalance = "roundrobin")
+Dubbo 的负载均衡算法：默认策略时 random , 可通过 Dubbo 的 SPI 机制来扩展，示例：`@Service(cluster = "failfast",loadBalance = "roundrobin")`
 
 1. Random LoadBalance：随机算法，可以针对性能较好的服务器设置较大的权重值。
 2. RoundRobin LoadBalance：轮询，按照权重设置轮询比例。
 3. LeastActive LoadBalance：最少活跃调用，处理较慢的节点会收到较少的请求。
 4. ConsistentHash LoadBalance：相同的参数总是发送给同一个服务请求者。
 
-Dubbo 的服务降级：分为故障降级、限流降级，通过 @DubboReference(mock="xx.xxxService") 配置
+Dubbo 的服务降级：分为故障降级、限流降级，通过 `@DubboReference(mock="xx.xxxService")` 配置
 
 Dubbo 的主机绑定规则：
 
-1. 环境变量 DUBBO_IP_TO_BIND 。
-2. dubbo.protocol.host 配置 。
-3. LocalHost.getHostAddress 获取本机Ip。
-4. 如果配置了注册中心，连接注册中心后会通过 socket.getLocalAddress().getHostAddress() 获取网卡IP地址。
+1. 环境变量 `DUBBO_IP_TO_BIND` 。
+2. `dubbo.protocol.host` 配置 。
+3. `LocalHost.getHostAddress` 获取本机Ip。
+4. 如果配置了注册中心，连接注册中心后会通过 `socket.getLocalAddress().getHostAddress()` 获取网卡IP地址。
 
 ## Zookeeper 注册中心
 
@@ -1700,20 +1676,16 @@ JDK 扩展机制：通过插拔的方式加载，例如 java.sql.Driver 接口�
 示例：
 
 1. 使用 MyDriver 实现 Driver。
-2. 在 resources/META-INF/services 目录创建 xxxx.xxxx.xxxx.Driver 接口全路径文件，文件内容为 xxxx.xxxx.xxxx.MyDriver
+2. 在 `resources/META-INF/services` 目录创建 `xxxx.xxxx.xxxx.Driver` 接口全路径文件，文件内容为 `xxxx.xxxx.xxxx.MyDriver`
    实现类全路径。
-3. 使用 ServiceLoader.load(Driver.class) 加载。
+3. 使用 `ServiceLoader.load(Driver.class)` 加载。
 
 dubbo 自定义扩展点：
 
 1. 接口使用 @SPI 注解。
-2. 可以在 resources/META-INF/dubbo、resources/META-INF/dubbo/internal、resources/META-INF/services 创建
-   xxxx.xxxx.xxxx.Driver 接口全路径文件。
+2. 可以在 `resources/META-INF/dubbo`、`resources/META-INF/dubbo/internal`、`resources/META-INF/services` 创建`xxxx.xxxx.xxxx.Driver` 接口全路径文件。
 3. 文件内容使用 key=value 形式，value 为 实现类全路径。
-4.
-
-使用 `ExtensionLoader<Driver> extensionLoader = ExtensionLoader.getExtensionLoader(Driver.class);`、`extensionLoader.getExtension("key")`
-获取
+4. 使用 `ExtensionLoader<Driver> extensionLoader = ExtensionLoader.getExtensionLoader(Driver.class);`、`extensionLoader.getExtension("key")`获取
 
 ## LoadBalancer
 
@@ -1736,11 +1708,11 @@ public class RestTemplateConfig {
 }
 ```
 
-* ladbalancer-provider 服务使用的负载均衡策略是 RandomLoadBalancer 随机负载均衡。
-* loadbalancer-log 使用的是 RoundRobinLoadBalancer 轮训策略。
-* 其他没有标识的则使用默认的配置 LoadBalancerClientConfiguration（轮询）。
+* `ladbalancer-provider` 服务使用的负载均衡策略是 `RandomLoadBalancer` 随机负载均衡。
+* l`oadbalancer-log` 使用的是 `RoundRobinLoadBalancer` 轮训策略。
+* 其他没有标识的则使用默认的配置 `LoadBalancerClientConfiguration`（轮询）。
 
-创建负载均衡客户端：@LoadBalanced 通过将拦截器设置到 RestTemplate，实现负载均衡
+创建负载均衡客户端：`@LoadBalanced `通过将拦截器设置到 `RestTemplate`，实现负载均衡
 
 ```java
 
@@ -1773,7 +1745,7 @@ spring:
             maxRetriesOnNextServiceInstance: 0
 ```
 
-自定义负载均衡策略，可实现 ReactorServiceInstanceLoadBalancer ，一般可复制 RoundRobinLoadBalancer 修改，例如：
+自定义负载均衡策略，可实现 `ReactorServiceInstanceLoadBalancer` ，一般可复制 `RoundRobinLoadBalancer` 修改，例如：
 
 ```java
 public class PeachLoadBalancer implements ReactorServiceInstanceLoadBalancer {
@@ -1846,7 +1818,7 @@ public class PeachLoadBalancer implements ReactorServiceInstanceLoadBalancer {
 
 ![293](assets/293.png)
 
-1. 从注册中心获取服务列表，通过 ServiceInstanceListSupplier 获取。
+1. 从注册中心获取服务列表，通过 `ServiceInstanceListSupplier` 获取。
 
 ```java
 public ServiceInstanceListSupplier discoveryClientServiceInstanceListSupplier(
@@ -1985,11 +1957,11 @@ Sentinel 分为 客户端 和 控制台。
 1. 从 https://github.com/alibaba/Sentinel/releases 下载jar包。
 2. `java -Dserver.port=30024 -Dcsp.sentinel.dashboard.server=localhost:30024 -Dproject.name=sentinel-dashboard -jar sentinel-dashboard.jar`
 
-* -Dserver.port ：指定控制台的访问端口，默认 8080 ,如果端口冲突可以设置。
-* -Dcsp.sentinel.dashboard.server ：将 自己的限流数据暴露到平台。
-* -Dcsp.sentinel.config.file：配置 properties 文件，csp.sentinel.log.dir = ${user.home}/logs/csp/
+* `-Dserver.port` ：指定控制台的访问端口，默认 8080 ,如果端口冲突可以设置。
+* `-Dcsp.sentinel.dashboard.server` ：将 自己的限流数据暴露到平台。
+* `-Dcsp.sentinel.config.file`：配置 properties 文件，`csp.sentinel.log.dir = ${user.home}/logs/csp/`
 
-日志含义：示例： 1656209955000|2022-06-26 10:19:15|/sentinel|1|0|1|0|40|0|0|1
+日志含义：示例： `1656209955000|2022-06-26 10:19:15|/sentinel|1|0|1|0|40|0|0|1`
 
 时间戳|时间|资源|请过的请求|阻止的请求|成功执行完成的请求|用户自定义的异常|平均响应时长|优先通过的请求|并发量|资源类型
 
@@ -2017,13 +1989,13 @@ spring:
         dashboard: localhost:30024
 ```
 
-当 服务被访问后会在 dashboard显示，可通过 spring.cloud.sentinel.eager 来改变这种状态。
+当 服务被访问后会在 dashboard显示，可通过 `spring.cloud.sentinel.eager` 来改变这种状态。
 
 3. 定义资源，有以下几种方式：
 
 * 所有的Controller RequestMapping 都会默认配置。
-* 对于特定的方法可以使用 @SentinelResource 来定义。
-* 通过 SphU.entry() SphO.entry() 来进行硬编码定义。
+* 对于特定的方法可以使用 `@SentinelResource` 来定义。
+* 通过 `SphU.entry()` `SphO.entry()` 来进行硬编码定义。
 
 ```java
 public void test() {
@@ -2122,47 +2094,40 @@ strategy：
 
 ## SpringCloud启动流程
 
-Springboot加载配置文件：SpringApplication 使用 ConfigFileApplicationListener 根据 Environment 中 spring.config.name
-加载配置文件 PropertySource 到 Environment。
+Springboot加载配置文件：SpringApplication 使用 `ConfigFileApplicationListener` 根据 Environment 中 `spring.config.name`加载配置文件 PropertySource 到 Environment。
 
 所有配置文件存在于 Environment 中。
 
 ![296](assets/296.png)
 
-1. SpringBoot 发布 ApplicationEnvironmentPreparedEvent 触发 SpringCloud 的 BootstrapApplicationListener 监听。
-2. 通过判断 spring.cloud.bootstrap.enabled 和 environment中是否存在bootstrap的PropertySource 来决定是否创建
-   BootstrapContext 。
+1. SpringBoot 发布 `ApplicationEnvironmentPreparedEvent` 触发 SpringCloud 的 `BootstrapApplicationListener` 监听。
+2. 通过判断 `spring.cloud.bootstrap.enabled` 和 environment中是否存在bootstrap的PropertySource 来决定是否创建 `BootstrapContext` 。
 3. 将 spring.config.name = bootstrap 设置到 Environment。
-4. 使用 SpringApplicationBuilder 创建 SpringApplication，由 ConfigFileApplicationListener 加载 bootstrap.yml 到
-   Environment，创建 BootstrapContext，并添加 AncestorInitializer 监听 ApplicationContext 的创建，在 ApplicationContext
-   创建之后将 BootstrapContext 设置为 ApplicationContext 的父上下文。
+4. 使用 `SpringApplicationBuilder` 创建 SpringApplication，由 `ConfigFileApplicationListener` 加载 `bootstrap.yml` 到 Environment，创建 `BootstrapContext`，并添加 `AncestorInitializer` 监听 `ApplicationContext` 的创建，在 `ApplicationContext`创建之后将 `BootstrapContext` 设置为 `ApplicationContext` 的父上下文。
 
 ![297](assets/297.png)
 
-5. 创建 ApplicationContext 时会触发 PropertySourceBootstrapConfiguration，PropertySourceBootstrapConfiguration 通过加
-   ConfigServicePropertySourceLocator、NacosPropertySourceLocator、CustomPropertySourceLocator 完成从配置中心加载
-   PropertySource。
+5. 创建 `ApplicationContext` 时会触发 `PropertySourceBootstrapConfiguration`，`PropertySourceBootstrapConfiguration` 通过加`ConfigServicePropertySourceLocator`、`NacosPropertySourceLocator`、`CustomPropertySourceLocator` 完成从配置中心加载`PropertySource`。
 
 ### 配置刷新
 
 ![298](assets/298.png)
 
-1. 通过 RefreshAutoConfiguration 配置 ContextRefresher。
-2. 通过 RefreshEndpointAutoConfiguration 配置 refresh 端点。
-3. refresh 端点 被触发时调用 ContextRefresher 刷新，可通过 SpringCloudBus 的 bus-refresh 端点来达到多节点配置动态刷新的目的。
+1. 通过 `RefreshAutoConfiguration` 配置 `ContextRefresher`。
+2. 通过 `RefreshEndpointAutoConfiguration` 配置 refresh 端点。
+3. refresh 端点 被触发时调用 `ContextRefresher` 刷新，可通过 `SpringCloudBus` 的 `bus-refresh` 端点来达到多节点配置动态刷新的目的。
 
-ContextRefresher 使用 SpringApplicationBuilder 创建临时 context ，再从临时 context 的 Environment 中取出
-PropertySource，覆盖当前 context 的 PropertySource。
+`ContextRefresher` 使用 `SpringApplicationBuilder` 创建临时 context ，再从临时 context 的 Environment 中取出 `PropertySource`，覆盖当前 context 的 PropertySource。
 
 ## SpringCloudContext 扩展点
 
-* RefreshEvent：发布该事件会使 RefreshEventListener 调用 ContextRefresher 刷新。
-* EnvironmentChangeEvent：ContextRefresher 刷新完成之后会发布该事件，事件中包含keys集合，储存改变的数据。
-* @RefreshScope：被该注解修饰的示例在收到 RefreshEvent 后会被销毁，再次获取该实例的时候会重新构造，意味着会重新解析表达式。
+* `RefreshEvent`：发布该事件会使 `RefreshEventListener` 调用 `ContextRefresher` 刷新。
+* `EnvironmentChangeEvent`：`ContextRefresher` 刷新完成之后会发布该事件，事件中包含keys集合，储存改变的数据。
+* `@RefreshScope`：被该注解修饰的示例在收到 `RefreshEvent` 后会被销毁，再次获取该实例的时候会重新构造，意味着会重新解析表达式。
 
-值得注意的是 发布RefreshEvent 和 @RefreshScope 不能存在同一个类总，否则会造成死锁。
+值得注意的是 发布`RefreshEvent` 和`@RefreshScope` 不能存在同一个类总，否则会造成死锁。
 
-* @ConfigurationProperties 修饰的类会在 EnvironmentChangeEvent 触发时重新绑定，通过 ConfigurationPropertiesRebinder 实现。
+* `@ConfigurationProperties` 修饰的类会在 `EnvironmentChangeEvent` 触发时重新绑定，通过 `ConfigurationPropertiesRebinder` 实现。
 
 ## SpringCloudConfig
 
@@ -2201,11 +2166,11 @@ spring:
 
 git.uri 可以使用 file://xxxx/xx 来配置本地仓库，方便开发调试。
 
-当 spring.active.profiles=native 时，使用本地文件系统，默认路径和Springboot一样。
+当 `spring.active.profiles=native` 时，使用本地文件系统，默认路径和Springboot一样。
 
-3. 使用 @EnableConfigServer 配置开启。
+3. 使用 `@EnableConfigServer` 配置开启。
 
-EnvironmentController 提供 HTTP 接口，可通过接口访问。
+`EnvironmentController` 提供 HTTP 接口，可通过接口访问。
 
 ```text
 @RequestMapping(path = "/{name}/{profiles:.*[^-].*}", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -2225,10 +2190,9 @@ EnvironmentController 提供 HTTP 接口，可通过接口访问。
 
 ![299](assets/299.png)
 
-1. {name}：配置文件的名字。Spring Cloud Config Client 默认约定，使用应用名 spring.application.name 读取对应的配置文件。
-2. {profiles}：配置文件的 Profile，一般用于解决不同环境下的配置文件。Spring Cloud Config Client 默认约定，使用
-   spring.profiles.active 读取对应的 Profile 配置文件。
-3. {label}：标签。在使用 Spring Cloud Config Server 使用 Git 作为存储器时，{label} 对应的是分支。
+1. `{name}`：配置文件的名字。Spring Cloud Config Client 默认约定，使用应用名 `spring.application.name` 读取对应的配置文件。
+2. `{profiles}`：配置文件的 Profile，一般用于解决不同环境下的配置文件。Spring Cloud Config Client 默认约定，使用`spring.profiles.active` 读取对应的 Profile 配置文件。
+3. `{label}`：标签。在使用 Spring Cloud Config Server 使用 Git 作为存储器时，`{label}` 对应的是分支。
 
 #### 客户端
 
@@ -2266,7 +2230,7 @@ spring:
       label: master
 ```
 
-3. 使用 @RefreshScope 重新绑定数据。
+3. 使用 `@RefreshScope` 重新绑定数据。
 
 ## nacos
 
@@ -2491,7 +2455,7 @@ spring:
         - PrefixPath=/httpbin
 ```
 
-限流Filter：令牌桶算法，需要 redis 配置，底层调用 ReactiveRedisTemplate ,由 RequestRateLimiterGatewayFilterFactory
+限流Filter：令牌桶算法，需要 redis 配置，底层调用 `ReactiveRedisTemplate` ,由 `RequestRateLimiterGatewayFilterFactory`
 实现，是分布式的。
 
 ```xml
@@ -2512,14 +2476,13 @@ filters:
       redis-rate-limiter.burstCapacity: 20
 ```
 
-RequestRateLimiter 会根据 KeyResolver 解析出key ，然后根据key统计进行限流，默认情况下当 key 为空会归到同一组。
+`RequestRateLimiter` 会根据 `KeyResolver` 解析出key ，然后根据key统计进行限流，默认情况下当 key 为空会归到同一组。
 
-可以使用 redis-rate-limiter.denyEmptyKey = true 禁用空key，默认情况会返回 403 状态码。
+可以使用 `redis-rate-limiter.denyEmptyKey = true` 禁用空key，默认情况会返回 403 状态码。
 
-使用 redis-rate-limiter.keyResolver = '#{@BeanName}' 引用自定义Bean，默认实现为 PrincipalNameKeyResolver 。可以通过实现
-keyResolver 来完成限制同一IP的作用。
+使用 `redis-rate-limiter.keyResolver = '#{@BeanName}'` 引用自定义Bean，默认实现为 `PrincipalNameKeyResolver` 。可以通过实现 `keyResolver` 来完成限制同一IP的作用。
 
-重试Filter：默认重试次数为 3 次，由 RetryGatewayFilterFactory 实现。
+重试Filter：默认重试次数为 3 次，由 `RetryGatewayFilterFactory` 实现。
 
 ```yaml
 filters:
@@ -2537,8 +2500,8 @@ filters:
 
 GlobalFilter：
 
-* LoadBalancerClientFilter：如果 uri 配置的是 lb:// 会使用该过滤器。
-* ForwardRoutingFilter：如果 uri 配置有 forward:// 会使用该过滤器，示例 uri: forward:///b 注意三个斜杠
+* `LoadBalancerClientFilter`：如果 uri 配置的是 lb:// 会使用该过滤器。
+* `ForwardRoutingFilter`：如果 uri 配置有 forward:// 会使用该过滤器，示例 uri: forward:///b 注意三个斜杠
 
 熔断降级：
 
@@ -2584,8 +2547,7 @@ spring:
 
 配置示例: [Gateway-config-sample](extend/Gateway-config-sample.yaml)
 
-自定义Filter：通过继承 AbstractGatewayFilterFactory 实现，类名必须以 GatewayFilterFactory 结果，过滤器名字为 类名 除了
-GatewayFilterFactory 之外的前缀。
+自定义Filter：通过继承 `AbstractGatewayFilterFactory` 实现，类名必须以 `GatewayFilterFactory` 结果，过滤器名字为 类名 除了`GatewayFilterFactory` 之外的前缀。
 
 ```java
 public class xxxxFilterFactory extends AbstractGatewayFilterFactory<xxxxFilterFactory.Config> {
@@ -2632,10 +2594,9 @@ public RouterFunction<ServerResponse> staticResourceLocator(ResourceLoader resou
 
 基本概念：
 
-* Route：路由，网关的基本组件，由ID、目标URI、Predicate集合、Filter集合组成。
-* Predicate：谓语，提供断言的功能，可以匹配HTTP请求，如果Predicate的聚合判断为true，则意味着该请求会被当前Router进行转发,入参是
-  ServerWebExchange。
-* Filter：过滤器，为请求提供前置或者后置的过滤。
+* `Route`：路由，网关的基本组件，由ID、目标URI、Predicate集合、Filter集合组成。
+* `Predicate`：谓语，提供断言的功能，可以匹配HTTP请求，如果Predicate的聚合判断为true，则意味着该请求会被当前Router进行转发,入参是`ServerWebExchange`。
+* `Filter`：过滤器，为请求提供前置或者后置的过滤。
 
 ![310](assets/310.png)
 
@@ -2643,7 +2604,7 @@ Gateway 基于Netty实现，当客户端发送一个请求到达网关时，网�
 
 ![311](assets/311.png)
 
-寻找路由规则的核心类为 RoutePredicateHandlerMapping，通过遍历找出所有的路由：
+寻找路由规则的核心类为 `RoutePredicateHandlerMapping`，通过遍历找出所有的路由：
 
 ```java
 public voit test() {
@@ -2656,7 +2617,7 @@ public voit test() {
 }
 ```
 
-过滤器链的核心类是 FilteringWebHandler，将 GlobalFilter 和 GatewayFilter，组装成 DefaultGatewayFilterChain，排序后并调用。
+过滤器链的核心类是 `FilteringWebHandler`，将 `GlobalFilter` 和 `GatewayFilter`，组装成 `DefaultGatewayFilterChain`，排序后并调用。
 
 ```java
 public Mono<Void> handle(ServerWebExchange exchange) {
@@ -2739,14 +2700,13 @@ TCC事务进一步减少了锁的占用时间，只需要 Try 阶段持有锁即
 服务端：
 
 1. 从 https://github.com/seata/seata/releases 下载
-2. sh seata-server.sh
+2. `sh seata-server.sh`
 
 默认使用文件模式单机启动，如需持久化可通过 https://github.com/seata/seata/blob/v1.5.1/script/server/db  执行数据库。
 
 上传nacos 配置文件 可在 https://github.com/seata/seata/tree/v1.5.1/script/config-center/config.txt 获取。
 
-注意,客户端会根据 service.vgroup_mapping.${txServiceGroup} = default 获取值 default ，再通过 service.default.grouplist
-获取服务地址， 所以客户端 seata.tx-service-group 需要与 service.vgroup_mapping.<值> 里的值匹配。
+注意,客户端会根据 `service.vgroup_mapping.${txServiceGroup} = default` 获取值 default ，再通过 `service.default.grouplist`获取服务地址， 所以客户端 `seata.tx-service-group` 需要与 `service.vgroup_mapping.<值>`里的值匹配。
 
 客户端：
 
@@ -3101,7 +3061,7 @@ public interface Message<T> {
 
 Message 的两个方法，分别用于获取消息体和消息头，MessageHeaders 实现了 java.util.Map ，是一个 Immutable 类型的对象。
 
-可使用 MessageBuilder 的静态方法创建，如 MessageBuilder.withPayload("xxx").setHeader("k","v").build() 。
+可使用 MessageBuilder 的静态方法创建，如 `MessageBuilder.withPayload("xxx").setHeader("k","v").build()` 。
 
 Message有以下几种实现类：
 
@@ -3155,25 +3115,23 @@ public interface SubscribableChannel extends MessageChannel {
 }
 ```
 
-PollableChannel 使用拉取的方式获取消息，SubscribableChannel 使用订阅的方式使用 MessageHandler 处理消息。
+`PollableChannel` 使用拉取的方式获取消息，`SubscribableChannel` 使用订阅的方式使用 `MessageHandler` 处理消息。
 
-ChannelInterceptor 用于在 SubscribableChannel 发送消息前、发送消息后、发送消息完成时进行拦截，对于 PollableChannel
-类型会在消息接收前、接收后、接收完成时进行拦截。
+`ChannelInterceptor` 用于在 `SubscribableChannel` 发送消息前、发送消息后、发送消息完成时进行拦截，对于 `PollableChannel`类型会在消息接收前、接收后、接收完成时进行拦截。
 
-自定义 SubscribableChannel，可通过继承 AbstractSubscribableChannel 来实现。
+自定义 `SubscribableChannel`，可通过继承 `AbstractSubscribableChannel` 来实现。
 
 ## SpringIntegration
 
-1. MessageDispatcher：消息分发器，负责将消息分发给 MessageHandler ，例如 BroadcastingDispatcher 使用广播模式。
-2. Transformer：消息转换器，负责把 Message A 转换成 Message B。
-3. MessageSelector：消息选择器，与 MessageFilter 配合对消息进行过滤然后发送到新的消息通道。
-4. MessageRouter：根据不同的条件将消息发送给不同的 MessageChannel。
-5. Aggregator：消息聚合器，把一组消息根据一些条件聚合成一团消息。
-6. Splitter：消息分割器，把一条消息根据一些条件分割成多条消息。
-7. ChannelAdapter：通道适配器，分为 OutboundChannelAdapter （负责MessageChannel上的消息发送到应用上）、InboundChannelAdapter
-   （读取应用上的消息发送到MessageChannel）
-8. MessagingGateway：消息网关，以Http网关的形式将消息的操作暴露出去。
-9. PollingConsumer：消息轮询消费者，会在 Receiver 内部一直轮询拉取。
+1. `MessageDispatcher`：消息分发器，负责将消息分发给 `MessageHandler` ，例如 `BroadcastingDispatcher` 使用广播模式。
+2. `Transformer`：消息转换器，负责把 Message A 转换成 Message B。
+3. `MessageSelector`：消息选择器，与 `MessageFilter` 配合对消息进行过滤然后发送到新的消息通道。
+4. `MessageRouter`：根据不同的条件将消息发送给不同的 MessageChannel。
+5. `Aggregator`：消息聚合器，把一组消息根据一些条件聚合成一团消息。
+6. `Splitter`：消息分割器，把一条消息根据一些条件分割成多条消息。
+7. `ChannelAdapter`：通道适配器，分为 `OutboundChannelAdapter` （负责MessageChannel上的消息发送到应用上）、`InboundChannelAdapter`（读取应用上的消息发送到MessageChannel）
+8. `MessagingGateway`：消息网关，以Http网关的形式将消息的操作暴露出去。
+9. `PollingConsumer`：消息轮询消费者，会在 Receiver 内部一直轮询拉取。
 
 使用：
 
@@ -3209,9 +3167,9 @@ Bindings 由 Binder 创建，是实际消息交互的桥梁，对应一个消费
 
 ### 老版本
 
-编程模型由@EnableBinding、@Output、@Input、@StreamListener、@SendTo 组成。
+编程模型由`@EnableBinding`、`@Output`、`@Input`、`@StreamListener`、`@SendTo` 组成。
 
-@StreamListener、@Transformer、@Filter 底层实际构造了一个 MessageHandler。
+`@StreamListener`、`@Transformer`、`@Filter` 底层实际构造了一个 `MessageHandler`。
 
 生产者：
 
@@ -3322,7 +3280,7 @@ server:
   port: 8081
 ```
 
-如果消息接收失败会发送到 topic.group.errors 的 DirectChannel，可以订阅该通道，处理错误消息，例如：
+如果消息接收失败会发送到 `topic.group.errors` 的 DirectChannel，可以订阅该通道，处理错误消息，例如：
 
 ```java
 
@@ -3600,7 +3558,7 @@ spring:
               close-timeout: 30
 ```
 
-partition 通过 ChannelInterceptor 实现，PartitioningInterceptor 。
+partition 通过 `ChannelInterceptor` 实现，`PartitioningInterceptor` 。
 
 ## SpringCloudBus + kafka
 
@@ -3645,22 +3603,20 @@ spring:
           group: ${spring.application.name}
 ```
 
-3. 使用 @RemoteApplicationEventScan 开启 RemoteApplicationEvent 扫描。
-4. 发布 RemoteApplicationEvent 。
-5. 使用 @EventListener 注解监听事件。
+3. 使用 `@RemoteApplicationEventScan` 开启 `RemoteApplicationEvent` 扫描。
+4. 发布 `RemoteApplicationEvent` 。
+5. 使用 `@EventListener` 注解监听事件。
 
 SpringCloudBus默认提供的远程事件：
 
-1. EnvironmentChangeRemoteApplicationEvent：配置信息修改远程事件，任意应用修改，总线上所有应用接收到该远程事件。
-2. AckRemoteApplicationEvent：远程事件发送成功响应。
-3. RefreshRemoteApplicationEvent：配置刷新远程事件。
-4. UnknownRemoteApplicationEvent：未知远程事件，当没有使用 @RemoteApplicationEventScan 时，会被识别为
-   UnknownRemoteApplicationEvent 。
+1. `EnvironmentChangeRemoteApplicationEvent`：配置信息修改远程事件，任意应用修改，总线上所有应用接收到该远程事件。
+2. `AckRemoteApplicationEvent`：远程事件发送成功响应。
+3. `RefreshRemoteApplicationEvent`：配置刷新远程事件。
+4. `UnknownRemoteApplicationEvent`：未知远程事件，当没有使用 `@RemoteApplicationEventScan` 时，会被识别为`UnknownRemoteApplicationEvent` 。
 
 发布流程：
 
-1. 服务A通过 ApplicationEventPublisher 发布 RemoteApplicationEvent 事件。
-2. 服务A中 RemoteApplicationEventListener 监听到 RemoteApplicationEvent，判断由自己发出并且不是AckRemoteApplicationEvent的消息，
-   通过SpringCloudStream的 springCloudBusOutput 通道发布到 消息队列上。
-3. 服务B 消费消息队列， 通过SpringCloudStream的 springCloudBusInput 通道获取到 RemoteApplicationEvent。
-4. 服务B 通过 ApplicationEventPublisher 发布 RemoteApplicationEvent 事件，在服务内传播。
+1. 服务A通过 `ApplicationEventPublisher` 发布 `RemoteApplicationEvent` 事件。
+2. 服务A中 `RemoteApplicationEventListener` 监听到 `RemoteApplicationEvent`，判断由自己发出并且不是`AckRemoteApplicationEvent`的消息， 通过SpringCloudStream的 `springCloudBusOutput` 通道发布到 消息队列上。
+3. 服务B 消费消息队列， 通过SpringCloudStream的 `springCloudBusInput` 通道获取到 `RemoteApplicationEvent`。
+4. 服务B 通过 `ApplicationEventPublisher` 发布 `RemoteApplicationEvent` 事件，在服务内传播。

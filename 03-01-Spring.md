@@ -247,9 +247,9 @@ public class BeanWrapperTest {
 
 上下文分为4类：
 
-* ServletContext : 由 Servlet 容器初始化，为项目提供宿主环境，例如 Tomcat，在 web 项目启动的时候他就初始化这样的上下文环境，为后续的 Spring 容器，SpringMvc 容器提供宿主环境。
-* WebApplicationContext ：Spring 上下文，也是根上下文，是 SpringMvc servlet 的父级上下文，当我们启动 Spring 的时候，那么就需要初始化 IOC 容器，而这个上下文就是用于管理这些 bean，把他们放到容器里。
-* SpringMVC 上下文 ：DispatchServlet 初始化的时候会创建自己的上下文，并从 ServletContext 中取出 WebApplicationContext 作为自己上下文的父容器。
+* `ServletContext`: 由 Servlet 容器初始化，为项目提供宿主环境，例如 Tomcat，在 web 项目启动的时候他就初始化这样的上下文环境，为后续的 Spring 容器，SpringMvc 容器提供宿主环境。
+* `WebApplicationContext`：Spring 上下文，也是根上下文，是 SpringMvc servlet 的父级上下文，当我们启动 Spring 的时候，那么就需要初始化 IOC 容器，而这个上下文就是用于管理这些 bean，把他们放到容器里。
+* `SpringMVC` 上下文 ：`DispatchServlet` 初始化的时候会创建自己的上下文，并从 ServletContext 中取出 WebApplicationContext 作为自己上下文的父容器。
 * 其他上下文：servlet 可以有多个，自然也存在多个上下文。
 
 Spring 中容器存在父子关系，父容器不能访问子容器的资源，而子容器可以访问父容器的资源。
@@ -285,7 +285,7 @@ Spring 中容器存在父子关系，父容器不能访问子容器的资源，�
     * 将 `BeanFactory`、`ApplicationContext` 等注入到上下文。
     * 添加 `ApplicationListener` 类型后置处理器，即创建bean 之后注入到 发布器。
     * 注册 `Environment`、`SystemProperties`、`SystemEnvironment`。
-4. postProcessBeanFactory，提供给子类实现，
+4. `postProcessBeanFactory`，提供给子类实现，
 
     * 在 `AbstractRefreshableWebApplicationContext` 中默认实现是 处理`ServletContextAware`，并且设置 `RequestObjectFactory`，`ResponseObjectFactory`，`SessionObjectFactory`，`WebRequestObjectFactory`。
     * 在 `AnnotationConfigServletWebServerApplicationContext` 相对上面的内容还要添加 扫描`AnnotationConfigServletWebServerApplicationContext` 中的`basePackages`和`annotatedClasses`。
@@ -301,7 +301,7 @@ Spring 中容器存在父子关系，父容器不能访问子容器的资源，�
 8. 初始化 `ApplicationEventMulticaster` 上下文事件广播器。
 9. onRefresh 留给子类扩展，
 
-   * 在 `AnnotationConfigServletWebServerApplicationContext` 中会启动 web 容器，例如 Tomcat
+    * 在 `AnnotationConfigServletWebServerApplicationContext` 中会启动 web 容器，例如 Tomcat
 
 10. 注册 `ApplicationListener` 到 `ApplicationEventMulticaster`。
 11. 初始化 `ConversionService` 等。
@@ -309,9 +309,9 @@ Spring 中容器存在父子关系，父容器不能访问子容器的资源，�
 
 ## SpelExpressionParser
 
-1. Expression 表达式（“干什么”）：SpEL的核心，所以表达式语言都是围绕表达式进行的
-2. ExpressionParser 解析器（“谁来干”）：用于将字符串表达式解析为表达式对象
-3. EvaluationContext 上下文（“在哪干”）：表达式对象执行的环境，该环境可能定义变量、定义自定义函数、提供类型转换等等
+1. `Expression` 表达式（“干什么”）：SpEL的核心，所以表达式语言都是围绕表达式进行的
+2. `ExpressionParser` 解析器（“谁来干”）：用于将字符串表达式解析为表达式对象
+3. `EvaluationContext` 上下文（“在哪干”）：表达式对象执行的环境，该环境可能定义变量、定义自定义函数、提供类型转换等等
 4. root根对象及活动上下文对象（“对谁干”）：root根对象是默认的活动上下文对象，活动上下文对象表示了当前表达式操作的对象，例如 application.yml 所生成的root对象，表示表达式在这个跟对象取数据。
 
 表达的变量可能从 EvaluationContext 和 rootObject 取。
@@ -329,11 +329,11 @@ public class SpelExpressionParserTest {
         EvaluationContext context = new StandardEvaluationContext();
         context.setVariable("flow", flow);
         Expression expression1 = parser.parseExpression("#flow.orderId");
-        log.info((String)expression1.getValue(context));
+        log.info((String) expression1.getValue(context));
 
         // 结合 rootObject 计算结果
         Expression expression2 = parser.parseExpression("orderId");
-        log.info((String)expression2.getValue(flow));
+        log.info((String) expression2.getValue(flow));
     }
 }
 ```
@@ -361,7 +361,7 @@ public class PropertiesUtil implements EmbeddedValueResolverAware {
 }
 ```
 
-自定义 Placeholder 前后缀解析：
+自定义 `Placeholder` 前后缀解析：
 
 ```java
 public void test() {
@@ -481,18 +481,18 @@ public class CDPlayerConfig {
 
 ### 激活 Profile
 
-* 如果设置了spring.profiles.active属性的话，那么它的值就会用来确定哪个profile是激活的。
-* 但如果没有设置spring.profiles.active属性的话，那Spring将会查找spring.profiles.default的值。
-* 如果spring.profiles.active和spring.profiles.default均没有设置的话，那就没有激活的profile，因此只会创建那些没有定义在profile中的bean。
+* 如果设置了`spring.profiles.active`属性的话，那么它的值就会用来确定哪个profile是激活的。
+* 但如果没有设置`spring.profiles.active`属性的话，那Spring将会查找`spring.profiles.default`的值。
+* 如果`spring.profiles.active`和`spring.profiles.default`均没有设置的话，那就没有激活的profile，因此只会创建那些没有定义在profile中的bean。
 
 设置的方式：
 
-* 作为DispatcherServlet的初始化参数。
+* 作为`DispatcherServlet`的初始化参数。
 * 作为Web应用的上下文参数。
 * 作为JNDI条目。
 * 作为环境变量。
 * 作为JVM的系统属性。
-* 在集成测试类 @SpringBootTest 上，使用@ActiveProfiles注解设置。
+* 在集成测试类 `@SpringBootTest` 上，使用`@ActiveProfiles`注解设置。
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
@@ -541,8 +541,8 @@ public class CDPlayerConfig {
 
 自定义条件注解：
 
-1. 实现 org.springframework.context.annotation.Condition 接口。
-2. 使用 org.springframework.context.annotation.Conditional 定义注解。
+1. 实现 `org.springframework.context.annotation.Condition` 接口。
+2. 使用 `org.springframework.context.annotation.Conditional` 定义注解。
 
 ```java
 public class MagicExistsCondition implements Condition {
@@ -583,8 +583,8 @@ public interface AnnotatedTypeMetadata {
 
 ## 消除 Bean 歧义性
 
-1. 使用 @Primary 确定首选bean。
-2. 使用 @Qualifier 指定使用具体的bean。
+1. 使用 `@Primary` 确定首选bean。
+2. 使用 `@Qualifier` 指定使用具体的bean。
 
 ```java
 
@@ -602,7 +602,7 @@ public void setDessert(Dessert dessert) {
 
 ## bean 作用域
 
-使用 @Scope(ConfigurableBeanFactory.SCOPE_PROTOTYPE) 注解来控制作用域。
+使用 `@Scope(ConfigurableBeanFactory.SCOPE_PROTOTYPE)` 注解来控制作用域。
 
 默认情况下，Spring应用上下文所有bean都是作为以单例的形式创建的。
 
@@ -613,61 +613,61 @@ public void setDessert(Dessert dessert) {
 
 ## Spring 运行时求值
 
-* 属性占位符 （Property placeholder）: ${...} 形式
-* Spring表达式语言（SpEL）：#{...} 形式,例如
+* 属性占位符 （Property placeholder）: `${...}` 形式
+* Spring表达式语言（SpEL）：`#{...}` 形式,例如
 
 ```java
 public class SpELTest {
     public void test() {
-        //1. 它的最终结果是计算表达式的那一刻当前时间的毫秒数。T () 表达式会将java.lang.System视为Java中对应的类型，因此可以调用其static修饰的currentTimeMillis()方法。
-        "# {T(System).currentTimeMillis()}"
+        //1. 它的最终结果是计算表达式的那一刻当前时间的毫秒数。T(...) 表达式会将java.lang.System视为Java中对应的类型，因此可以调用其static修饰的currentTimeMillis()方法。
+        "#{T(System).currentTimeMillis()}"
         //2. SpEL表达式可以引用其他的bean或其他bean的属性。
         //例如，引用sgtPeppers的bean
-        "{ sgtPeppers }"
+        "#{sgtPeppers}"
         //例如，如下的表达式会计算得到ID为sgtPeppers的bean的artist属性：
-        "# { sgtPeppers.artist }"
+        "#{sgtPeppers.artist}"
         //3. 还可以通过systemProperties对象引用系统属性：
-        "# { systemProperties['disc.title'] }"
+        "#{systemProperties['disc.title']}"
         //4. 表示字面值：
-        "# { 3.1415926 }"
-        "# { 9.87E4 }"
-        "# { 'Hello' }"
-        "# { false }"
+        "#{3.1415926}"
+        "#{9.87E4}"
+        "#{'Hello'}"
+        "#{false}"
         //5. 引用其他的bean的方法
-        "# { artistSelector.selectArtist () }"
+        "#{artistSelector.selectArtist()}"
         //为了防止方法值为null，抛出异常，可以使用“?.”
         //不是null，正常返回；如果是null，不执行后面的方法，直接返回null
-        "# { artistSelector.selectArtist ()?.toUpperCase() }"
+        "#{artistSelector.selectArtist()?.toUpperCase()}"
         //6. 如果要在SpEL中访问类作用域的方法和常量的话，要依赖T() 这个关键的运算符。
-        "# { T(java.lang.Math).PI }"
-        "# { T(java.lang.Math).random() }"
+        "#{T(java.lang.Math).PI}"
+        "#{T(java.lang.Math).random()}"
         //7. 还可以将运算符用在表达式上，如：
-        "# { 2 * T(java.lang.Math).PI * circle.radius }"
-        "# { disc.title + ' by ' + disc.artist }"
+        "#{2 * T(java.lang.Math).PI * circle.radius}"
+        "#{disc.title + ' by ' + disc.artist}"
         //8. 比较数字相等的写法
-        "# { counter.total == 100 }"
-        "# { counter.total eq 100 }"
+        "#{counter.total == 100}"
+        "#{counter.total eq 100}"
         //9. 三元运算符
-        "# { scoreboard.score > 1000 ? " Winner !" : " Loser " }"
-        "# { disc.title ?: 'Rattle and Hum' } " // 如果disc.title的值为空，返回'Rattle and Hum'
+        "#{scoreboard.score > 1000 ? " Winner !" : " Loser "}"
+        "#{disc.title ?: 'Rattle and Hum' } " // 如果disc.title的值为空，返回'Rattle and Hum'
         //10. 支持正则表达式
-        "# { admin.email matches '[a-zA-Z0-9.*%+-]+@[a-zA-Z0-9.*]+\.com' }"
+        "#{admin.email matches '[a-zA-Z0-9.*%+-]+@[a-zA-Z0-9.*]+\.com'}"
         //11. 支持与集合和数组相关的表达式
-        "# { jukebox.songs[4].title }"
-        "# { jukebox.songs[T(java.lang.Math).random() * jukebox.songs.size()].title }"
-        "# { 'This is a test' [3] }" // 引用第4个字符 - “s”
+        "#{jukebox.songs[4].title}"
+        "#{jukebox.songs[T(java.lang.Math).random() * jukebox.songs.size()].title}"
+        "#{'This is a test' [3]}" // 引用第4个字符 - “s”
         //12. 支持查询运算符
         //例如你希望得到jukebox中artist属性为Aerosmith的所有歌曲：
-        "# { jukebox.songs.?[artist eq 'Aerosmith'] }"
+        "#{jukebox.songs.?[artist eq 'Aerosmith']}"
         //查找列表中第一个artist属性为Aerosmith的歌曲：
-        "# { jukebox.songs.^[artist eq 'Aerosmith'] }"
+        "#{jukebox.songs.^[artist eq 'Aerosmith']}"
         //查找列表中最后一个artist属性为Aerosmith的歌曲：
-        "# { jukebox.songs.$[artist eq 'Aerosmith'] }"
+        "#{jukebox.songs.$[artist eq 'Aerosmith']}"
         //13. 支持投影运算符
         //假设我们不想要歌曲对象的集合，而是所有歌曲名称的集合。如下表达式会将title属性投影到一个新的String类型的集合中：
-        "# { jukebox.songs.![title]}"
+        "#{jukebox.songs.![title]}"
         //获取Aerosmith所有歌曲的title
-        "# { jukebox.songs.?[artist eq 'Aerosmith'].![title] }"
+        "#{jukebox.songs.?[artist eq 'Aerosmith'].![title]}"
     }
 }
 ```
@@ -769,9 +769,8 @@ public class SpELTest {
 * 合并：`Flux.range(1,5).mergeWith(Flux.interval(Duration.ofSeconds(1)).take(5))`
 * 延迟发布：`Flux.range(1,5).delaySubscription(Duration.ofMillis(250)).delayElements(Duration.ofMillis(500))`
 * 压缩,会将多个FLUX对齐分组为 Tuple2，通过 getT1(),getT2()
-  来获取：`Flux.zip(Flux.range(1,5),Flux.interval(Duration.ofSeconds(1)).take(5))`，如果不想获得 Tuple2
-  ，可使用 `Flux.zip( flux1, flux2,mergeFunction)`
-* 只发布快的第一个flux：`Flux.first(flux1,flux2)`只会消费一个flux，另一个flux忽略。
+  来获取：`Flux.zip(Flux.range(1,5),Flux.interval(Duration.ofSeconds(1)).take(5))`，如果不想获得 Tuple2 ，可使用 `Flux.zip( flux1, flux2,mergeFunction)`
+* 只发布第一个flux：`Flux.first(flux1,flux2)`只会消费一个flux，另一个flux忽略。
 * 缓冲数据：
 
 ```java
@@ -836,16 +835,16 @@ public class FluxTest {
 
 自定义缓存 key：
 
-| 表达式               | 描述                                     |
-|-------------------|----------------------------------------|
-| #root.args        | 传递给缓存方法的参数，形式为数组                       |
-| #root.caches      | 该方法执行时所对应的缓存，形式为数组                     |
-| #root.target      | 目标对象                                   |
-| #root.targetClass | 目标对象的类，是 #root.target.class 的简写形式      |
-| #root.method      | 缓存方法                                   |
-| #root.methodName  | 缓存方法的名字，是 #root.method.name 的简写形式      |
-| #result           | 方法调用的返回值（不能用在 @Cacheable 注解上）          |
-| #Argument         | 任意的方法参数名（如 #argName）或参数索引（如 #a0 或 #p0） |
+| 表达式               | 描述                                |
+|-------------------|-----------------------------------|
+| #root.args        | 传递给缓存方法的参数，形式为数组                  |
+| #root.caches      | 该方法执行时所对应的缓存，形式为数组                |
+| #root.target      | 目标对象                              |
+| #root.targetClass | 目标对象的类，是 #root.target.class 的简写形式 |
+| #root.method      | 缓存方法                              |
+| #root.methodName  | 缓存方法的名字，是 #root.method.name 的简写形式 |
+| #result           | 方法调用的返回值（不能用在 @Cacheable 注解上）     |
+| #Argument         | 任意的方法参数名（如 #argName）或参数索引（如 #p0）  |
 
 @CacheEvict 属性：
 
@@ -903,21 +902,21 @@ public class FluxTest {
    java -jar -Dspring.profiles.active=test -Dserver.port=8081 app.jar
    java -jar -XX:MetaspaceSize=128m -XX:MaxMetaspaceSize=128m -Xms1024m -Xmx1024m -Xmn256m -Xss256k -XX:SurvivorRatio=8 -XX:+UseConcMarkSweepGC newframe-1.0.0.jar
    ```
-2. SPRING_APPLICATION_JSON 环境变量：值为一个JSON。
-3. ServletConfig 初始化参数。
-4. ServletContext 初始化参数。
-5. java:comp/env 的JNDI属性。
-6. System.getProperties() JVM系统属性。
+2. `SPRING_APPLICATION_JSON` 环境变量：值为一个JSON。
+3. `ServletConfig` 初始化参数。
+4. `ServletContext` 初始化参数。
+5. `java:comp/env` 的JNDI属性。
+6. `System.getProperties()` JVM系统属性。
 7. 操作系统环境变量。
-8. RandomValuePropertySource，例如 my.secret=${random.value}
+8. `RandomValuePropertySource`，例如 my.secret=${random.value}
 9. 读取配置文件：
 
-    * jar包外 优先 jar 包内。
-    * config下 优先 根目录下。
-    * application-{profile} 优先 application。
-    * properties 优先 yml。
-10. @PropertySource
-11. SpringApplication.setDefaultProperties
+    * `jar`包外 优先 jar 包内。
+    * `config`下 优先 根目录下。
+    * `application-{profile}` 优先 application。
+    * `properties` 优先 yml。
+10. `@PropertySource`
+11. `SpringApplication.setDefaultProperties`
 
 ymal传输到日志配置文件：
 
@@ -1058,8 +1057,8 @@ public class LogbackController {
 
 自动配置的线程池：
 
-* applicationTaskExecutor、taskExecutor：ThreadPoolTaskExecutor 类型，使用 spring.task.execution.pool 配置。
-* threadPoolTaskScheduler：ThreadPoolTaskScheduler 类型，使用 spring.task.scheduling 配置。
+* `applicationTaskExecutor`、`taskExecutor`：`ThreadPoolTaskExecutor` 类型，使用 `spring.task.execution.pool` 配置。
+* `threadPoolTaskScheduler`：`ThreadPoolTaskScheduler` 类型，使用 `spring.task.scheduling` 配置。
 
 测试：
 
@@ -1153,19 +1152,15 @@ public class SignalDownloadTest2 {
 
 ### @SpringBootApplication 注解
 
-* @SpringBootConfiguration：继承 @Configuration，和 @Configuration 功能一样。
-* @ComponentScan：自动扫描Bean，默认情况，不指定basePackages，扫描当前类包及其子包。
-* @EnableAutoConfiguration：通过 @Import({AutoConfigurationImportSelector.class}) 实现自动装配。
+* `@SpringBootConfiguration`：继承 `@Configuration`，和 `@Configuration` 功能一样。
+* `@ComponentScan`：自动扫描Bean，默认情况，不指定basePackages，扫描当前类包及其子包。
+* `@EnableAutoConfiguration`：通过 `@Import({AutoConfigurationImportSelector.class})` 实现自动装配。
 
 ### 自动装配流程
 
-1. AutoConfigurationImportSelector 实现 ImportSelector 接口，@Import 会装载 ImportSelector#selectImports 返回的Bean，由
-   ConfigurationClassParser 来实现。
-2. 在 AutoConfigurationImportSelector#selectImports 中使用 SpringFactoriesLoader.loadFactoryNames(
-   EnableAutoConfiguration.class,getBeanClassLoader()) 加载，会加载 META-INF/spring.factories 中
-   org.springframework.boot.autoconfigure.EnableAutoConfiguration 的属性。
-3. 通过 @ConditionalOnClass 来完成 添加具体starter 时完成自动加载，stater添加的只是依赖，负责引入依赖包，配置的逻辑存在于
-   spring-boot-autoconfigure 模块：例如：
+1. `AutoConfigurationImportSelector` 实现 `ImportSelector` 接口，`@Import` 会装载 `ImportSelector#selectImports` 返回的Bean，由 `ConfigurationClassParser` 来实现。
+2. 在 `AutoConfigurationImportSelector#selectImports` 中使用 `SpringFactoriesLoader.loadFactoryNames(EnableAutoConfiguration.class,getBeanClassLoader())` 加载，会加载 `META-INF/spring.factories` 中 `org.springframework.boot.autoconfigure.EnableAutoConfiguration` 的属性。
+3. 通过` @ConditionalOnClass` 来完成 添加具体starter 时完成自动加载，stater添加的只是依赖，负责引入依赖包，配置的逻辑存在于 `spring-boot-autoconfigure` 模块：例如：
 
    ```java
    // 只有引入 MongoClient 相关包时才会进行自动配置。

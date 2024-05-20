@@ -98,13 +98,13 @@ https://QQ.com/authorize?response_type=code&client_id=CLIENT_ID&redirect_uri=CAL
 
 上述的URL中有四个参数：
 
-response_type：响应结果类型，code表示要求返回授权码。
+`response_type`：响应结果类型，code表示要求返回授权码。
 
-client_id：客户端ID，值是网站A在授权服务器注册时的备案ID，由授权服务器提供，用来让授权服务器知道是谁在请求。
+`client_id`：客户端ID，值是网站A在授权服务器注册时的备案ID，由授权服务器提供，用来让授权服务器知道是谁在请求。
 
-redirect_uri：授权服务器接受或者拒绝请求后跳转的网址，需要在授权服务器备案。
+`redirect_uri`：授权服务器接受或者拒绝请求后跳转的网址，需要在授权服务器备案。
 
-scope：表示要求授权的范围。
+`scope`：表示要求授权的范围。
 
 第二步（B-C）：
 
@@ -114,7 +114,7 @@ scope：表示要求授权的范围。
 https://A.com/callback?code=AUTHORIZATION_CODE
 ```
 
-其中，AUTHORIZATION_CODE就是授权码。
+其中，`AUTHORIZATION_CODE`就是授权码。
 
 第三步（C-D-E）：
 
@@ -126,15 +126,15 @@ https://b.com/token?client_id=CLIENT_ID&client_secret=CLIENT_SECRET&grant_type=a
 
 上述的URL中有五个参数：
 
-client_id：客户端ID
+`client_id`：客户端ID
 
-client_secret：客户端ID对应的密码，参数是保密的，因此只能在后端发请求。
+`client_secret`：客户端ID对应的密码，参数是保密的，因此只能在后端发请求。
 
-grant_type：参数是AUTHORIZATION_CODE，表示采用的授权方式是授权码模式。
+`grant_type`：参数是`AUTHORIZATION_CODE`，表示采用的授权方式是授权码模式。
 
-code：授权码，参数为第二步拿到的授权码。
+`code`：授权码，参数为第二步拿到的授权码。
 
-redirect_uri: 拿到令牌后的回调地址，即为用户最开始需要访问的地址。
+`redirect_uri`: 拿到令牌后的回调地址，即为用户最开始需要访问的地址。
 
 ### 隐藏模式（implicit grant type）
 
@@ -152,13 +152,13 @@ https://b.com/authorize?response_type=token&client_id=CLIENT_ID&redirect_uri=CAL
 
 上述的URL中有四个参数：
 
-response_type：响应结果类型，token表示要求直接返回令牌。
+`response_type`：响应结果类型，token表示要求直接返回令牌。
 
-client_id：客户端ID，值是网站A在授权服务器注册时的备案ID，由授权服务器提供，用来让授权服务器知道是谁在请求。
+`client_id`：客户端ID，值是网站A在授权服务器注册时的备案ID，由授权服务器提供，用来让授权服务器知道是谁在请求。
 
-redirect_uri：授权服务器接受或者拒绝请求后跳转的网址，需要在授权服务器备案。
+`redirect_uri`：授权服务器接受或者拒绝请求后跳转的网址，需要在授权服务器备案。
 
-scope：表示要求授权的范围。
+`scope`：表示要求授权的范围。
 
 第二步（B-C）：
 
@@ -188,13 +188,13 @@ https://b.com/token?grant_type=password&username=USERNAME&password=PASSWORD&clie
 
 上述的URL中有四个参数：
 
-grant_type：授权类型，password表示密码模式。
+`grant_type`：授权类型，password表示密码模式。
 
-username：用户名。
+`username`：用户名。
 
-password：用户名对应的密码。
+`password`：用户名对应的密码。
 
-client_id：客户端ID，值是网站A在授权服务器注册时的备案ID，由授权服务器提供，用来让授权服务器知道是谁在请求。
+`client_id`：客户端ID，值是网站A在授权服务器注册时的备案ID，由授权服务器提供，用来让授权服务器知道是谁在请求。
 
 第二步（C）:
 认证服务器验证身份通过后，直接给出令牌。注意，这时不需要跳转，而是把令牌放在 JSON 数据里面，作为 HTTP 回应，网站A 因此拿到令牌。
@@ -215,11 +215,11 @@ client_id：客户端ID，值是网站A在授权服务器注册时的备案ID，
 https://b.com/token?grant_type=client_credentials&client_id=CLIENT_ID&client_secret=CLIENT_SECRET
 ```
 
-grant_type：授权类型，client_credentials表示客户端模式。
+`grant_type`：授权类型，`client_credentials`表示客户端模式。
 
-client_id：客户端ID，值是网站A在授权服务器注册时的备案ID，由授权服务器提供，用来让授权服务器知道是谁在请求。
+`client_id`：客户端ID，值是网站A在授权服务器注册时的备案ID，由授权服务器提供，用来让授权服务器知道是谁在请求。
 
-client_secret：客户端ID对应的密码。
+`client_secret`：客户端ID对应的密码。
 
 第一步（B）：
 
@@ -249,19 +249,19 @@ curl -H "Authorization: Bearer ACCESS_TOKEN" "https://api.a.com"
 https://b.com/token?grant_type=refresh_token&client_id=CLIENT_ID&client_secret=CLIENT_SECRET&refresh_token=REFRESH_TOKEN
 ```
 
-grant_type：授权类型，refresh_token表示要求更新令牌。
+`grant_type`：授权类型，`refresh_token`表示要求更新令牌。
 
-client_id：客户端ID，值是网站A在授权服务器注册时的备案ID，由授权服务器提供，用来让授权服务器知道是谁在请求。
+`client_id`：客户端ID，值是网站A在授权服务器注册时的备案ID，由授权服务器提供，用来让授权服务器知道是谁在请求。
 
-client_secret：客户端ID对应的密码。
+`client_secret`：客户端ID对应的密码。
 
-refresh_token：参数就是用于更新令牌的令牌。
+`refresh_token`：参数就是用于更新令牌的令牌。
 
 ## JWT令牌
 
 JWT由三部分构成，结构为：
 
-```properties
+```text
 header.payload.signature
 ```
 
@@ -282,7 +282,7 @@ alg：声明加密的算法 。
 
 然后使用Base64URL进行编码得到类似下面的字符串：
 
-```properties
+```text
 yJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9
 ```
 
@@ -290,7 +290,7 @@ yJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9
 
 `payload`是关于实体(通常是用户)和其他数据的声明，声明有三种类型: registered, public 和 private。
 
-- Registered claims : 这里有一组预定义的声明，它们不是强制的，但是推荐。比如：
+- `Registered claims` : 这里有一组预定义的声明，它们不是强制的，但是推荐。比如：
 
   > iss (issuer)：签发人
   >
@@ -306,8 +306,8 @@ yJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9
   >
   > jti (JWT ID)：编号
   >
-- Public claims : 可以随意定义。
-- Private claims : 用于在同意使用它们的各方之间共享信息，并且不是注册的或公开的声明。
+- `Public claims` : 可以随意定义。
+- `Private claims` : 用于在同意使用它们的各方之间共享信息，并且不是注册的或公开的声明。
 
 例如：
 
@@ -321,7 +321,7 @@ yJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9
 
 然后对其使用Base64URL编码得到类似下面的字符串：
 
-```properties
+```text
 eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ
 ```
 
@@ -395,7 +395,7 @@ spring:
            client-secret: google-client-secret
 ```
 
-该配置会注入到 OAuth2ClientProperties：
+该配置会注入到 `OAuth2ClientProperties`：
 
 ```java
 @ConfigurationProperties(prefix = "spring.security.oauth2.client")
@@ -463,23 +463,22 @@ public final class ClientRegistration {
 例如:
 
 ```java
-ClientRegistration clientRegistration =
-ClientRegistrations.fromIssuerLocation("https://idp.example.com/issuer").build();
+ClientRegistration clientRegistration = ClientRegistrations.fromIssuerLocation("https://idp.example.com/issuer").build();
 ```
 
-ClientAuthenticationMethod类型：
+`ClientAuthenticationMethod`类型：
 
 ![112](assets/112.png)
 
 
-* client_secret_post：即上面的方式
+* `client_secret_post`：即上面的方式
 
 ```http
 curl --location --request POST 'http://127.0.0.1:9000/uc/oauth2/token?scope=server&grant_type=client_credentials&client_id=8000000012&client_secret=secret' \
 --header 'Cookie: JSESSIONID=2E0679E3D163F37375BD7E6B80E73AFF'
 ```
 
-* client_secret_basic：添加头，Authorization: Basic Base64(client_id:client_secret)
+* `client_secret_basic`：添加头，`Authorization: Basic Base64(client_id:client_secret)`
 
 ```http
 curl --location --request POST 'http://127.0.0.1:9000/uc/oauth2/token?scope=server&grant_type=client_credentials' \
@@ -487,7 +486,7 @@ curl --location --request POST 'http://127.0.0.1:9000/uc/oauth2/token?scope=serv
 --header 'Cookie: JSESSIONID=2E0679E3D163F37375BD7E6B80E73AFF'
 ```
 
-* client_secret_jwt：算法类型为 MacAlgorithm：HS256、HS384、HS512
+* `client_secret_jwt`：算法类型为 MacAlgorithm：HS256、HS384、HS512
 
 ```java
 public void test() {
@@ -498,8 +497,8 @@ public void test() {
 }
 ```
 
-1. 配置认证中心配置 RegisteredClient ，ClientAuthenticationMethod.CLIENT_SECRET_JWT，MacAlgorithm.HS256
-2. 生成客户端 clientSecret 的 JWT
+1. 配置认证中心配置` RegisteredClient` ，`ClientAuthenticationMethod.CLIENT_SECRET_JWT`，`MacAlgorithm.HS256`
+2. 生成客户端 `clientSecret` 的 JWT
 
 ```java
 public class SecurityConfig {
@@ -587,19 +586,19 @@ scope = server
 & client_id = 8000000014
 ```
 
-| 参数                  | 参数值                                                 |
-| --------------------- | ------------------------------------------------------ |
-| scope                 | 域                                                     |
+| 参数                    | 参数值                                                    |
+|-----------------------|--------------------------------------------------------|
+| scope                 | 域                                                      |
 | grant_type            | client_credentials                                     |
 | client_assertion_type | urn:ietf:params:oauth:client-assertion-type:jwt-bearer |
-| client_assertion      | 上面生成的 Jwt token                                   |
+| client_assertion      | 上面生成的 Jwt token                                        |
 | client_id             | 8000000014                                             |
 
 
-* private_key_jwt：请求和client_secret_jwt 一样，不同之处在于 JWT 的生成不一样，算法类型为 SignatureAlgorithm
+* `private_key_jwt`：请求和`client_secret_jwt` 一样，不同之处在于 JWT 的生成不一样，算法类型为 `SignatureAlgorithm`
 
-1. 配置认证中心 RegisteredClient 中 clientAuthenticationMethod 为 ClientAuthenticationMethod.PRIVATE_KEY_JWT
-2. 配置 OAuth2AccessTokenResponseClient
+1. 配置认证中心 `RegisteredClient` 中 `clientAuthenticationMethod` 为 `ClientAuthenticationMethod.PRIVATE_KEY_JWT`
+2. 配置 `OAuth2AccessTokenResponseClient`
 
 ```java
 public class SecurityConfig {
@@ -679,9 +678,9 @@ ClientSettings.builder().tokenEndpointAuthenticationSigningAlgorithm(SignatureAl
 
 `CommonOAuth2Provider`预定义 `Google`、`GitHub`、`Facebook`、 `Okta`的默认配置。
 
-* 当配置  OAuth2ClientProperties 后，引入 spring-boot-starter-oauth2-client 会进行自动装配。
-* OAuth2ClientRegistrationRepositoryConfiguration 利用 OAuth2ClientPropertiesRegistrationAdapter 通过 CommonOAuth2Provider 获取对应的配置。
-* 然后保存在 InMemoryClientRegistrationRepository(继承ClientRegistrationRepository)。
+* 当配置  `OAuth2ClientProperties` 后，引入 `spring-boot-starter-oauth2-client` 会进行自动装配。
+* `OAuth2ClientRegistrationRepositoryConfiguration` 利用 `OAuth2ClientPropertiesRegistrationAdapter` 通过 `CommonOAuth2Provider` 获取对应的配置。
+* 然后保存在` InMemoryClientRegistrationRepository(继承ClientRegistrationRepository)`。
 
 ### ClientRegistrationRepository
 
@@ -691,7 +690,7 @@ ClientSettings.builder().tokenEndpointAuthenticationSigningAlgorithm(SignatureAl
 
 ### OAuth2AuthorizedClient
 
-描述一个用户的已经授权的客户端，可以理解为授权用户，包含用户的principalName、 accessToken、refreshToken、clientRegistration。
+描述一个用户的已经授权的客户端，可以理解为授权用户，包含用户的`principalName`、 `accessToken`、`refreshToken`、`clientRegistration`。
 
 `OAuth2AuthorizedClient`是` an Authorized Client`。当用户给客户端授权时，客户端被认为已经被授权。
 
@@ -707,11 +706,11 @@ public class OAuth2AuthorizedClient {
 }
 ```
 
-clientRegistrationId、principalName 可以唯一确定一个用户 OAuth2AuthorizedClient。
+`clientRegistrationId`、p`rincipalName` 可以唯一确定一个用户 `OAuth2AuthorizedClient`。
 
 ### OAuth2AuthorizedClientRepository / OAuth2AuthorizedClientService
 
-用来储存已经授权的用户，即OAuth2AuthorizedClient。
+用来储存已经授权的用户，即`OAuth2AuthorizedClient`。
 
 `OAuth2AuthorizedClientService` 默认使用 `InMemoryOAuth2AuthorizedClientService`，也可以使用 `JdbcOAuth2AuthorizedClientService` ，需要创建表：
 
@@ -780,9 +779,9 @@ public class OAuth2ClientController {
 
 ### OAuth2AuthorizedClientManager / OAuth2AuthorizedClientProvider
 
-OAuth2AuthorizedClientProvider 负责使用 OAuth2AuthorizationContext 请求认证服务器，并且对认证成功的用户创建 OAuth2AuthorizedClient 。
-OAuth2AuthorizedClientProvider 有多种实现：AuthorizationCodeOAuth2AuthorizedClientProvider 、 ClientCredentialsOAuth2AuthorizedClientProvider 、PasswordOAuth2AuthorizedClientProvider、RefreshTokenOAuth2AuthorizedClientProvider 对应 OAuth2 不同的认证模式。
-除此之外还有 DelegatingOAuth2AuthorizedClientProvider，它可以完成对多种 OAuth2AuthorizedClientProvider 的代理。
+`OAuth2AuthorizedClientProvider` 负责使用 `OAuth2AuthorizationContext` 请求认证服务器，并且对认证成功的用户创建 `OAuth2AuthorizedClient` 。
+`OAuth2AuthorizedClientProvider` 有多种实现：`AuthorizationCodeOAuth2AuthorizedClientProvider` 、 `ClientCredentialsOAuth2AuthorizedClientProvider` 、`PasswordOAuth2AuthorizedClientProvider`、`RefreshTokenOAuth2AuthorizedClientProvider` 对应 OAuth2 不同的认证模式。
+除此之外还有 `DelegatingOAuth2AuthorizedClientProvider`，它可以完成对多种 `OAuth2AuthorizedClientProvider` 的代理。
 
 `OAuth2AuthorizedClientProvider`实现` OAuth 2.0 Client`，有不同的种类，例如`authorization_code`, `client_credentials`等。可以使用`OAuth2AuthorizedClientProviderBuilder`来构建`DelegatingOAuth2AuthorizedClientProvider`。
 
@@ -811,7 +810,7 @@ public OAuth2AuthorizedClientManager authorizedClientManager(
 }
 ```
 
-`OAuth2AuthorizedClientManager`：`DefaultOAuth2AuthorizedClientManager`是它的默认实现，负责利用 OAuth2AuthorizeRequest 构建 OAuth2AuthorizationContext，并使用`DelegatingOAuth2AuthorizedClientProvider` 完成认证，并将 OAuth2AuthorizedClient 保存在 OAuth2AuthorizedClientService 中 。
+`OAuth2AuthorizedClientManager`：`DefaultOAuth2AuthorizedClientManager`是它的默认实现，负责利用 `OAuth2AuthorizeRequest` 构建 `OAuth2AuthorizationContext`，并使用`DelegatingOAuth2AuthorizedClientProvider` 完成认证，并将 `OAuth2AuthorizedClient` 保存在 `OAuth2AuthorizedClientService` 中 。
 
 主要功能包括：
 
@@ -889,7 +888,7 @@ public OAuth2AuthorizedClientManager authorizedClientManager(
 }
 ```
 
-DefaultOAuth2AuthorizedClientManager 用于 OAuth2AuthorizedClientArgumentResolver 处理 @RegisteredOAuth2AuthorizedClient 注解获取 OAuth2AuthorizedClient。
+`DefaultOAuth2AuthorizedClientManager` 用于 `OAuth2AuthorizedClientArgumentResolver` 处理 `@RegisteredOAuth2AuthorizedClient` 注解获取 `OAuth2AuthorizedClient`。
 
 ### DefaultAuthorizationCodeTokenResponseClient / DefaultRefreshTokenTokenResponseClient
 
@@ -907,17 +906,17 @@ DefaultOAuth2AuthorizedClientManager 用于 OAuth2AuthorizedClientArgumentResolv
 
 ## 启动
 
-1. 通过使用 http.oauth2Login 创建 OAuth2LoginConfigurer 并配置 http 。
+1. 通过使用 `http.oauth2Login` 创建 `OAuth2LoginConfigurer` 并配置 http 。
 2. 自动装配。
-   * SpringSecurity 主流程。
-   * OAuth2ClientConfiguration：添加 OAuth2AuthorizedClientArgumentResolver 处理 @RegisteredOAuth2AuthorizedClient。
-   * OAuth2ClientAutoConfiguration：添加 InMemoryClientRegistrationRepository 、OAuth2AuthorizedClientService、OAuth2AuthorizedClientRepository。
+   * `SpringSecurity` 主流程。
+   * `OAuth2ClientConfiguration`：添加 `OAuth2AuthorizedClientArgumentResolver` 处理 `@RegisteredOAuth2AuthorizedClient`。
+   * `OAuth2ClientAutoConfiguration`：添加 `InMemoryClientRegistrationRepository` 、`OAuth2AuthorizedClientService`、`OAuth2AuthorizedClientRepository`。
 
 ### OAuth2LoginConfigurer配置内容
 
-继承 `AbstractAuthenticationFilterConfigurer<B, OAuth2LoginConfigurer<B>, OAuth2LoginAuthenticationFilter>`, 表明 它负责创建 OAuth2AuthorizationRequestRedirectFilter、OAuth2LoginAuthenticationFilter ，最后会将它添加到过滤器链，OAuth2LoginAuthenticationFilter 使用 LoginUrlAuthenticationEntryPoint 作为 LoginUrlAuthenticationEntryPoint。
+继承 `AbstractAuthenticationFilterConfigurer<B, OAuth2LoginConfigurer<B>, OAuth2LoginAuthenticationFilter>`, 表明 它负责创建 `OAuth2AuthorizationRequestRedirectFilter`、`OAuth2LoginAuthenticationFilter` ，最后会将它添加到过滤器链，`OAuth2LoginAuthenticationFilter` 使用 `LoginUrlAuthenticationEntryPoint` 作为 `LoginUrlAuthenticationEntryPoint`。
 
-可以通过 http.oauth2Login 配置 ClientRegistrationRepository、OAuth2AuthorizedClientRepository、OAuth2AuthorizedClientService(最后也是配置一个AuthenticatedPrincipalOAuth2AuthorizedClientRepository)。
+可以通过 `http.oauth2Login` 配置 `ClientRegistrationRepository`、`OAuth2AuthorizedClientRepository`、`OAuth2AuthorizedClientService`(最后也是配置一个`AuthenticatedPrincipalOAuth2AuthorizedClientRepository`)。
 
 ### OAuth2AuthorizationRequestRedirectFilter
 
@@ -937,8 +936,8 @@ public class OAuth2AuthorizationRequestRedirectFilter extends OncePerRequestFilt
 
 负责完成 OAuth2 的第一步。
 
-1. 负责拦截 authorizationRequestBaseUri(默认为 OAuth2AuthorizationRequestRedirectFilter.DEFAULT_AUTHORIZATION_REQUEST_BASE_URI,即 `/oauth2/authorization`) 前缀的请求,所以当使用第三方登陆按钮关联的连接应该是 /oauth2/authorization/{registrationId}
-2. 使用 OAuth2AuthorizationRequestResolver(默认为 DefaultOAuth2AuthorizationRequestResolver) 从 request 中按照 `/oauth2/authorization/{registrationId}` 解析出 registrationId，再通过 registrationId 从  ClientRegistrationRepository 获取 ClientRegistration，最后使用 ClientRegistration 构建 OAuth2AuthorizationRequest，OAuth2AuthorizationRequest 包含重定向地址，例如：
+1. 负责拦截 `authorizationRequestBaseUri`(默认为 `OAuth2AuthorizationRequestRedirectFilter.DEFAULT_AUTHORIZATION_REQUEST_BASE_URI`,即 `/oauth2/authorization`) 前缀的请求,所以当使用第三方登陆按钮关联的连接应该是 `/oauth2/authorization/{registrationId}`
+2. 使用 `OAuth2AuthorizationRequestResolver`(默认为 `DefaultOAuth2AuthorizationRequestResolver`) 从 request 中按照 `/oauth2/authorization/{registrationId}` 解析出 registrationId，再通过 registrationId 从  `ClientRegistrationRepository` 获取 ClientRegistration，最后使用 ClientRegistration 构建 `OAuth2AuthorizationRequest`，`OAuth2AuthorizationRequest` 包含重定向地址，例如：
 
 ```http
 https://accounts.google.com/o/oauth2/v2/auth?response_type=code&client_id=137558705174-hgc0dv0rsd2mdu68c95jq98oialasv32.apps.googleusercontent.com&scope=openid%20profile%20email&state=nwFMHMpyu-4K5l6I4oHk5py7HGlmnfidi-s4PcPeWVk%3D&redirect_uri=http://localhost:30011/login/oauth2/code/google&nonce=OZ5cbAKOiOScnzEKb7km3od3rTrGBTCnCG7eIaZjpFI
@@ -946,10 +945,10 @@ https://accounts.google.com/o/oauth2/v2/auth?response_type=code&client_id=137558
 
 即授权码模式的第一步。
 
-3. OAuth2AuthorizationRequest 包含一个 32 位的随机state值， 将 OAuth2AuthorizationRequest 缓存在 HttpSessionOAuth2AuthorizationRequestRepository的map中，key 为 state，value 为 OAuth2AuthorizationRequest，state 会发送给 认证服务器，认证服务器认证完成之后会发送回来。
-4. 使用 DefaultRedirectStrategy 将 OAuth2AuthorizationRequest 中重定向地址设置到 HttpServletResponse 中，然后返回给浏览器，将浏览器重定向到认证中心登陆页面。
+3.` OAuth2AuthorizationRequest` 包含一个 32 位的随机state值， 将 `OAuth2AuthorizationRequest` 缓存在 `HttpSessionOAuth2AuthorizationRequestRepository` 的map中，key 为 state，value 为 `OAuth2AuthorizationRequest`，state 会发送给 认证服务器，认证服务器认证完成之后会发送回来。
+4. 使用 `DefaultRedirectStrategy` 将 `OAuth2AuthorizationRequest` 中重定向地址设置到 HttpServletResponse 中，然后返回给浏览器，将浏览器重定向到认证中心登陆页面。
 
-**authorizationRequestBaseUri 通过 `http.oauth2Login(loginConfigurer -> loginConfigurer.authorizationEndpoint(authorizationEndpointConfig -> authorizationEndpointConfig.baseUri("xxxxx")))` 设置授权端点。**
+**`authorizationRequestBaseUri` 通过 `http.oauth2Login(loginConfigurer -> loginConfigurer.authorizationEndpoint(authorizationEndpointConfig -> authorizationEndpointConfig.baseUri("xxxxx")))` 设置授权端点。**
 
 ### OAuth2LoginAuthenticationFilter
 
@@ -971,13 +970,13 @@ public class OAuth2LoginAuthenticationFilter extends AbstractAuthenticationProce
 
 负责完成 OAuth2 的第二步。
 
-1. 负责拦截 filterProcessesUrl(默认为 OAuth2LoginAuthenticationFilter.DEFAULT_FILTER_PROCESSES_URI,即 `/login/oauth2/code/` ) 前缀的请求。
+1. 负责拦截 `filterProcessesUrl`(默认为 `OAuth2LoginAuthenticationFilter.DEFAULT_FILTER_PROCESSES_URI`,即 `/login/oauth2/code/` ) 前缀的请求。
 
-   * 所以 认证服务器注册的回调地址应该为 http://localhost:8080/login/oauth2/code/google ，这样认证服务器认证完成之后会回调该地址，然后被 OAuth2LoginAuthenticationFilter 拦截。
+   * 所以 认证服务器注册的回调地址应该为 http://localhost:8080/login/oauth2/code/google ，这样认证服务器认证完成之后会回调该地址，然后被 `OAuth2LoginAuthenticationFilter` 拦截。
    * 可通过 `http..oauth2Login(httpSecurityOAuth2LoginConfigurer -> httpSecurityOAuth2LoginConfigurer.loginProcessingUrl("xxxxx"))` 修改。
 2. 获取认证服务器回调地址中的参数，即 state、code(AUTHORIZATION_CODE 即授权码)、scope等。
-3. 根据state从HttpSessionOAuth2AuthorizationRequestRepository 取 OAuth2AuthorizationRequest，这是在OAuth2AuthorizationRequestRedirectFilter 保存进去的。
-4. 使用 clientRegistration 、authorizationRequest、 authorizationResponse 生成 OAuth2LoginAuthenticationToken,这时还没有 acessToken 和 refreshToken。
+3. 根据state从`HttpSessionOAuth2AuthorizationRequestRepository` 取 `OAuth2AuthorizationRequest`，这是在`OAuth2AuthorizationRequestRedirectFilter` 保存进去的。
+4. 使用 `clientRegistration` 、`authorizationRequest`、 `authorizationResponse` 生成 `OAuth2LoginAuthenticationToken`,这时还没有 acessToken 和 refreshToken。
 
 ```java
 public class OAuth2LoginAuthenticationToken extends AbstractAuthenticationToken {
@@ -989,16 +988,16 @@ public class OAuth2LoginAuthenticationToken extends AbstractAuthenticationToken 
 }
 ```
 
-4. 使用 AuthenticationManager 对 OAuth2LoginAuthenticationToken 进行认证，有两个AuthenticationProvider 支持OAuth2LoginAuthenticationToken：
+4. 使用 `AuthenticationManager` 对 `OAuth2LoginAuthenticationToken` 进行认证，有两个`AuthenticationProvider` 支持`OAuth2LoginAuthenticationToken`：
 
-* OAuth2LoginAuthenticationProvider 负责 scope 不包含 openid 的 request，即负责OAuth2的认证。
+* `OAuth2LoginAuthenticationProvider` 负责 scope 不包含 openid 的 request，即负责OAuth2的认证。
 
-  1. 重新构建 OAuth2AuthorizationCodeAuthenticationToken 将其委托给 OAuth2AuthorizationCodeAuthenticationProvider 认证，最后由 DefaultAuthorizationCodeTokenResponseClient 向 tokenUri 发送请求，获取 accessToken。
-  2. DefaultOAuth2UserService 使用 accessToken 向 userInfoUri 获取 DefaultOAuth2User。
-  3. 构建 OAuth2LoginAuthenticationToken。
-* OidcAuthorizationCodeAuthenticationProvider 负责 scope 包含 openid 的 request，即负责OCID的认证。
+  1. 重新构建 `OAuth2AuthorizationCodeAuthenticationToken` 将其委托给 `OAuth2AuthorizationCodeAuthenticationProvider` 认证，最后由 `DefaultAuthorizationCodeTokenResponseClient` 向 tokenUri 发送请求，获取 accessToken。
+  2. `DefaultOAuth2UserService` 使用 accessToken 向 userInfoUri 获取 DefaultOAuth2User。
+  3. 构建 `OAuth2LoginAuthenticationToken`。
+* `OidcAuthorizationCodeAuthenticationProvider` 负责 scope 包含 openid 的 request，即负责OCID的认证。
 
-  1. 使用 DefaultAuthorizationCodeTokenResponseClient 发送请求，获取 Respose，请求实例：
+  1. 使用 `DefaultAuthorizationCodeTokenResponseClient` 发送请求，获取 Respose，请求实例：
 
   ```http
   # Post 请求
@@ -1011,24 +1010,24 @@ public class OAuth2LoginAuthenticationToken extends AbstractAuthenticationToken 
 
   2. 使用 JWT 解析Respose 中额外参数 id_token 构建 OidcIdToken。
   3. OidcUserService 加载用户信息、权限信息，构建OidcUser。
-  4. 构建 OAuth2LoginAuthenticationToken。
+  4. 构建 `OAuth2LoginAuthenticationToken`。
 
-4. 使用  OAuth2AuthorizedClientRepository 保存 OAuth2LoginAuthenticationToken 和  OAuth2AuthorizedClient。
-5. 认证成功后 由 SavedRequestAwareAuthenticationSuccessHandler 重定向到 defaultTargetUrl，可通过 `http.oauth2Login(httpSecurityOAuth2LoginConfigurer -> httpSecurityOAuth2LoginConfigurer.defaultSuccessUrl("/user"))`设置。
+4. 使用 `OAuth2AuthorizedClientRepository` 保存 `OAuth2LoginAuthenticationToken` 和  `OAuth2AuthorizedClient`。
+5. 认证成功后 由 `SavedRequestAwareAuthenticationSuccessHandler` 重定向到 `defaultTargetUrl`，可通过 `http.oauth2Login(httpSecurityOAuth2LoginConfigurer -> httpSecurityOAuth2LoginConfigurer.defaultSuccessUrl("/user"))`设置。
 
 流程中token区别：
-* OAuth2LoginAuthenticationToken：用以给Provider认证过渡用，最初仅含code，最终包含access_token、user等。
-* OAuth2AuthorizationCodeAuthenticationToken：用以给Provider认证过渡用，未填充时仅含code，经填充后包含access_token等。
-* OAuth2AuthenticationToken：authenticated=true 认证后安全上下文实际保存的OAuth2用户认证，由convert将填充后的OAuth2LoginAuthenticationToken转换而来。
+* `OAuth2LoginAuthenticationToken`：用以给Provider认证过渡用，最初仅含code，最终包含`access_token`、user等。
+* `OAuth2AuthorizationCodeAuthenticationToken`：用以给Provider认证过渡用，未填充时仅含code，经填充后包含access_token等。
+* `OAuth2AuthenticationToken`：`authenticated=true` 认证后安全上下文实际保存的OAuth2用户认证，由convert将填充后的`OAuth2LoginAuthenticationToken`转换而来。
 
 ## Login授权流程
 
 ![106](assets/106.png)
 
-1. 当 FilterSecurityInterceptor 鉴权失败时，由 ExceptionTranslationFilter 使用 LoginUrlAuthenticationEntryPoint  重定向到 loginFormUrl 默认为 /login,可以通过 `http.oauth2Login(httpSecurityOAuth2LoginConfigurer -> httpSecurityOAuth2LoginConfigurer.loginPage("xxxx"))` 或者 `http.formLogin(httpSecurityFormLoginConfigurer -> httpSecurityFormLoginConfigurer.loginPage("/2"))`更改。
+1. 当 `FilterSecurityInterceptor` 鉴权失败时，由 `ExceptionTranslationFilter` 使用 `LoginUrlAuthenticationEntryPoint`  重定向到 `loginFormUrl` 默认为 /login,可以通过 `http.oauth2Login(httpSecurityOAuth2LoginConfigurer -> httpSecurityOAuth2LoginConfigurer.loginPage("xxxx"))` 或者 `http.formLogin(httpSecurityFormLoginConfigurer -> httpSecurityFormLoginConfigurer.loginPage("/2"))`更改。
 2. 用户点击 google 登陆，发送请求`/oauth2/authorization/{registrationId}`。
-3. 当 requet 可以匹配到`DEFAULT_AUTHORIZATION_REQUEST_BASE_URI = "/oauth2/authorization/{registrationId}"`时， OAuth2AuthorizationRequestRedirectFilter 会根据 registrationId 获得对应的 ClientRegistration ，然后构造出 OAuth2AuthorizationRequest 重定向到 authorizationUri 。
-4. 填写用户名密码，认证通过`Authorization Server`回调备案地址(如上面例子中`http://localhost:8080/login/oauth2/code/google`)并携带`code`参数，**备案地址需要匹配 AbstractAuthenticationProcessingFilter 中`requiresAuthenticationRequestMatcher`，可以通过`defaultFilterProcessesUrl`修改，默认值为`DEFAULT_FILTER_PROCESSES_URI = "/login/oauth2/code/*"`。**
+3. 当 requet 可以匹配到`DEFAULT_AUTHORIZATION_REQUEST_BASE_URI = "/oauth2/authorization/{registrationId}"`时， `OAuth2AuthorizationRequestRedirectFilter` 会根据 `registrationId` 获得对应的 `ClientRegistration` ，然后构造出 `OAuth2AuthorizationRequest` 重定向到 `authorizationUri` 。
+4. 填写用户名密码，认证通过`Authorization Server`回调备案地址(如上面例子中`http://localhost:8080/login/oauth2/code/google`)并携带`code`参数，**备案地址需要匹配 `AbstractAuthenticationProcessingFilter` 中`requiresAuthenticationRequestMatcher`，可以通过`defaultFilterProcessesUrl`修改，默认值为`DEFAULT_FILTER_PROCESSES_URI = "/login/oauth2/code/*"`。**
 5. 由`OAuth2LoginAuthenticationFilter`拦截到`http://localhost:8080/login/oauth2/code/google`开始`POST`调用`tokenUri`并携带上一步得到的`code`参数，获取到`access_token`后重定向回最开始用户想访问的`URL`并设置`cookie`。
 6. 然后带着`cookie`访问。
 
@@ -1038,7 +1037,7 @@ public class OAuth2LoginAuthenticationToken extends AbstractAuthenticationToken 
 
 
 | Spring Boot 2.x                                                                              | ClientRegistration                                       |
-| :--------------------------------------------------------------------------------------------- | :--------------------------------------------------------- |
+|:---------------------------------------------------------------------------------------------|:---------------------------------------------------------|
 | `spring.security.oauth2.client.registration.*[registrationId]*`                              | `registrationId`                                         |
 | `spring.security.oauth2.client.registration.*[registrationId]*.client-id`                    | `clientId`                                               |
 | `spring.security.oauth2.client.registration.*[registrationId]*.client-secret`                | `clientSecret`                                           |
@@ -1207,7 +1206,7 @@ public class OAuth2LoginSecurityConfig extends WebSecurityConfigurerAdapter {
 ## 使用
 
 1. 首先登陆`Google API Console`，获取` OAuth 2.0 credentials`,即`Client ID`和` Client Secret`。
-2. 设置重定向地址 不能为`{baseUrl}/login/oauth2/code/{registrationId}`，否则会优先被 http.oauth2Login() 拦截，被 http.oauth2Client 该重定向地址会在认证成功后直接重定向到该地址
+2. 设置重定向地址 不能为`{baseUrl}/login/oauth2/code/{registrationId}`，否则会优先被 `http.oauth2Login()` 拦截，被 `http.oauth2Client` 该重定向地址会在认证成功后直接重定向到该地址
 3. 引入依赖。
 
 ```xml
@@ -1261,19 +1260,19 @@ spring:
 
 ## 启动
 
-1. 通过使用 http.oauth2Client 创建 OAuth2ClientConfigurer 并配置 http 。
+1. 通过使用 `http.oauth2Client` 创建 `OAuth2ClientConfigurer` 并配置 http 。
 2. 自动装配。
-   * SpringSecurity 主流程。
-   * OAuth2ClientConfiguration：添加 OAuth2AuthorizedClientArgumentResolver 处理 @RegisteredOAuth2AuthorizedClient。
-   * OAuth2ClientAutoConfiguration：添加 InMemoryClientRegistrationRepository 、OAuth2AuthorizedClientService、OAuth2AuthorizedClientRepository。
+   * `SpringSecurity` 主流程。
+   * `OAuth2ClientConfiguration`：添加 `OAuth2AuthorizedClientArgumentResolver` 处理 `@RegisteredOAuth2AuthorizedClient`。
+   * `OAuth2ClientAutoConfiguration`：添加 `InMemoryClientRegistrationRepository` 、`OAuth2AuthorizedClientService`、`OAuth2AuthorizedClientRepository`。
 
 ![107](assets/107.png)
 
 ### OAuth2ClientConfigurer配置内容
 
-实际委托给 AuthorizationCodeGrantConfigurer 进行 init() 和 configure(), 负责创建 OAuth2AuthorizationRequestRedirectFilter、OAuth2AuthorizationCodeGrantFilter ，最后会将它添加到过滤器链，由 OAuth2AuthorizationCodeAuthenticationProvider 负责认证操作。
+实际委托给 `AuthorizationCodeGrantConfigurer` 进行 `init()` 和 `configure()`, 负责创建 `OAuth2AuthorizationRequestRedirectFilter`、`OAuth2AuthorizationCodeGrantFilter` ，最后会将它添加到过滤器链，由 `OAuth2AuthorizationCodeAuthenticationProvider` 负责认证操作。
 
-可以通过 http.oauth2Login 配置 ClientRegistrationRepository、OAuth2AuthorizedClientRepository、OAuth2AuthorizedClientService(最后也是配置一个AuthenticatedPrincipalOAuth2AuthorizedClientRepository)。
+可以通过 `http.oauth2Login` 配置 `ClientRegistrationRepository`、`OAuth2AuthorizedClientRepository`、`OAuth2AuthorizedClientService`(最后也是配置一个`AuthenticatedPrincipalOAuth2AuthorizedClientRepository`)。
 
 ### OAuth2AuthorizationRequestRedirectFilter
 
@@ -1281,9 +1280,9 @@ spring:
 
 ### OAuth2AuthorizationCodeGrantFilter
 
-1. 通过 state 从 HttpSessionOAuth2AuthorizationRequestRepository 获取 OAuth2AuthorizationRequest。
-2. 负责拦截 OAuth2AuthorizationRequest#getRedirectUri() 的请求，即 spring.security.oauth2.client.registration.google.redirect-Uri: http://localhost:30010/index.html
-3. 通过授权码获取请求认证服务器获取 accessToken，然后重定向到 redirectUri。
+1. 通过 state 从 `HttpSessionOAuth2AuthorizationRequestRepository` 获取 `OAuth2AuthorizationRequest`。
+2. 负责拦截 `OAuth2AuthorizationRequest#getRedirectUri()` 的请求，即 `spring.security.oauth2.client.registration.google.redirect-Uri`: http://localhost:30010/index.html
+3. 通过授权码获取请求认证服务器获取 `accessToken`，然后重定向到 `redirectUri`。
 
 ## 配置示例
 
@@ -1361,7 +1360,7 @@ JWT、JWS、JWE关系：
 * 『对称加密』指的是使用相同的秘钥来进行加密和解密，如果你的秘钥不想暴露给解密方，考虑使用非对称加密。在加密方和解密方是同一个人（或利益关系紧密）的情况下可以使用它。
 * 『非对称加密』指的是使用公钥和私钥来进行加密解密操作。对于加密操作，公钥负责加密，私钥负责解密，对于签名操作，私钥负责签名，公钥负责验证。非对称加密在 JWT 中的使用显然属于签名操作。在加密方和解密方是不同人（或不同利益方）的情况下可以使用它。
 
-nimbus-jose-jwt 支持的算法都在它的 JWSAlgorithm 和 JWEAlgorithm 类中有定义。例如：JWSAlgorithm algorithm = JWSAlgorithm.HS256
+nimbus-jose-jwt 支持的算法都在它的 JWSAlgorithm 和 JWEAlgorithm 类中有定义。例如：`JWSAlgorithm algorithm = JWSAlgorithm.HS256`
 
 ### API
 
@@ -1611,55 +1610,55 @@ public void test() {
 
 ## 启动
 
-1. 通过使用 http.oauth2ResourceServer(OAuth2ResourceServerConfigurer::jwt) 创建 OAuth2ResourceServerConfigurer并配置 http ，OAuth2ResourceServerConfigurer::jwt 负责初始化 OAuth2ResourceServerConfigurer 的 JwtConfigurer。
+1. 通过使用 `http.oauth2ResourceServer(OAuth2ResourceServerConfigurer::jwt)` 创建 `OAuth2ResourceServerConfigurer`并配置 http ，`OAuth2ResourceServerConfigurer::jwt `负责初始化 `OAuth2ResourceServerConfigurer` 的 `JwtConfigurer`。
 2. 自动装配。
-   * SpringSecurity 主流程。
-   * Oauth2ResourceServerConfiguration.JwtConfiguration：根据配置初始化 JwtDecoder。
+   * `SpringSecurity` 主流程。
+   * `Oauth2ResourceServerConfiguration.JwtConfiguration`：根据配置初始化 `JwtDecoder`。
 
 ## OAuth2ResourceServerConfigurer 配置内容
 
-* 向 exceptionTranslationFilter 中添加 BearerTokenRequestMatcher 对应的 BearerTokenAccessDeniedHandler、BearerTokenAuthenticationEntryPoint，当请求匹配BearerTokenRequestMatcher时，执行该 accessDeniedHandler、authenticationEntryPoint。
-* 通过 JwtConfigurer 获取 AuthenticationProvider，添加到 HttpSecurity 中。
-* 添加 BearerTokenAuthenticationFilter。
+* 向 `exceptionTranslationFilter` 中添加 `BearerTokenRequestMatcher` 对应的 `BearerTokenAccessDeniedHandler`、`BearerTokenAuthenticationEntryPoint`，当请求匹配`BearerTokenRequestMatcher`时，执行该 `accessDeniedHandler`、`authenticationEntryPoint`。
+* 通过 `JwtConfigurer` 获取 `AuthenticationProvider`，添加到 `HttpSecurity` 中。
+* 添加 `BearerTokenAuthenticationFilter`。
 
 ### BearerTokenRequestMatcher
 
-委托给 DefaultBearerTokenResolver 解析，两种方式：
+委托给 `DefaultBearerTokenResolver` 解析，两种方式：
 
-* 优先取http包含 Authorization 头，内容为 Bearer <TOKEN内容>
-* 如果不满足上面条件，对应 POST 和 GET 请求，会取 url 后面的 access_token 参数。
+* 优先取http包含 `Authorization` 头，内容为 `Bearer <TOKEN内容>`
+* 如果不满足上面条件，对应 POST 和 GET 请求，会取 url 后面的 `access_token` 参数。
 
-DefaultBearerTokenResolver 可以配置成 Bean 替换掉默认 DefaultBearerTokenResolver。
+`DefaultBearerTokenResolver` 可以配置成 Bean 替换掉默认 `DefaultBearerTokenResolver`。
 
 ### BearerTokenAccessDeniedHandler
 
-* 向 Response 中添加 WWW-Authenticate 头，The request requires higher privileges than provided by the access token.
+* 向 Response 中添加 `WWW-Authenticate` 头，The request requires higher privileges than provided by the access token.
 * 状态码403
 
 ### BearerTokenAuthenticationEntryPoint
 
-* 处理 AuthenticationException 异常。
+* 处理 `AuthenticationException` 异常。
 * 状态码401
 
 ### BearerTokenAuthenticationFilter
 
-1. 使用 DefaultBearerTokenResolver 匹配 request，当失败时 使用 BearerTokenAuthenticationEntryPoint 处理。
-2. 使用 AuthenticationManagerResolver 获取 AuthenticationManager 进行认证，这样可以对不同的请求使用不同的 AuthenticationManager，使用 http.oauth2ResourceServer(resourceServer -> resourceServer.jwt().and().authenticationManagerResolver(new xxxAuthenticationManagerResolver)) 配置。
-3. 认证失败时，使用 AuthenticationFailureHandler 处理，默认也是使用 BearerTokenAuthenticationEntryPoint 处理，使用 http.oauth2ResourceServer(resourceServer -> resourceServer.jwt().and().authenticationEntryPoint(new xxxAuthenticationEntryPoint()))。
+1. 使用 `DefaultBearerTokenResolver` 匹配 request，当失败时 使用 `BearerTokenAuthenticationEntryPoint` 处理。
+2. 使用 `AuthenticationManagerResolver` 获取 `AuthenticationManager` 进行认证，这样可以对不同的请求使用不同的 `AuthenticationManager`，使用 `http.oauth2ResourceServer(resourceServer -> resourceServer.jwt().and().authenticationManagerResolver(new xxxAuthenticationManagerResolver))` 配置。
+3. 认证失败时，使用 `AuthenticationFailureHandler` 处理，默认也是使用 `BearerTokenAuthenticationEntryPoint` 处理，使用 `http.oauth2ResourceServer(resourceServer -> resourceServer.jwt().and().authenticationEntryPoint(new xxxAuthenticationEntryPoint()))`。
 
 ### JwtConfigurer
 
-* 负责生成 JwtAuthenticationProvider，并设置  JwtDecoder 和 Converter<Jwt, ? extends AbstractAuthenticationToken> ，默认为 JwtDecoder 通过 Bean 获取，Converter<Jwt, ? extends AbstractAuthenticationToken> 默认为 JwtAuthenticationConverter
+* 负责生成 `JwtAuthenticationProvider`，并设置  `JwtDecoder` 和 `Converter<Jwt, ? extends AbstractAuthenticationToken>` ，默认为 JwtDecoder 通过 Bean 获取，`Converter<Jwt, ? extends AbstractAuthenticationToken>` 默认为 `JwtAuthenticationConverter`
 
 #### JwtAuthenticationProvider
 
 ![111](assets/111.png)
 
-* 支持认证 BearerTokenAuthenticationToken
-* 使用 JwtDecoder 将 token 解析为 JWT 对象。
-* 使用 JwtAuthenticationConverter 将 JWT 对象转换成 AbstractAuthenticationToken
+* 支持认证 `BearerTokenAuthenticationToken`
+* 使用 `JwtDecoder` 将 token 解析为 JWT 对象。
+* 使用 `JwtAuthenticationConverter` 将 JWT 对象转换成 `AbstractAuthenticationToken`
 
-当解析失败时会抛出 InvalidBearerTokenException，可使用 AuthenticationFailureBadCredentialsEvent 监听：
+当解析失败时会抛出 `InvalidBearerTokenException`，可使用 `AuthenticationFailureBadCredentialsEvent` 监听：
 
 ```java
 @Component
@@ -1675,7 +1674,7 @@ public class FailureEvents {
 
 #### JwtAuthenticationConverter
 
-负责从 JWT 对象解析 Collection<GrantedAuthority> 生成 JwtAuthenticationToken
+负责从 JWT 对象解析 `Collection<GrantedAuthority>` 生成 `JwtAuthenticationToken`
 
 自定义：
 
@@ -1709,12 +1708,12 @@ public interface JwtDecoder {
 实现JwtDecoder：
 
 1. 负责解析token为 JWT 对象
-2. 使用 JWTProcessor<SecurityContext> 验证签名。
-3. 使用 OAuth2TokenValidator<Jwt> 进行验证，验证失败返回 JwtValidationException，默认为 JwtValidators.createDefault() 即 new DelegatingOAuth2TokenValidator<>(Arrays.asList(new JwtTimestampValidator()))，JwtTimestampValidator 会验证 token 过期时间，默认使用Clock.systemUTC()时间，验证完成后返回 OAuth2TokenValidatorResult。
+2. 使用 `JWTProcessor<SecurityContext>` 验证签名。
+3. 使用 `OAuth2TokenValidator<Jwt>` 进行验证，验证失败返回 `JwtValidationException`，默认为 `JwtValidators.createDefault()` 即 `new DelegatingOAuth2TokenValidator<>(Arrays.asList(new JwtTimestampValidator()))`，`JwtTimestampValidator` 会验证 token 过期时间，默认使用`Clock.systemUTC()`时间，验证完成后返回 `OAuth2TokenValidatorResult`。
 
 ## 请求流程
 
-* 添加 Authorization ：Bearer <TOKEN内容>  头，发起请求：
+* 添加 `Authorization ：Bearer <TOKEN内容>`  头，发起请求：
 
 ![110](assets/110.png)
 
@@ -1724,16 +1723,16 @@ public interface JwtDecoder {
 
 ![109](assets/109.png)
 
-  1. FilterSecurityInterceptor 抛出 AccessDeniedException。
-  2. ExceptionTranslationFilter 使用 BearerTokenAuthenticationEntryPoint 添加  WWW-Authenticate 头信息返回
+  1. `FilterSecurityInterceptor` 抛出 `AccessDeniedException`。
+  2. `ExceptionTranslationFilter` 使用 `BearerTokenAuthenticationEntryPoint` 添加  `WWW-Authenticate` 头信息返回
 
-认证成功后 Authentication#getPrincipal 获取的是 Jwt 对象， Authentication#getPrincipal 获取的是 JWT 的 sub 属性。
+认证成功后 `Authentication#getPrincipal` 获取的是 Jwt 对象， `Authentication#getPrincipal` 获取的是 JWT 的 sub 属性。
 
 # 认证服务器
 
 ## 使用
 
-目前还没有 authorization-server 的自动配置，需要手动配置。
+目前还没有 `authorization-server` 的自动配置，需要手动配置。
 
 1. 引入依赖：
 
@@ -1940,18 +1939,18 @@ public class AuthorizationServerConfig extends WebSecurityConfigurerAdapter {
 
 ## OAuth2AuthorizationServerConfigurer 配置内容
 
-1. 配置 OAuth2ClientAuthenticationConfigurer、OAuth2AuthorizationEndpointConfigurer、OAuth2TokenEndpointConfigurer、OAuth2TokenIntrospectionEndpointConfigurer、OAuth2TokenRevocationEndpointConfigurer、OidcConfigurer
-2. 给 OAuth2TokenEndpointConfigurer、OAuth2TokenIntrospectionEndpointConfigurer、OAuth2TokenRevocationEndpointConfigurer 配置 new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED) 处理异常。
-3. 配置 ProviderContextFilter、OAuth2AuthorizationServerMetadataEndpointFilter。
-4. 当 JWKSource<com.nimbusds.jose.proc.SecurityContext> 存在时配置 NimbusJwkSetEndpointFilter。
+1. 配置 `OAuth2ClientAuthenticationConfigurer`、`OAuth2AuthorizationEndpointConfigurer`、`OAuth2TokenEndpointConfigurer`、`OAuth2TokenIntrospectionEndpointConfigurer`、`OAuth2TokenRevocationEndpointConfigurer`、`OidcConfigurer`
+2. 给 `OAuth2TokenEndpointConfigurer`、`OAuth2TokenIntrospectionEndpointConfigurer`、`OAuth2TokenRevocationEndpointConfigurer` 配置 `new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)` 处理异常。
+3. 配置 `ProviderContextFilter`、`OAuth2AuthorizationServerMetadataEndpointFilter`。
+4. 当 `JWKSource<com.nimbusds.jose.proc.SecurityContext>` 存在时配置 `NimbusJwkSetEndpointFilter`。
 
 ### ProviderContextFilter
 
-负责配置ProviderContextHolder，当 issuer 端点不存在是，默认使用 http://ip:端口/<server.servlet.context-path> 作为 issuer 端点。
+负责配置`ProviderContextHolder`，当 issuer 端点不存在是，默认使用 `http://ip:端口/<server.servlet.context-path>` 作为 issuer 端点。
 
 #### ProviderSettings
 
-负责配置端点映射，可使用 ProviderSettings.builder().build() 创建，启动时必须配置该Bean,以下为默认配置：
+负责配置端点映射，可使用 `ProviderSettings.builder().build()` 创建，启动时必须配置该Bean,以下为默认配置：
 
 ```java
 public static Builder builder() {
@@ -1968,12 +1967,12 @@ public static Builder builder() {
 
 ### OAuth2AuthorizationEndpointConfigurer
 
-负责配置 OAuth2AuthorizationEndpointFilter，并添加 OAuth2AuthorizationCodeRequestAuthenticationProvider
+负责配置 `OAuth2AuthorizationEndpointFilter`，并添加 `OAuth2AuthorizationCodeRequestAuthenticationProvider`
 
 #### OAuth2AuthorizationEndpointFilter
 
-* 负责处理 authorizationEndpoint 端点：客户端请求授权码、用户点击授权按钮进行授权。
-* OAuth2 协议的第一步，获取 AUTHORIZATION_CODE,也是用户授权接口 /oauth2/authorize
+* 负责处理 `authorizationEndpoint` 端点：客户端请求授权码、用户点击授权按钮进行授权。
+* OAuth2 协议的第一步，获取 `AUTHORIZATION_CODE`,也是用户授权接口 `/oauth2/authorize`
 
 ```java
 public final class OAuth2AuthorizationEndpointFilter extends OncePerRequestFilter {
@@ -1989,9 +1988,9 @@ public final class OAuth2AuthorizationEndpointFilter extends OncePerRequestFilte
 
 拦截 3 类请求：
 
-* authorizationEndpoint、GET 类型：GET类型请求授权码
-* authorizationEndpoint、POST类型、参数包含 response_type、scope、scope中包含openid：POST类型请求授权码
-* authorizationEndpoint、POST类型、参数不包含 response_type：授权接口：例如：
+* `authorizationEndpoint`、GET 类型：GET类型请求授权码
+* `authorizationEndpoint`、POST类型、参数包含 `response_type`、`scope`、`scope`中包含`openid`：POST类型请求授权码
+* `authorizationEndpoint`、POST类型、参数不包含 `response_type`：授权接口：例如：
 
 ```http
 Request URL: http://localhost:30009/oauth2/authorize
@@ -2006,11 +2005,11 @@ scope: message.write
 ```
 
 流程：
-1. 使用 OAuth2AuthorizationCodeRequestAuthenticationConverter 解析请求参数，构建 OAuth2AuthorizationCodeRequestAuthenticationToken 。
-2. 使用 OAuth2AuthorizationCodeRequestAuthenticationProvider 进行认证
-3. 若无法认证则继续执行Filter，使用 ExceptionTranslationFilter 的 AuthenticationEntryPoint 进行处理。
-4. 认证成功，根据是否需要授权(由OAuth2AuthorizationCodeRequestAuthenticationProvider结果决定)，是否已经授权，选择是否跳转到授权页面，授权页面可通过 authorizationServerConfigurer.authorizationEndpoint(authorizationServer -> authorizationServer.consentPage("xxxxx")) 自定义，自定义授权页面可以获取 scope、client_id、state 几个参数。
-5. 若已经授权，使用 DefaultRedirectStrategy 重定向到客户端备案地址，包含 code  授权码。
+1. 使用 `OAuth2AuthorizationCodeRequestAuthenticationConverter` 解析请求参数，构建 `OAuth2AuthorizationCodeRequestAuthenticationToken` 。
+2. 使用 `OAuth2AuthorizationCodeRequestAuthenticationProvider` 进行认证
+3. 若无法认证则继续执行Filter，使用 `ExceptionTranslationFilter` 的 `AuthenticationEntryPoint` 进行处理。
+4. 认证成功，根据是否需要授权(由`OAuth2AuthorizationCodeRequestAuthenticationProvider`结果决定)，是否已经授权，选择是否跳转到授权页面，授权页面可通过 `authorizationServerConfigurer.authorizationEndpoint(authorizationServer -> authorizationServer.consentPage("xxxxx"))` 自定义，自定义授权页面可以获取 scope、client_id、state 几个参数。
+5. 若已经授权，使用 `DefaultRedirectStrategy` 重定向到客户端备案地址，包含 code  授权码。
 6. 若认证失败，则重定向到客户端备案地址，包含 error 参数。
 
 ##### OAuth2AuthorizationCodeRequestAuthenticationProvider
@@ -2018,12 +2017,12 @@ scope: message.write
 对于未授权用户(即客户端)：即客户端请求授权码
 
 1. 如果是匿名用户直接返回。
-2. 其他用户先根据 ClientSettings 的 isRequireAuthorizationConsent属性，以及请求的scope是否已经授权，计算还未授权的scope，并返回。
-3. 对于不需要授权的用户，使用 OAuth2AuthorizationCodeGenerator 生成授权码 OAuth2AuthorizationCode，并保存到 authorizationService，并返回。
+2. 其他用户先根据 ClientSettings 的 `isRequireAuthorizationConsent`属性，以及请求的scope是否已经授权，计算还未授权的scope，并返回。
+3. 对于不需要授权的用户，使用 `OAuth2AuthorizationCodeGenerator` 生成授权码 `OAuth2AuthorizationCode`，并保存到 `authorizationService`，并返回。
 
 对于已授权用户：用户点击授权按钮进行授权
 
-验证 授权参数 ，然后 使用 OAuth2AuthorizationCodeGenerator 生成授权码 OAuth2AuthorizationCode，并保存到 authorizationService，并返回。
+验证 授权参数 ，然后 使用 `OAuth2AuthorizationCodeGenerator` 生成授权码 `OAuth2AuthorizationCode`，并保存到 `authorizationService`，并返回。
 
 
 ##### RegisteredClient
@@ -2060,11 +2059,11 @@ public class RegisteredClient implements Serializable {
 
 ##### RegisteredClientRepository
 
-对 RegisteredClient 进行持久化操作，必须要配置。
+对 `RegisteredClient` 进行持久化操作，必须要配置。
 
 ##### OAuth2Authorization
 
-用于保存一个oauth2认证结果，包含 授权码、accessToken、refreshToken。
+用于保存一个oauth2认证结果，包含 授权码、`accessToken`、`refreshToken`。
 
 ```java
 public class OAuth2Authorization implements Serializable {
@@ -2079,7 +2078,7 @@ public class OAuth2Authorization implements Serializable {
 
 ##### OAuth2AuthorizationService
 
-对 OAuth2Authorization 进行持久化操作，必须要配置。
+对 `OAuth2Authorization` 进行持久化操作，必须要配置。
 
 ##### OAuth2AuthorizationConsent
 
@@ -2101,95 +2100,95 @@ public final class OAuth2AuthorizationConsent implements Serializable {
 
 ### OidcConfigurer
 
-1. 使用 OidcUserInfoEndpointConfigurer 配置 OidcUserInfoEndpointFilter ,并添加 OidcUserInfoAuthenticationProvider
-2. 如果配置 OidcClientRegistrationEndpointConfigurer 配置 OidcClientRegistrationEndpointFilter，并添加 OidcClientRegistrationAuthenticationProvider
-3. 配置 OidcProviderConfigurationEndpointFilter
+1. 使用 `OidcUserInfoEndpointConfigurer` 配置 `OidcUserInfoEndpointFilter` ,并添加 `OidcUserInfoAuthenticationProvider`
+2. 如果配置 `OidcClientRegistrationEndpointConfigurer` 配置 `OidcClientRegistrationEndpointFilter`，并添加 `OidcClientRegistrationAuthenticationProvider`
+3. 配置 `OidcProviderConfigurationEndpointFilter`
 
 #### OidcProviderConfigurationEndpointFilter
 
-1. 拦截 /.well-known/openid-configuration 的GET请求。
-2. 获取 ProviderContextHolder 中 ProviderSettings，返回 issuer 元数据。
+1. 拦截 `/.well-known/openid-configuration` 的GET请求。
+2. 获取 `ProviderContextHolder` 中 `ProviderSettings`，返回 issuer 元数据。
 
 #### OidcUserInfoEndpointFilter
 
-1. 拦截 UserInfoEndpoint 端点。
-2. 使用 OidcUserInfoAuthenticationProvider 认证，获取用户信息。
+1. 拦截 `UserInfoEndpoint` 端点。
+2. 使用 `OidcUserInfoAuthenticationProvider` 认证，获取用户信息。
 
 ##### OidcUserInfoAuthenticationProvider
 
-1. 支持 OidcUserInfoAuthenticationToken 处理。
-2. 使用 accessToken 查询 OAuth2Authorization，如果通过校验则使用 DefaultOidcUserInfoMapper 获取Authentication中 idToken 获取用户信息，构建 OidcUserInfoAuthenticationToken 返回。
+1. 支持 `OidcUserInfoAuthenticationToken` 处理。
+2. 使用 `accessToken` 查询 `OAuth2Authorization`，如果通过校验则使用 `DefaultOidcUserInfoMapper` 获取`Authentication`中 `idToken` 获取用户信息，构建 `OidcUserInfoAuthenticationToken` 返回。
 
 ####  OidcClientRegistrationEndpointFilter
 
-1. 拦截 ClientRegistrationEndpoint 端点：
-   * POST 请求：注册新的 ClientRegistration
-   * GET 请求，包含 client_id 参数：查询ClientRegistration。
-2. 使用 OidcClientRegistrationAuthenticationProvider 认证，获取lientRegistration信息。
+1. 拦截 `ClientRegistrationEndpoint` 端点：
+   * POST 请求：注册新的 `ClientRegistration`
+   * GET 请求，包含 `client_id` 参数：查询`ClientRegistration`。
+2. 使用 `OidcClientRegistrationAuthenticationProvider` 认证，获取`ClientRegistration`信息。
 
 ##### OidcClientRegistrationAuthenticationProvider
 
-1. 支持 OidcClientRegistrationAuthenticationToken
-2. 使用 accessToken 查询 OAuth2Authorization，如果通过校验则进行 ClientRegistration 注册或者查询。
+1. 支持 `OidcClientRegistrationAuthenticationToken`
+2. 使用 `accessToken` 查询 `OAuth2Authorization`，如果通过校验则进行 `ClientRegistration` 注册或者查询。
 
 ### NimbusJwkSetEndpointFilter
 
-1. 拦截 JwkSetEndpoint Get请求
-2. 以JSON形式返回 JWKSource<SecurityContext> 中JWKSet，不包含private keys。
+1. 拦截 `JwkSetEndpoint` Get请求
+2. 以JSON形式返回 `JWKSource<SecurityContext>` 中JWKSet，不包含private keys。
 
 ### OAuth2AuthorizationServerMetadataEndpointFilter
 
-1. 拦截 /.well-known/oauth-authorization-server 的GET请求。
-2. 获取 ProviderContextHolder 中 ProviderSettings，返回 issuer 元数据。
+1. 拦截 `/.well-known/oauth-authorization-server` 的GET请求。
+2. 获取 `ProviderContextHolder` 中 `ProviderSettings`，返回 `issuer` 元数据。
 
 ### OAuth2ClientAuthenticationConfigurer
 
-负责配置 OAuth2ClientAuthenticationFilter，并添加 JwtClientAssertionAuthenticationProvider、ClientSecretAuthenticationProvider、PublicClientAuthenticationProvider
+负责配置 `OAuth2ClientAuthenticationFilter`，并添加 `JwtClientAssertionAuthenticationProvider`、`ClientSecretAuthenticationProvider`、`PublicClientAuthenticationProvider`
 
 #### OAuth2ClientAuthenticationFilter
 
-1. 拦截 TokenEndpoint、TokenIntrospectionEndpoint、TokenRevocationEndpoint 的 POST 请求。
-2. 分别使用 JwtClientAssertionAuthenticationConverter(PRIVATE_KEY_JWT、CLIENT_SECRET_JWT)、ClientSecretBasicAuthenticationConverter(CLIENT_SECRET_BASIC)、ClientSecretPostAuthenticationConverter(CLIENT_SECRET_POST)、PublicClientAuthenticationConverter(NONE) 解析不同类型客户端认证方式。
-3. JwtClientAssertionAuthenticationProvider、ClientSecretAuthenticationProvider、PublicClientAuthenticationProvider 解析 OAuth2ClientAuthenticationToken。
+1. 拦截 `TokenEndpoint`、`TokenIntrospectionEndpoint`、`TokenRevocationEndpoint` 的 POST 请求。
+2. 分别使用 `JwtClientAssertionAuthenticationConverter(PRIVATE_KEY_JWT、CLIENT_SECRET_JWT)`、`ClientSecretBasicAuthenticationConverter(CLIENT_SECRET_BASIC)`、`ClientSecretPostAuthenticationConverter(CLIENT_SECRET_POST)`、`PublicClientAuthenticationConverter(NONE)` 解析不同类型客户端认证方式。
+3. `JwtClientAssertionAuthenticationProvider`、`ClientSecretAuthenticationProvider`、`PublicClientAuthenticationProvider` 解析 `OAuth2ClientAuthenticationToken`。
 
 ##### JwtClientAssertionAuthenticationProvider
 
-负责处理 ClientAuthenticationMethod.PRIVATE_KEY_JWT 、 ClientAuthenticationMethod.CLIENT_SECRET_JWT
+负责处理 `ClientAuthenticationMethod.PRIVATE_KEY_JWT` 、 `ClientAuthenticationMethod.CLIENT_SECRET_JWT`
 
 1. 创建 JwtDecoder：
 
-  * PRIVATE_KEY_JWT ： NimbusJwtDecoder.withJwkSetUri(jwkSetUrl).jwsAlgorithm((SignatureAlgorithm) jwsAlgorithm).build()
-  * CLIENT_SECRET_JWT ：NimbusJwtDecoder.withSecretKey(secretKeySpec).macAlgorithm((MacAlgorithm) jwsAlgorithm).build()
+  * `PRIVATE_KEY_JWT` ： `NimbusJwtDecoder.withJwkSetUri(jwkSetUrl).jwsAlgorithm((SignatureAlgorithm) jwsAlgorithm).build()`
+  * `CLIENT_SECRET_JWT` ：`NimbusJwtDecoder.withSecretKey(secretKeySpec).macAlgorithm((MacAlgorithm) jwsAlgorithm).build()`
 
-2. 使用  JwtDecoder 解析 client_assertion。
-3. 认证成功后构建 OAuth2ClientAuthenticationToken 返回。
+2. 使用  `JwtDecoder` 解析 `client_assertion`。
+3. 认证成功后构建 `OAuth2ClientAuthenticationToken` 返回。
 
 ##### ClientSecretAuthenticationProvider
 
-负责处理 ClientAuthenticationMethod.CLIENT_SECRET_BASIC 、 ClientAuthenticationMethod.CLIENT_SECRET_POST 类型认证并在认证成功后构建 OAuth2ClientAuthenticationToken 返回。
+负责处理 `ClientAuthenticationMethod.CLIENT_SECRET_BASIC` 、 `ClientAuthenticationMethod.CLIENT_SECRET_POST` 类型认证并在认证成功后构建 `OAuth2ClientAuthenticationToken` 返回。
 
 ##### PublicClientAuthenticationProvider
 
-负责处理 ClientAuthenticationMethod.NONE 类型认证并在认证成功后构建 OAuth2ClientAuthenticationToken 返回。
+负责处理 `ClientAuthenticationMethod.NONE` 类型认证并在认证成功后构建 `OAuth2ClientAuthenticationToken` 返回。
 
 ### OAuth2TokenEndpointConfigurer
 
-负责配置 OAuth2TokenEndpointFilter，并添加 OAuth2AuthorizationCodeAuthenticationProvider，OAuth2RefreshTokenAuthenticationProvider，OAuth2ClientCredentialsAuthenticationProvider
+负责配置 `OAuth2TokenEndpointFilter`，并添加 `OAuth2AuthorizationCodeAuthenticationProvider`，`OAuth2RefreshTokenAuthenticationProvider`，`OAuth2ClientCredentialsAuthenticationProvider`
 
 #### OAuth2TokenEndpointFilter
 
 1. 拦截 TokenEndpoint 端点，POST请求
-2. 分别使用 OAuth2AuthorizationCodeAuthenticationConverter、OAuth2RefreshTokenAuthenticationConverter、OAuth2ClientCredentialsAuthenticationConverter 解析不同类型token获取方式。
-3. OAuth2AuthorizationCodeAuthenticationProvider，OAuth2RefreshTokenAuthenticationProvider，OAuth2ClientCredentialsAuthenticationProvider 解析 OAuth2AccessTokenAuthenticationToken。
+2. 分别使用 `OAuth2AuthorizationCodeAuthenticationConverter`、`OAuth2RefreshTokenAuthenticationConverter`、`OAuth2ClientCredentialsAuthenticationConverter` 解析不同类型token获取方式。
+3. `OAuth2AuthorizationCodeAuthenticationProvider`，`OAuth2RefreshTokenAuthenticationProvider`，`OAuth2ClientCredentialsAuthenticationProvider` 解析 `OAuth2AccessTokenAuthenticationToken`。
 4. 认证成功后回调客户端备案地址，并携带token。
 
 ### OAuth2TokenIntrospectionEndpointConfigurer
 
-负责配置 OAuth2TokenIntrospectionEndpointFilter，并添加 OAuth2TokenIntrospectionAuthenticationProvider
+负责配置 `OAuth2TokenIntrospectionEndpointFilter`，并添加 `OAuth2TokenIntrospectionAuthenticationProvider`
 
 ### OAuth2TokenRevocationEndpointConfigurer
 
-负责配置 OAuth2TokenRevocationEndpointFilter，并添加 OAuth2TokenRevocationAuthenticationProvider
+负责配置 `OAuth2TokenRevocationEndpointFilter`，并添加 `OAuth2TokenRevocationAuthenticationProvider`
 
 # RBAC
 

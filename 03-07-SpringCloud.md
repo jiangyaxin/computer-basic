@@ -1358,7 +1358,7 @@ class CustomForwardingClientCall<ReqT, RespT> extends ClientInterceptors.Checked
 
 服务端：ServerInterceptor
 
-```
+```java
 @Slf4j
 public class CustomServerInterceptor implements ServerInterceptor {
     @Override

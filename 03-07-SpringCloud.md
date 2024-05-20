@@ -1367,7 +1367,6 @@ public class CustomServerInterceptor implements ServerInterceptor {
         CustomServerCall<ReqT, RespT> customServerCall = new CustomServerCall<>(call);
         ServerCall.Listener<ReqT> listener = next.startCall(customServerCall, headers);
         return new CustomServerCallListener<>(listener);
-        return new CustomServerCallListener<>(listener);
     }
 }
 

@@ -3288,7 +3288,7 @@ public Supplier<Date> date() {
 }
 ```
 
-* 使用 `input - <functionName> + -in- + <index>`、`output - <functionName> + -out- + <index>` 绑定管道，当有多个管道需要做聚合时通过index区分。
+* 使用 input: `<functionName>-in-<index>`、output: `<functionName>-out-<index>` 绑定管道，当有多个管道需要做聚合时通过index区分。
 
 例如： `spring.cloud.stream.function.bindings.uppercase-in-0=input`
 

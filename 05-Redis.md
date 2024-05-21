@@ -45,7 +45,7 @@
 
 hash表扩展时机：没有执行bgsave时负载因子大于等于1，执行bgsave时负载因子大于等于5
 
-渐进式rehash，先扩展出一另外一个hash表h1，在update、delete、find时同时在两个hash表进行，除此之外还将之前的hash表h0迁移到新表，直到之前的hash表为空时，将h1变为h0,完成迁移。
+渐进式rehash，先扩展出另外一个hash表h1，在update、delete、find时同时在两个hash表进行，除此之外还将之前的hash表h0迁移到新表，直到之前的hash表为空时，将h1变为h0,完成迁移。
 
 ### 4、跳跃表
 

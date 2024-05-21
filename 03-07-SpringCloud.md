@@ -501,8 +501,7 @@ Ribbon：Netflix开源的基于HTTP和TCP等协议负载均衡组件，需要手
 
 Feign：内置Ribbon，用来做客户端负载均衡，去调用服务注册中心的服务，不支持Spring MVC的注解，它有一套自己的注解，已不推荐使用。
 
-OpenFeign：在Feign的基础上支持了Spring
-MVC的注解，如@RequesMapping等等，可以使用@FeignClient解析SpringMVC的`@RequestMapping`注解下的接口，并通过动态代理的方式产生实现类，实现类中做负载均衡并调用其他服务。
+OpenFeign：在Feign的基础上支持了Spring MVC的注解，如`@RequesMapping`等等，可以使用@FeignClient解析SpringMVC的`@RequestMapping`注解下的接口，并通过动态代理的方式产生实现类，实现类中做负载均衡并调用其他服务。
 
 loadbalancer：用于替代Ribbon，负责负载均衡。
 
@@ -578,7 +577,7 @@ public interface InstanceFeign {
 Map<String, List<String>> getObjects(@MatrixVariable Map<String, List<String>> matrixVars);
 ```
 
-feign.client.refresh-enabled=true 可启用配置刷新功能，POST /actuator/refresh ，不能使用 @RefreshScope
+`feign.client.refresh-enabled=true` 可启用配置刷新功能，`POST /actuator/refresh` ，不能使用 `@RefreshScope`
 
 #### 启动 Apache HttpClient
 
@@ -653,27 +652,27 @@ public interface DemoService {
 
 OpenFeign 默认配置在 FeignClientsConfiguration：
 
-* Decoder：`new OptionalDecoder(new ResponseEntityDecoder(new SpringDecoder(messageConverters, customizers)));`
-* Encoder：`new SpringEncoder(new SpringFormEncoder(), messageConverters, encoderProperties, customizers);`
-* Logger：`new Slf4jLogger(type);`
-* Contract：`new SpringMvcContract(parameterProcessors, feignConversionService, decodeSlash);`
-* Feign.Builder：`FeignCircuitBreaker.builder();`
-* CachingCapability：可使用 `@Cacheable` 注解。
+* `Decoder`：`new OptionalDecoder(new ResponseEntityDecoder(new SpringDecoder(messageConverters, customizers)));`
+* `Encoder`：`new SpringEncoder(new SpringFormEncoder(), messageConverters, encoderProperties, customizers);`
+* `Logger`：`new Slf4jLogger(type);`
+* `Contract`：`new SpringMvcContract(parameterProcessors, feignConversionService, decodeSlash);`
+* `Feign.Builder`：`FeignCircuitBreaker.builder();`
+* `CachingCapability`：可使用 `@Cacheable` 注解。
 
 可以自己添加的配置：
 
-* Logger.Level：这个是用来控制输出什么内容，日志框架级别还是DEBUG
-    - NONE, 不记录（默认）。
-    - BASIC, 只记录请求方法和 URL 以及响应状态码和执行时间。
-    - HEADERS, 记录基本信息以及请求和响应标头。
-    - FULL, 记录请求和响应的标头、正文和元数据。
-* Retryer：会重试 `IOException` 和 `ErrorDecoder` 返回的 `RetryableException`。
-* ErrorDecoder：默认情况下直接抛出 `RetryableException`。
-* Request.Options：设置读写超时
-* Collection<RequestInterceptor>：可以在远程调用前修改 RestTemplate 。
-* SetterFactory
-* QueryMapEncoder
-* Capability
+* `Logger.Level`：这个是用来控制输出什么内容，日志框架级别还是DEBUG
+    - `NONE`, 不记录（默认）。
+    - `BASIC`, 只记录请求方法和 URL 以及响应状态码和执行时间。
+    - `HEADERS`, 记录基本信息以及请求和响应标头。
+    - `FULL`, 记录请求和响应的标头、正文和元数据。
+* `Retryer`：会重试 `IOException` 和 `ErrorDecoder` 返回的 `RetryableException`。
+* `ErrorDecoder`：默认情况下直接抛出 `RetryableException`。
+* `Request.Options`：设置读写超时
+* `Collection<RequestInterceptor>`：可以在远程调用前修改 `RestTemplate` 。
+* `SetterFactory`
+* `QueryMapEncoder`
+* `Capability`
 
 ##### 配置日志内容
 
@@ -728,13 +727,13 @@ Retryer.Default 的三个参数：
 * `contextId` : 当 name 相同时，可通过 contextId 区分。
 * `name` ：指定FeignClient的名称，name属性会作为微服务的名称，用于服务发现。
 * `url` ：一般用于调试，可以手动指定@FeignClient调用的地址。
-* `decode404` ：当发生http 404错误时，如果该字段位true，会调用Decoder进行解码，默认调用 ErrorCoder 解码。
-* `configuration`: Feign配置类，可以自定义Feign的Encoder、Decoder、LogLevel、Contract。
-* `fallback`: 定义容错的处理类，当调用远程接口失败或超时，会调用对应接口的容错逻辑，fallback指定的类必须实现@FeignClient标记的接口。在使用fallback属性时，需要使用@Component注解，保证fallback类被Spring容器扫描到。
+* `decode404` ：当发生http 404错误时，如果该字段位true，会调用Decoder进行解码，默认调用 `ErrorCoder` 解码。
+* `configuration`: Feign配置类，可以自定义Feign的`Encoder`、`Decoder`、`LogLevel`、`Contract`。
+* `fallback`: 定义容错的处理类，当调用远程接口失败或超时，会调用对应接口的容错逻辑，fallback指定的类必须实现`@FeignClient`标记的接口。在使用fallback属性时，需要使用`@Component`注解，保证fallback类被Spring容器扫描到。
 * `fallbackFactory`：工厂类，用于生成fallback类示例，通过这个属性我们可以实现每个接口通用的容错逻辑，减少重复的代码。
 * `path`：定义当前FeignClient的统一前缀，例如controller上有加接口前缀的话就要写在这里。
 
-fallback 、fallbackFactory 需要 `feign.circuitbreaker.enabled = true` 配置。
+`fallback` 、`fallbackFactory` 需要 `feign.circuitbreaker.enabled = true` 配置。
 
 ### 启动
 
@@ -788,9 +787,9 @@ org.springframework.cloud.openfeign.loadbalancer.FeignLoadBalancerAutoConfigurat
 
 ### 调用
 
-1. 调用 `FeignClientFactoryBean#getObject()` 生成 `feign.ReflectiveFeign.FeignInvocationHandler`，注入 FeignClient，其中`FeignClientFactoryBean#feign()` 负责注入配置在 configuration 的Bean，包括 Decoder、Request.Options等等。
+1. 调用 `FeignClientFactoryBean#getObject()` 生成 `feign.ReflectiveFeign.FeignInvocationHandler`，注入 FeignClient，其中`FeignClientFactoryBean#feign()` 负责注入配置在 configuration 的Bean，包括 `Decoder`、`Request.Options`等等。
 2. 每个`FeignInvocationHandler`中包含多个 `SynchronousMethodHandler` 对应 FeignClient 的方法。
-3. 最终由 `SynchronousMethodHandler` 执行，如果抛出IOException，会直接包装成`RetryableException`然后重试，如果正常返回则由`AsyncResponseHandler`负责处理 Response，值得注意的是状态码200 - 300 调用 Decoder 解码，其他状态码调用 ErrorCoder 解码，默认 ErrorCoder 会抛出 FeignException ，如果 reponse head 包含 Retry-After 会抛出 RetryableException 进行重试，另外默认情况下 404 状态码也是使用 ErrorCoder 解码，可通过配置 decode404 = true 来使其调用 Decoder 解码。
+3. 最终由 `SynchronousMethodHandler` 执行，如果抛出IOException，会直接包装成`RetryableException`然后重试，如果正常返回则由`AsyncResponseHandler`负责处理 Response，值得注意的是状态码200 - 300 调用 Decoder 解码，其他状态码调用 ErrorCoder 解码，默认 ErrorCoder 会抛出 FeignException ，如果 reponse head 包含 Retry-After 会抛出 RetryableException 进行重试，另外默认情况下 404 状态码也是使用 ErrorCoder 解码，可通过配置 `decode404 = true` 来使其调用 Decoder 解码。
 
 ##### 配置
 
@@ -886,7 +885,7 @@ public class GrpcServerService extends OrderQueryGrpc.OrderQueryImplBase {
 }
 ```
 
-不使用 @GrpcService ,手动编码方式：
+不使用 `@GrpcService` ,手动编码方式：
 
 ```java
 public void test() {
@@ -1407,8 +1406,7 @@ TCP 队头阻塞：一个TCP分片丢失，导致其后续分片不按序到达�
 
 优势：
 
-1. 使用二进制分帧传输，分为 Headers 帧 和 Data帧，来自不同数据流的帧可以交错发送，每一个都有StreamID作为标识，可以根据stream
-   id将frame再归属到各自不同的request里面，解决HTTP1.x 队头阻塞问题，请求之间互不影响，响应之间互不干扰。
+1. 使用二进制分帧传输，分为 Headers 帧 和 Data帧，来自不同数据流的帧可以交错发送，每一个都有StreamID作为标识，可以根据stream id将frame再归属到各自不同的request里面，解决HTTP1.x 队头阻塞问题，请求之间互不影响，响应之间互不干扰。
 
 ![341](assets/341.png)
 
@@ -1497,17 +1495,16 @@ import "myproject/other_protos.proto";
 import public "new.proto";
 ```
 
-import public 依赖性会通过任意导入包含import public声明的proto文件传递。如果移动一个.proto文件到一个新的位置，
-可以不直接移动.proto文件， 只需放入一个伪 .proto 文件在老的位置， 然后使用import public转向新的位置。
+import public 依赖性会通过任意导入包含import public声明的proto文件传递。如果移动一个.proto文件到一个新的位置，可以不直接移动.proto文件， 只需放入一个伪 .proto 文件在老的位置， 然后使用import public转向新的位置。
 
 3. 更新消息类型
 
 * 不要更改任何已有的字段的数值标识。
-* int32, uint32, int64, uint64,和bool是全部兼容。
-* sint32和sint64是互相兼容的，但是它们与其他整数类型不兼容。
-* string和bytes是兼容的——只要bytes是有效的UTF-8编码。
-* fixed32与sfixed32是兼容的，fixed64与sfixed64是兼容的。
-* 枚举类型与int32，uint32，int64和uint64相兼容。
+* `int32`, `uint32`, `int64`, `uint64`,和`bool`是全部兼容。
+* `sint32`和`sint64`是互相兼容的，但是它们与其他整数类型不兼容。
+* `string`和`bytes`是兼容的——只要bytes是有效的UTF-8编码。
+* `fixed32`与`sfixed32`是兼容的，`fixed64`与`sfixed64`是兼容的。
+* 枚举类型与`int32`，`uint32`，`int64`和`uint64`相兼容。
 
 4. 包名，防止命名冲突。
 
@@ -1540,13 +1537,11 @@ Protobuf消息由字段（field）构成，每个字段有其规则（rule）、
 
 ![336](assets/336.png)
 
-序列化时，消息字段会按照tag顺序，以key+val的格式，编码成二进制数据。可以划分为6个部分：MSB flag、tag、编码后数据类型（wire
-type）、长度（length）、字段值（value）、以及填充（padding），6部分不是顺序排列。
+序列化时，消息字段会按照tag顺序，以key+val的格式，编码成二进制数据。可以划分为6个部分：MSB flag、tag、编码后数据类型（wire type）、长度（length）、字段值（value）、以及填充（padding），6部分不是顺序排列。
 
 每个字节最高位是 MSB flag ，1表示还会有更多字节出现，0表示用不到1个字节。
 
-key 由 数据类型 和 长度 组成，key = tag << 3 | wire_type，wire_type 有
-Varint（0）、64-bit（1）、Length-delimited（2）和32-bit（5）几种，例如：
+key 由 数据类型 和 长度 组成，`key = tag << 3 | wire_type`，wire_type 有 `Varint（0）`、`64-bit（1）`、`Length-delimited（2）`和`32-bit（5）`几种，例如：
 
 ![337](assets/337.png)
 其中 灰色是MSB，黄色是tag，这里的tag值为16，蓝色是wire_type，绿色是value。
@@ -1555,19 +1550,18 @@ Varint（0）、64-bit（1）、Length-delimited（2）和32-bit（5）几种，
 
 ![338](assets/338.png)
 
-varint编码：tag、length、int32、int64等数据类型都是用Varint编码，使用小端字节序。
+varint编码：`tag`、`length`、`int32`、`int64`等数据类型都是用Varint编码，使用小端字节序。
 
-* 123456 用二进制表示为1 11100010 01000000，
-* 每次从低向高取 7位 变成111 1000100 1000000
-* 大端序转为小端序，即交换字节顺序变成1000000 1000100 111
-* 然后加上最高有效位(即：最后一个字节高位补0，其余各字节高位补1)变成11000000 11000100 00000111
-* 最后再转成 10进制，所以经过 varint 编码后 123456 占用三个字节分别为192 196 7。
+* 123456 用二进制表示为`1 11100010 01000000`，
+* 每次从低向高取 7位 变成`111 1000100 1000000`
+* 大端序转为小端序，即交换字节顺序变成`1000000 1000100 111`
+* 然后加上最高有效位(即：最后一个字节高位补0，其余各字节高位补1)变成`11000000 11000100 00000111`
+* 最后再转成 10进制，所以经过 varint 编码后 123456 占用三个字节分别为`192 196 7`。
 
-varint是变长编码，不能表示负数，当数字较少时，varint较为划算，当数字较大时，varint会较为浪费，例如int32 大于2^(4*7) -
-1的数，由于MSB位，需要5个字节才能表示。
+varint是变长编码，不能表示负数，当数字较少时，varint较为划算，当数字较大时，varint会较为浪费，例如int32 大于`2^(4*7) - 1`的数，由于MSB位，需要5个字节才能表示。
 
-对于较大数字可以使用 64-bit（1）、32-bit（5）
-两种定长编码类型。使用64-bit编码的数据类型包括fixed64、sfixed64和double，使用32-bit编码的数据类型包括fixed32、sfixed32和float。
+对于较大数字可以使用 `64-bit（1）`、`32-bit（5）`
+两种定长编码类型。使用64-bit编码的数据类型包括`fixed64`、`sfixed64`和`double`，使用32-bit编码的数据类型包括fixed32、sfixed32和float。
 
 Zigzag 编码: sint32 这种类型包含负数，采用 zigzag 编码，将所有整数映射成无符号整数，然后再采用 varint 编码方式编码。
 
@@ -1577,7 +1571,7 @@ Zigzag(n) =(n <<1)^(n >>31),n 为sint32 时
 Zigzag(n) =(n <<1)^(n >>63),n 为sint64 时
 ```
 
-Length-delimited编码：会将数据的length也编码进最终数据，使用Length-delimited编码格式的数据类型包括string、bytes和自定义消息，value使用大端字节序。
+Length-delimited编码：会将数据的length也编码进最终数据，使用`Length-delimited`编码格式的数据类型包括string、bytes和自定义消息，value使用大端字节序。
 
 ![339](assets/339.png)
 其中 灰色是MSB，黄色是tag，蓝色是wire_type，红色是length，绿色是value。
@@ -1862,10 +1856,10 @@ public class BlockingLoadBalancerClient implements LoadBalancerClient {
 1. 线程池隔离：每个依赖建立一个线程池，存储对当前依赖的请求。
 
 好处：
-
 * 应对突发流量：当流量洪峰到来时，不能及时处理的请求会被存储到线程池队列里慢慢处理。
 * 运行环境隔离：因为某些原因导致自己所在线程池被耗尽，也不会对系统的其他服务造成影响。
-  缺点：
+
+缺点：
 * 每个依赖的服务都会申请线程池，会带来一定的资源消耗。
 
 2. 信号量隔离：通过信号量限制当前系统运行的数量，每个请求都会使信号量加+，如果信号量达到最大值，多于请求将被丢弃。
@@ -1895,8 +1889,7 @@ public class BlockingLoadBalancerClient implements LoadBalancerClient {
 1. 熔断关闭状态（Closed）：当务访问正常时，熔断器处于关闭状态，服务调用方可以正常地对服务进行调用。
 2. 熔断开启状态（Open）：默认情况下，在固定时间内接口调用出错比率达到一个阈值（例如
    50%），熔断器会进入熔断开启状态。进入熔断状态后，后续对该服务的调用都会被切断，熔断器会执行本地的降级（FallBack）方法。
-3. 半熔断状态（Half-Open）：
-   在熔断开启一段时间之后，熔断器会进入半熔断状态。在半熔断状态下，熔断器会尝试恢复服务调用方对服务的调用，允许部分请求调用该服务，并监控其调用成功率。如果成功率达到预期，则说明服务已恢复正常，熔断器进入关闭状态；如果成功率仍旧很低，则重新进入熔断开启状态。
+3. 半熔断状态（Half-Open）：在熔断开启一段时间之后，熔断器会进入半熔断状态。在半熔断状态下，熔断器会尝试恢复服务调用方对服务的调用，允许部分请求调用该服务，并监控其调用成功率。如果成功率达到预期，则说明服务已恢复正常，熔断器进入关闭状态；如果成功率仍旧很低，则重新进入熔断开启状态。
 
 ### 使用
 
@@ -1910,8 +1903,8 @@ public class BlockingLoadBalancerClient implements LoadBalancerClient {
 </dependency>
 ```
 
-2. 使用 @EnableCircuitBreaker 开启熔断。
-3. 使用 @HystrixCommand 和 @HystrixObservableCommand 配置熔断。
+2. 使用 `@EnableCircuitBreaker` 开启熔断。
+3. 使用 `@HystrixCommand` 和 `@HystrixObservableCommand` 配置熔断。
 
 ```java
 
@@ -1929,15 +1922,15 @@ public void test() {
 }
 ```
 
-* commandKey: 代表一个接口, 如果不配置，默认是@HystrixCommand注解修饰的函数的函数名。
-* groupKey: 代表一个服务，一个服务可能会暴露多个接口。
-  Hystrix会根据组来组织和统计命令的告、仪表盘等信息。Hystrix命令默认的线程划分也是根据组来实现。默认情况下，Hystrix会让相同组名的命令使用同一个线程池，所以我们需要在创建Hystrix命令时为其指定命令组来实现默认的线程池划分。
-* threadPoolKey: 对线程池进行更细粒度的配置，默认等于groupKey的值。如果依赖服务中的某个接口耗时较长，需要单独特殊处理，最好单独用一个线程池，这时候就可以配置threadpool
-  key。也可以多个服务接口设置同一个threadPoolKey构成线程组。
-* fallbackMethod：@HystrixCommand注解修饰的函数的回调函数，@HystrixCommand修饰的函数必须和这个回调函数定义在同一个类中，因为定义在了同一个类中，所以fackback
-  method可以是public/private均可。
-* 线程池配置：coreSize表示核心线程数，hystrix默认是10；maxQueueSize表示线程池的最大队列大小；
-  keepAliveTimeMinutes表示非核心线程空闲时最大存活时间；queueSizeRejectionThreshold：该参数用来为队列设置拒绝阈值。通过该参数，即使队列没有达到最大值也能拒绝请求。
+* `commandKey`: 代表一个接口, 如果不配置，默认是`@HystrixCommand`注解修饰的函数的函数名。
+* `groupKey`: 代表一个服务，一个服务可能会暴露多个接口。 Hystrix会根据组来组织和统计命令的告、仪表盘等信息。Hystrix命令默认的线程划分也是根据组来实现。默认情况下，Hystrix会让相同组名的命令使用同一个线程池，所以我们需要在创建Hystrix命令时为其指定命令组来实现默认的线程池划分。
+* `threadPoolKey`: 对线程池进行更细粒度的配置，默认等于groupKey的值。如果依赖服务中的某个接口耗时较长，需要单独特殊处理，最好单独用一个线程池，这时候就可以配置threadpoolkey。也可以多个服务接口设置同一个threadPoolKey构成线程组。
+* `fallbackMethod`：@HystrixCommand注解修饰的函数的回调函数，`@HystrixCommand`修饰的函数必须和这个回调函数定义在同一个类中，因为定义在了同一个类中，所以fackback method可以是public/private均可。
+* 线程池配置：
+   `coreSize`表示核心线程数，hystrix默认是10；
+   `maxQueueSize`表示线程池的最大队列大小；
+   `keepAliveTimeMinutes`表示非核心线程空闲时最大存活时间；
+   `queueSizeRejectionThreshold`：该参数用来为队列设置拒绝阈值。通过该参数，即使队列没有达到最大值也能拒绝请求。
 
 ## Sentinel
 
@@ -2012,69 +2005,69 @@ public void test() {
 
 4. 定义规则，有以下几种方式：
 
-1. 使用编码的方式：
+   1. 使用编码的方式：
 
-```java
-// 流控规则
-private void initFlowQpsRule() {
-    List<FlowRule> rules = new ArrayList<>();
-    FlowRule rule = new FlowRule(resourceName);
-    rule.setCount(20);
-    rule.setGrade(RuleConstant.FLOW_GRADE_QPS);
-    rule.setLimitApp("default");
-    rules.add(rule);
-    FlowRuleManager.loadRules(rules);
-}
+    ```java
+    // 流控规则
+    private void initFlowQpsRule() {
+        List<FlowRule> rules = new ArrayList<>();
+        FlowRule rule = new FlowRule(resourceName);
+        rule.setCount(20);
+        rule.setGrade(RuleConstant.FLOW_GRADE_QPS);
+        rule.setLimitApp("default");
+        rules.add(rule);
+        FlowRuleManager.loadRules(rules);
+    }
+    
+    // 降级规则
+    private void initDegradeRule() {
+        List<DegradeRule> rules = new ArrayList<>();
+        DegradeRule rule = new DegradeRule();
+        rule.setResource(KEY);
+        rule.setCount(10);
+        rule.setGrade(RuleConstant.DEGRADE_GRADE_RT);
+        rule.setTimeWindow(10);
+        rules.add(rule);
+        DegradeRuleManager.loadRules(rules);
+    }
+    
+    // 系统规则
+    private void initSystemRule() {
+        List<SystemRule> rules = new ArrayList<>();
+        SystemRule rule = new SystemRule();
+        rule.setHighestSystemLoad(10);
+        rules.add(rule);
+        SystemRuleManager.loadRules(rules);
+    }
+    ```
 
-// 降级规则
-private void initDegradeRule() {
-    List<DegradeRule> rules = new ArrayList<>();
-    DegradeRule rule = new DegradeRule();
-    rule.setResource(KEY);
-    rule.setCount(10);
-    rule.setGrade(RuleConstant.DEGRADE_GRADE_RT);
-    rule.setTimeWindow(10);
-    rules.add(rule);
-    DegradeRuleManager.loadRules(rules);
-}
+    流控规则：
+    
+    ![308](assets/308.png)
+    
+    Grade：
+    
+    * 并发线程数：包含业务线程不被耗尽
+      * QPS：现在每秒查询数。
+    
+    controlBehavior：
+    
+    * 直接拒绝：默认流控方式，超出阀值后抛出异常。
+      * 冷启动：当空闲切换到繁忙时，匀速增大处理请求的最大值。
+      * 匀速排队：漏桶限流算法，当qps = 2 时，每 500ms 通过一个请求。
+      * 冷启动+匀速排队。
+    
+    strategy：
+    
+    * 调用方限流：通过 limitApp 限制， default 不区分调用者。
+    
+    熔断规则：
+    
+    ![309](assets/309.png)
 
-// 系统规则
-private void initSystemRule() {
-    List<SystemRule> rules = new ArrayList<>();
-    SystemRule rule = new SystemRule();
-    rule.setHighestSystemLoad(10);
-    rules.add(rule);
-    SystemRuleManager.loadRules(rules);
-}
-```
+   2. 使用 dashboard 配置。
 
-流控规则：
-
-![308](assets/308.png)
-
-Grade：
-
-* 并发线程数：包含业务线程不被耗尽
-* QPS：现在每秒查询数。
-
-controlBehavior：
-
-* 直接拒绝：默认流控方式，超出阀值后抛出异常。
-* 冷启动：当空闲切换到繁忙时，匀速增大处理请求的最大值。
-* 匀速排队：漏桶限流算法，当qps = 2 时，每 500ms 通过一个请求。
-* 冷启动+匀速排队。
-
-strategy：
-
-* 调用方限流：通过 limitApp 限制， default 不区分调用者。
-
-熔断规则：
-
-![309](assets/309.png)
-
-2. 使用 dashboard 配置。
-
-可以同过 feign.sentinel.enabled=true 对 feign 开启限流。
+    可以同过 `feign.sentinel.enabled=true` 对 feign 开启限流。
 
 # 配置管理
 
@@ -2664,8 +2657,7 @@ TCC事务进一步减少了锁的占用时间，只需要 Try 阶段持有锁即
 三种 TCC 变种实现：
 
 * 通用型TCC，从业务服务需要提供try、confirm、cancel三个接口，改造压力较大，但锁的粒度可以控制，有效减小了竞争，适用于方便改造，可以改造的业务，并且主业务的决策收到从业务影响。
-* 补偿性TCC，从业务服务只需要提供Do和Compensate两个接口，Do 接口直接执行真正的完整业务逻辑，Compensate
-  操作用于业务补偿，抵消或部分抵消正向业务操作的业务结果，Compensate操作需满足幂等性,适用于外部对接，难以推动改造的业务。
+* 补偿性TCC，从业务服务只需要提供Do和Compensate两个接口，Do 接口直接执行真正的完整业务逻辑，Compensate 操作用于业务补偿，抵消或部分抵消正向业务操作的业务结果，Compensate操作需满足幂等性,适用于外部对接，难以推动改造的业务。
 * 异步确保型TCC，主业务服务的直接从业务服务是可靠消息服务，而真正的从业务服务则通过消息服务解耦，作为消息服务的消费端，异步地执行，适用于从业务不影响主业务决策，可以存在延时，比如邮件通知系统等。
 
 2. 基于可靠消息的最终一致性方案：在这种场景中数据一致性并不要求实时性。
@@ -2807,22 +2799,15 @@ public void rollback(BusinessActionContext context) {
 
 例如：两个全局事务 tx1 和 tx2，分别对 a 表的 m 字段进行更新操作，m 的初始值 1000。
 
-1. tx1 先开始，开启本地事务，拿到本地锁，更新操作 m = 1000 - 100 = 900。本地事务提交前，先拿到该记录的 全局锁 ，本地提交释放本地锁。
-   tx2 后开始，开启本地事务，拿到本地锁，更新操作 m = 900 - 100 = 800。本地事务提交前，尝试拿该记录的 全局锁 ，tx1
-   全局提交前，该记录的全局锁被 tx1 持有，tx2 需要重试等待 全局锁 。
+1. tx1 先开始，开启本地事务，拿到本地锁，更新操作 m = 1000 - 100 = 900。本地事务提交前，先拿到该记录的 全局锁 ，本地提交释放本地锁。 tx2 后开始，开启本地事务，拿到本地锁，更新操作 m = 900 - 100 = 800。本地事务提交前，尝试拿该记录的 全局锁 ，tx1 全局提交前，该记录的全局锁被 tx1 持有，tx2 需要重试等待 全局锁 。
 2. tx1 二阶段全局提交，释放 全局锁 。tx2 拿到 全局锁 提交本地事务。
-3. 如果 tx1 的二阶段全局回滚，则 tx1 需要重新获取该数据的本地锁，进行反向补偿的更新操作，实现分支的回滚。此时，如果 tx2
-   仍在等待该数据的 全局锁，同时持有本地锁，则 tx1 的分支回滚会失败。分支的回滚会一直重试，直到 tx2 的 全局锁 等锁超时，放弃
-   全局锁 并回滚本地事务释放本地锁，tx1 的分支回滚最终成功。因为整个过程 全局锁 在 tx1 结束前一直是被 tx1 持有的，所以不会发生
-   脏写 的问题。
+3. 如果 tx1 的二阶段全局回滚，则 tx1 需要重新获取该数据的本地锁，进行反向补偿的更新操作，实现分支的回滚。此时，如果 tx2 仍在等待该数据的 全局锁，同时持有本地锁，则 tx1 的分支回滚会失败。分支的回滚会一直重试，直到 tx2 的 全局锁 等锁超时，放弃 全局锁 并回滚本地事务释放本地锁，tx1 的分支回滚最终成功。因为整个过程 全局锁 在 tx1 结束前一直是被 tx1 持有的，所以不会发生 脏写 的问题。
 
 读隔离：
 
-在数据库本地事务隔离级别 读已提交（Read Committed） 或以上的基础上，Seata（AT 模式）的默认全局隔离级别是 读未提交（Read
-Uncommitted）,在特定场景下，必需要求全局的 读已提交 ，目前 Seata 的方式是通过 SELECT FOR UPDATE 语句的代理。
+在数据库本地事务隔离级别 读已提交（Read Committed） 或以上的基础上，Seata（AT 模式）的默认全局隔离级别是 读未提交（`Read Uncommitted`）,在特定场景下，必需要求全局的 读已提交 ，目前 Seata 的方式是通过 `SELECT FOR UPDATE` 语句的代理。
 
-SELECT FOR UPDATE 语句的执行会申请 全局锁 ，如果 全局锁 被其他事务持有，则释放本地锁（回滚 SELECT FOR UPDATE
-语句的本地执行）并重试。这个过程中，查询是被 block 住的，直到 全局锁 拿到，即读取的相关数据是 已提交 的，才返回。
+`SELECT FOR UPDATE` 语句的执行会申请 全局锁 ，如果 全局锁 被其他事务持有，则释放本地锁（回滚 `SELECT FOR UPDATE` 语句的本地执行）并重试。这个过程中，查询是被 block 住的，直到 全局锁 拿到，即读取的相关数据是 已提交 的，才返回。
 
 ### Saga模式
 
@@ -2896,8 +2881,7 @@ Client Received：
 ```
 
 Zipkin 分为服务端和客户端，客户端也就是微服务的应用，客户端会配置服务端的 URL 地址，一旦发生服务间的调用的时候，会被配置在微服务里面的
-Sleuth 的监听器监听，并生成相应的 Trace 和 Span 信息发送给服务端。发送的方式有两种，一种是消息总线的方式如 RabbitMQ
-发送，还有一种是 HTTP 报文的方式发送。
+Sleuth 的监听器监听，并生成相应的 Trace 和 Span 信息发送给服务端。发送的方式有两种，一种是消息总线的方式如 RabbitMQ 发送，还有一种是 HTTP 报文的方式发送。
 
 sleuth 在发起请求时会在请求头中加入信息：
 

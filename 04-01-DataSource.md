@@ -30,17 +30,17 @@ spring:
       max-lifetime: 1800000
       # 该值不要设置
       # connectionTestQuery
-      # 该值不要设置，默认与 maximumPoolSize 保持一致
-      # minimumIdle
-      # 连接池达到的最大大小，包括空闲和使用中的连接，默认值：10。
+      # 该值不要设置，默认与 maximumPoolSize 保持一致 高版本改为：minIdle
+      # minimumIdle 
+      # 连接池达到的最大大小，包括空闲和使用中的连接，默认值：10。高版本改为：maxPoolSize
       maximumPoolSize: 20
 ```
 
-maximumPoolSize = ((core_count * 2)+ effective_spindle_count),effective_spindle_count为磁盘阵列的硬盘数。
+`maximumPoolSize = ((core_count * 2)+ effective_spindle_count)`,effective_spindle_count为磁盘阵列的硬盘数。
 考虑整体系统性能，考虑线程执行需要的等待时间，设计合理的线程数目。但是，不要过度配置数据库。
 
 增大连接池大小可以缓解池锁问题，**但是扩大池之前是可以先检查一下应用层面能够调优，不要直接调整连接池大小**。
-pool size = Tn x (Cm - 1) + 1，T n是线程的最大数量，C m是单个线程持有的同时连接的最大数量，这是避免池锁的最低限度。
+`pool size = Tn x (Cm - 1) + 1`，Tn是线程的最大数量，Cm是单个线程持有的同时连接的最大数量，这是避免池锁的最低限度。
 
 ### 如何解决失活连接监测问题
 
@@ -49,7 +49,7 @@ pool size = Tn x (Cm - 1) + 1，T n是线程的最大数量，C m是单个线程
 监测失活连接由两个参数控制：
 
 * maxLifetime：连接在hikari中的最长存活时间，但及时达到该时间但是连接处于 IN_USE 状态并不会回收，只能依赖于 idleTimeout 兜底。
-* idleTimeout：空闲连接能够在hikari中能够存活的最长时间，当 idleTimeout >= maxLifeTime 且 minIdle < maxPoolSize的话，会将idleTimeout置为0，所以参数设置错误时会导致 idleTimeout 失效。
+* idleTimeout：空闲连接能够在hikari中能够存活的最长时间，当 `idleTimeout >= maxLifeTime` 且 `minIdle < maxPoolSize`的话，会将idleTimeout置为0，所以参数设置错误时会导致 idleTimeout 失效。
   * 只有 `idleTimeout > 0` 才会进行空闲连接回收。
   * 只有 `minimumIdle < maximumPoolSize`才会进行空闲连接回收。
 
@@ -63,16 +63,16 @@ pool size = Tn x (Cm - 1) + 1，T n是线程的最大数量，C m是单个线程
 3. 最经常被执行的 SQL 语句是在哪段源代码中被调用的？最耗时的 SQL 语句是在哪段源代码中被调用的？
 
 
-| HikariCP指标                        | 说明                     | 类型               | 备注                                                                          |
-| ----------------------------------- | ------------------------ | ------------------ | ----------------------------------------------------------------------------- |
-| hikaricp_connection_timeout_total   | 每分钟超时连接数         | Counter            |                                                                               |
+| HikariCP指标                          | 说明           | 类型                 | 备注                                           |
+|-------------------------------------|--------------|--------------------|----------------------------------------------|
+| hikaricp_connection_timeout_total   | 每分钟超时连接数     | Counter            |                                              |
 | hikaricp_pending_threads            | 当前排队获取连接的线程数 | GAUGE              | 关键指标，大于10则 报警<br />该指标持续飙高，说明DB连接池中基本已无空闲连接。 |
-| hikaricp_connection_acquired_nanos  | 连接获取的等待时间       | Summary	pool.Wait  | 关注极值                                                                      |
-| hikaricp_active_connections         | 当前正在使用的连接数     | GAUGE              | 长期保持在较大线程数时，可以考虑增大最大连接数。                              |
-| hikaricp_connection_creation_millis | 创建连接成功的耗时       | Summary            | 关注极值                                                                      |
-| hikaricp_idle_connections           | 当前空闲连接数           | GAUGE              | 长期保持在较大线程数时，可以考虑减小最大连接数。                              |
-| hikaricp_connection_usage_millis    | 连接被复用的间隔时长     | Summary	pool.Usage | 关注极值                                                                      |
-| hikaricp_connections                | 连接池的总共连接数       | GAUGE              |                                                                               |
+| hikaricp_connection_acquired_nanos  | 连接获取的等待时间    | Summary	pool.Wait  | 关注极值                                         |
+| hikaricp_active_connections         | 当前正在使用的连接数   | GAUGE              | 长期保持在较大线程数时，可以考虑增大最大连接数。                     |
+| hikaricp_connection_creation_millis | 创建连接成功的耗时    | Summary            | 关注极值                                         |
+| hikaricp_idle_connections           | 当前空闲连接数      | GAUGE              | 长期保持在较大线程数时，可以考虑减小最大连接数。                     |
+| hikaricp_connection_usage_millis    | 连接被复用的间隔时长   | Summary	pool.Usage | 关注极值                                         |
+| hikaricp_connections                | 连接池的总共连接数    | GAUGE              |                                              |
 
 ## 核心组件
 

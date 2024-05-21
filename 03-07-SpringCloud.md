@@ -3391,9 +3391,7 @@ server:
 ```
 
 消费者：
-
 ```java
-
 @SpringBootApplication
 public class ConsumerApplication {
 
@@ -3414,7 +3412,6 @@ public class ConsumerApplication {
 ```
 
 配置文件：
-
 ```yaml
 spring:
   rabbitmq:
@@ -3437,100 +3434,99 @@ server:
 ```
 
 ### 常用配置
-
 ```yaml
 spring:
   cloud:
     stream:
-      #      有多少个消费者实例
-      #      instance-count: 1
-      #      当前消费者实例的索引
-      #      instance-index: 0
-      #      注意topic是stream的属性
-      #      dynamic-destinations
-      #      spring.cloud.stream.default.<producer|consumer>.<property>=<value>
+      # 有多少个消费者实例
+      # instance-count: 1
+      # 当前消费者实例的索引
+      # instance-index: 0
+      # 注意topic是stream的属性
+      # dynamic-destinations
+      # spring.cloud.stream.default.<producer|consumer>.<property>=<value>
       bindings:
         input:
-          #          topic
+          # topic
           destination: test
           group: test
           content-type: application/json
           consumer:
-            #            自动启动消费者，默认true
+            # 自动启动消费者，默认true
             auto-startup: true
-            #            消费者并发数，默认1
+            # 消费者并发数，默认1
             concurrency: 1
-            #            需要开启消费分区，默认false，与instance-count、instance-index联动
-            #            partitioned: false
-            #            重试次数（包括第一次），设置为1禁用重试，默认值3
+            # 需要开启消费分区，默认false，与instance-count、instance-index联动
+            # partitioned: false
+            # 重试次数（包括第一次），设置为1禁用重试，默认值3
             max-attempts: 1
-            #            负数表示使用 spring.cloud.stream.instanceCount,大于等于0表示使用该值
+            # 负数表示使用 spring.cloud.stream.instanceCount,大于等于0表示使用该值
             instance-count: -1
             instance-index: -1
-            #            未在retryable-exceptions的异常是否可以重试
+            # 未在retryable-exceptions的异常是否可以重试
             default-retryable: true
-        #            retryable-exceptions 例如 spring.cloud.stream.bindings.input.consumer.retryable-exceptions.java.lang.IllegalStateException=false
+            # retryable-exceptions 例如 spring.cloud.stream.bindings.input.consumer.retryable-exceptions.java.lang.IllegalStateException=false
         output:
-          #           topic
+          # topic
           destination: test
           content-type: application/json
           producer:
             auto-startup: true
-      #             partition-count
-      #              以下两个属性互斥，功能一样，需要partitionCount>1
-      #              partition-key-expression
-      #              partition-key-extractor-name 实现PartitionKeyExtractorStrategy
-      #              以下两个属性互斥，功能一样，需要partitionCount>1,若都为空默认使用hashCode(key) % partitionCount
-      #              partition-selector-expression
-      #              partition-selector-name 实现PartitionSelectorStrategy
+            # partition-count
+            # 以下两个属性互斥，功能一样，需要partitionCount>1
+            # partition-key-expression
+            # partition-key-extractor-name 实现PartitionKeyExtractorStrategy
+            # 以下两个属性互斥，功能一样，需要partitionCount>1,若都为空默认使用hashCode(key) % partitionCount
+            # partition-selector-expression
+            # partition-selector-name 实现PartitionSelectorStrategy
       kafka:
         binder:
           brokers:
             - 1.12.236.101:9001
             - 1.12.236.101:9002
             - 1.12.236.101:9003
-          #          all,-1 等所有brokers收到结果 1 leader收到结果 0 不管有么有收到结果 默认：1
+          # all,-1 等所有brokers收到结果 1 leader收到结果 0 不管有么有收到结果 默认：1
           required-acks: 1
-        #          以下两个属性会导致 Metadata update failed
-        #          auto-create-topics: false
-        #          consumer-properties:
-        #            allow.auto.create.topics: false
+          # 以下两个属性会导致 Metadata update failed
+          # auto-create-topics: false
+          # consumer-properties:
+          # allow.auto.create.topics: false
         bindings:
-          #          通道名,默认输入通道名,Sink.java
+          # 通道名,默认输入通道名,Sink.java
           input:
-            #            spring.cloud.stream.kafka.default.consumer.<property>=<value> 可以为所用通道设置值
+            # spring.cloud.stream.kafka.default.consumer.<property>=<value> 可以为所用通道设置值
             consumer:
-              #              自动分配partition,不需要instance-count和instance-index,默认true,设置为false可以启用下面三个属性
+              # 自动分配partition,不需要instance-count和instance-index,默认true,设置为false可以启用下面三个属性
               auto-rebalance-enabled: true
-              #              是否每一条数据都提交偏移量,与上个属性配合使用,默认false,表示处理完consumer.poll()一批数据后再提交，轮询返回的记录数由max.poll.records
+              # 是否每一条数据都提交偏移量,与上个属性配合使用,默认false,表示处理完consumer.poll()一批数据后再提交，轮询返回的记录数由max.poll.records
               ack-each-record: false
-              #              自动提交偏移量，默认true,设置为false需要使用org.springframework.kafka.support.Acknowledgment在程序中手动提交
+              # 自动提交偏移量，默认true,设置为false需要使用org.springframework.kafka.support.Acknowledgment在程序中手动提交
               auto-commit-offset: true
-              #              是否将消费者的偏移量重置为startOffset提供的值。如果提供了KafkaRebalanceListener，则必须为 false；
+              # 是否将消费者的偏移量重置为startOffset提供的值。如果提供了KafkaRebalanceListener，则必须为 false；
               reset-offsets: false
-              #              start-offset 可以设置earliest 和 latest,如果group设置，则将设置为earliest。否则，它被设置latest
-              #              设置为true时如果发生异常会将导致错误的消息发送到error.<destination>.<group>的topic,可以设置dlq-name 或者 DlqDestinationResolver的bean修改
+              # start-offset 可以设置earliest 和 latest,如果group设置，则将设置为earliest。否则，它被设置latest
+              # 设置为true时如果发生异常会将导致错误的消息发送到error.<destination>.<group>的topic,可以设置dlq-name 或者 DlqDestinationResolver的bean修改
               enable-dlq: false
-              #              dlq-partitions  error.<destination>.<group>分区数量.当 enable-dlq=true时生效，默认分区数量和原分区一样。当大于1，需要配置DlqPartitionFunction.
-              #              触发事件的时间间隔，可以使用ApplicationListener<ListenerContainerIdleEvent>来处理
+              # dlq-partitions  error.<destination>.<group>分区数量.当 enable-dlq=true时生效，默认分区数量和原分区一样。当大于1，需要配置DlqPartitionFunction.
+              # 触发事件的时间间隔，可以使用ApplicationListener<ListenerContainerIdleEvent>来处理
               idle-event-interval: 30000
-              #              destination-is-pattern topic使用正则表达式匹配
-              #              poll超时时间,默认5秒
+              # destination-is-pattern topic使用正则表达式匹配
+              # poll超时时间,默认5秒
               poll-timeout: 5000
-          #          通道名,默认输出通道名,Source.java
+          # 通道名,默认输出通道名,Source.java
           output:
-            #            spring.cloud.stream.kafka.default.producer.<property>=<value> 可以为所用通道设置值
+            # spring.cloud.stream.kafka.default.producer.<property>=<value> 可以为所用通道设置值
             producer:
-              #              生产者发送缓冲区大小,单位字节.
+              # 生产者发送缓冲区大小,单位字节.
               buffer-size: 16384
-              #              异步发送，默认false
+              # 异步发送，默认false
               sync: false
-              #              send-timeout-expression 使用同步发送时超时时间，单位毫秒，可使用SpEL表达式，例如 headers['mySendTimeout'],默认为空，会一直阻塞
-              #              生产者在发送消息之前等待多长时间以允许在同一批次中累积更多消息，即延迟为代价增加吞吐量，默认值为0
+              # send-timeout-expression 使用同步发送时超时时间，单位毫秒，可使用SpEL表达式，例如 headers['mySendTimeout'],默认为空，会一直阻塞
+              # 生产者在发送消息之前等待多长时间以允许在同一批次中累积更多消息，即延迟为代价增加吞吐量，默认值为0
               batch-timeout: 0
-              #              message-key-expression 针对用于填充生成的 Kafka 消息的键的传出消息计算的 SpEL 表达式,例如 headers['myKey']。默认为空
-              #              configuration.compression.type     none, gzip, snappy,lz4,zstd
-              #              关闭生产者等待的超时时间，默认30s
+              # message-key-expression 针对用于填充生成的 Kafka 消息的键的传出消息计算的 SpEL 表达式,例如 headers['myKey']。默认为空
+              # configuration.compression.type     none, gzip, snappy,lz4,zstd
+              # 关闭生产者等待的超时时间，默认30s
               close-timeout: 30
 ```
 

@@ -2891,7 +2891,7 @@ sleuth 在发起请求时会在请求头中加入信息：
 4. X-B3-Sampled：是否被采样，1表示输出，0表示不输出。
 5. X-Span-Name：工作单元的名称。
 
-可在日志输出上引用这些信息，如 %X{X-B3-TraceId:-}
+可在日志输出上引用这些信息，如 `%X{X-B3-TraceId:-}`
 
 ![301](assets/301.png)
 
@@ -3199,8 +3199,7 @@ server:
   port: 8082
 ```
 
-可使用 `spring.cloud.stream.bindings.<channelName>.producer.errorChannelEnabled=true` 打开消息发送失败的处理逻辑，如果消息发送失败会发送到
-topic.errors 的 DirectChannel，可以订阅该通道，处理错误消息，例如：
+可使用 `spring.cloud.stream.bindings.<channelName>.producer.errorChannelEnabled=true` 打开消息发送失败的处理逻辑，如果消息发送失败会发送到`topic.errors` 的 DirectChannel，可以订阅该通道，处理错误消息，例如：
 
 ```java
 

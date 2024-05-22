@@ -655,7 +655,7 @@ Redis 使用场景与它拥有的数据结构相关：
 * String: 缓存、限流、计数器、分布式锁、分布式Session。
 * Hash: 储存用户信息、用户主页访问量、组合查询。
 * List: 社交软件关注人时间轴列表、队列。
-* Set: 通过集合取交集并集等，实现赞、踩、标签、好友关系等。
+* Set: 赞、踩、标签、好友关系。
 * Zset：排行榜，取最新、top n个数据等。
 
 ### String
@@ -1076,7 +1076,7 @@ B线程进行读操作，发现缓存中没有想要的数据，从数据库中�
 	当del时：
  	如果是List类型，你可以执行lpop或者rpop，直到所有元素删除完成。
 	如果是Hash/Set/ZSet类型，你可以先执行hscan/sscan/scan查询，再执行hdel/srem/zrem依次删除每个元素。
-避免使用SORT、SINTER、SINTERSTORE、ZUNIONSTORE、ZINTERSTORE等复杂度过高的聚合命令，一般放到客户端执行
+避免使用SORT、SINTER、SINTERSTORE、ZUNIONSTORE、ZINTERSTORE等并集交集复杂度过高的聚合命令，一般放到客户端执行
 2.降低客户端连接成本:使用长连接/连接池,NIO。
 3.减少网络通信次数。
 	针对减少网络通信次数有如下几个方案：
@@ -1362,7 +1362,7 @@ config set dbfilename <filename>
 自动触发有四种情况：
 
 1. 从节点执行全量复制操作，主节点自动执行bgsave生成RDB文件。
-2. debug reload命令重新加载Redis时，也会触发save操作。
+2. `debug reload`命令重新加载Redis时，也会触发save操作。
 3. 默认情况下执行shutdown时，如果没有开启AOF则自动执行bgsave。
 4. 可以通过设置服务器配置的 save 选项，让服务器每隔一段时间自动执行一次 `BGSAVE` 命令，并且可以设置多个条件，只要其中一个条件被满足，服务器都会执行。
 
@@ -1405,7 +1405,7 @@ bgsave执行流程：
 1. 判断当前是否存在正在执行的子进程，如 RDB/AOF 子进程，如果存在，bgsave直接返回。
 2. 父进程fork创建子进程，fork过程中会阻塞父进程，通过 info stats 可以查看latest_fork_usec,获取最近一个fork的耗时，单位微秒。
 3. 父进程fork完成后不在阻塞，可以继续响应其他命令。
-4. 子进程创建RDB文件，完成后对原有文件进行原子替换。lastsave 可以获取最后一次生成 RDB 的世界，对应 info 统计的rdb_last_save_time。
+4. 子进程创建RDB文件，完成后对原有文件进行原子替换。lastsave 可以获取最后一次生成 RDB 的世间，对应 info 统计的rdb_last_save_time。
 5. 进程发送信号给父进程表示完成，父进程更新统计信息。
 
 ### AOF(Append Only File)持久化
@@ -1453,9 +1453,8 @@ Redis 的服务器进程就是一个事件循环，在这个循环中文件事�
 
 重写有两种情况：
 
-1. 手动触发，直接调用bgrewriteaof。
-2. 自动触发，根据 auto-aof-rewrite-min-size （默认64MB） 和 auto-aof-rewrite-percentage （代表当前AOF文件空间[aof_current_size] 和 上一次重写后AOF文件空间[aof_base_size]的比值,可以通过info persistence查询）确定。
-   自动触发的时机 = aof_current_size > auto-aof-rewrite-min-size && (aof_current_size-aof_base_size)/aof_base_size >= auto-aof-rewrite-percentage
+1. 手动触发，直接调用`bgrewriteaof`。
+2. 自动触发，根据 `auto-aof-rewrite-min-size` （默认64MB） 和 `auto-aof-rewrite-percentage` （代表当前AOF文件空间`aof_current_size` 和 上一次重写后AOF文件空间`aof_base_size`的比值,可以通过`info persistence`查询）确定。`自动触发的时机 = aof_current_size > auto-aof-rewrite-min-size && (aof_current_size-aof_base_size)/aof_base_size >= auto-aof-rewrite-percentage`
 
 随着服务器运行，AOF 文件的体积会越来越大，如果不加以控制，AOF 文件可能会对宿主机造成影响，并且进行数据还原所需的时间也越多。为了解决文件膨胀的问题，会创建一个新的 AOF 来替代现有的 AOF 文件，新旧两个 AOF 文件保存的数据库状态相同，但新的文件不会包含任何浪费空间的冗余命令
 

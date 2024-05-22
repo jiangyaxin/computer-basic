@@ -1536,14 +1536,14 @@ AOF 重写是使用子进程来执行的，因为服务器进程 (父进程) 依
 当AOF持久化，使用everysec策略时，当硬盘资源繁忙时，会造成主线程阻塞，阻塞流程分析：
 
 1. 主线程负责写AOF缓冲区、AOF负责每秒执行一次同步磁盘操作，并记录最近一次同步时间。
-2. 主线程负责对比上一次AOF同步时间，如果距上次同步成功在2秒内，主线程直接返回，如果超过2秒，主线程会阻塞知道同步操作完成。
+2. 主线程负责对比上一次AOF同步时间，如果距上次同步成功在2秒内，主线程直接返回，如果超过2秒，主线程会阻塞直到同步操作完成。
 
-由此可见：everysec最多可能丢失2秒数据，如果系统fsync缓慢，将会导致主线程阻塞。
+由此可见：`everysec`最多可能丢失2秒数据，如果系统fsync缓慢，将会导致主线程阻塞。
 
 定位方法：
 
-1. 查看redis日志，（AOF fsync is taking too long）。
-2. 每当发生阻塞事件是，info persistence 中 aof_delayed_fsync会累加。
+1. 查看redis日志，（`AOF fsync is taking too long`）。
+2. 每当发生阻塞事件是，`info persistence` 中 `aof_delayed_fsync`会累加。
 3. iotop查看硬盘负载。
 
 优化办法：优化系统硬盘负载，同fork操作硬盘优化方法。
@@ -1673,15 +1673,15 @@ world
 
 复制的配置有三种方式：
 
-1. SLAVEOF ip port 命令。
-2. redis.conf 配置 slaveof。
-3. 在redis-server启动命令后加入 --salveof ip port。
+1. `SLAVEOF ip port` 命令。
+2. redis.conf 配置 `slaveof`。
+3. 在redis-server启动命令后加入 `--salveof ip port`。
 
-主从节点创建成功后，可以使用info replication命令查看。另外slaveof命令不但可以建立复制，还可以在从节点执行slaveof no one来断开复制关系，升为主节点，断开复制后不会抛弃原有数据，只是无法再获取主节点上的数据变化。除此之外 SLAVEOF new-ip new-port还可以切换主节点，切换后从节点会清空之前所有的数据。
+主从节点创建成功后，可以使用`info replication`命令查看。另外`slaveof`命令不但可以建立复制，还可以在从节点执行`slaveof no one`来断开复制关系，升为主节点，断开复制后不会抛弃原有数据，只是无法再获取主节点上的数据变化。除此之外 `SLAVEOF new-ip new-port`还可以切换主节点，切换后从节点会清空之前所有的数据。
 
-如果主节点设置了requirepass密码，意味着所有客户端访问必须使用auth命令进行校验，从节点与主节点复制是通过一个特殊标识的客户端完成的，因此需要配置从节点的masterauth，默认情况下从节点为只读模式。
+如果主节点设置了`requirepass`密码，意味着所有客户端访问必须使用auth命令进行校验，从节点与主节点复制是通过一个特殊标识的客户端完成的，因此需要配置从节点的`masterauth`，默认情况下从节点为只读模式。
 
-repl-disable-tcp-nodelay 用于控制是否关闭 TCP_NODELAY,默认关闭：
+`repl-disable-tcp-nodelay` 用于控制是否关闭` TCP_NODELAY`,默认关闭：
 
 1. 当关闭时，主节点产生的命令数据无论大小都会及时地发送给从节点，延迟变小，网络带宽消耗变大。适用于主从网络良好场景。
 2. 当开启时，主节点会合并较小的TCP数据包从而节省带宽。默认发送时间间隔取决于Linux内核，一般默认40毫秒。节省了带宽但增大主从延迟。适用于主从网络环境复杂或带宽紧张。

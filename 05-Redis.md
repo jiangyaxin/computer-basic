@@ -1804,7 +1804,7 @@ redis-cluster提供分布式方案，集群通过分片(sharding)来进行数据
 
 ### 节点
 
-Redis 集群通常由多个节点组成，刚开始每个节点都是相互独立的，它们处于一个只包含自己的集群中，要组建真正的集群需要将各个节点连接起来，服务器在启动时通过redis.conf中cluster-enabled是否为yes来决定是否开启集群模式,并且节点只能使用0号数据库。
+Redis 集群通常由多个节点组成，刚开始每个节点都是相互独立的，它们处于一个只包含自己的集群中，要组建真正的集群需要将各个节点连接起来，服务器在启动时通过redis.conf中`cluster-enabled`是否为yes来决定是否开启集群模式,并且节点只能使用0号数据库。
 
 ```bash
 # 节点连接的命令
@@ -1842,13 +1842,13 @@ cluster replicate <node_id>
 
 重新分片操作可以将任意数量已经指派节点的slot指派给其他节点，其相关slot所属的键值对也会从源节点移动到目标节点。重新分片可以在线进行，在此过程中，集群不需要下线，源节点和目标节点都可以继续处理命令请求。
 
-重新分片有redis-trib负责执行：
+重新分片由`redis-trib`负责执行：
 
-1. redis-trib对目标节点发送 `cluster setslot <slot> importing <source_id>`,让目标节点准备好从源节点准备导入属于slot的键值对。
-2. redis-trib对源节点发送 `cluster setslot <slot> migrating <target_id>`,让源节点准备将属于slot的键值对迁移至目标节点。
-3. redis-trib向源节点发送 `cluster getkeysinslot <slot> <count> `,获得最多count个属于slot的键值对的key。
-4. redis-trib向源节点发送 `migrate <target_ip> <target_port> <key_name> 0 <timeout>`,将被选中的key原子地从源节点迁移到目标节点。
-5. redis-trib向集群中任意节点发送 `cluster setslot <slot> node <target_id>`，将槽指派给目标节点，指派信息会发送给整个集群。
+1. `redis-trib`对目标节点发送 `cluster setslot <slot> importing <source_id>`,让目标节点准备好从源节点准备导入属于slot的键值对。
+2. `redis-trib`对源节点发送 `cluster setslot <slot> migrating <target_id>`,让源节点准备将属于slot的键值对迁移至目标节点。
+3. `redis-trib`向源节点发送 `cluster getkeysinslot <slot> <count> `,获得最多count个属于slot的键值对的key。
+4. `redis-trib`向源节点发送 `migrate <target_ip> <target_port> <key_name> 0 <timeout>`,将被选中的key原子地从源节点迁移到目标节点。
+5. `redis-trib`向集群中任意节点发送 `cluster setslot <slot> node <target_id>`，将槽指派给目标节点，指派信息会发送给整个集群。
 
 ```bash
 # 打印每个节点负责的slot
@@ -1993,7 +1993,7 @@ multi命令将执行命令的客户端从非事务状态标记为事务状态。
 
 watch 命令是一个乐观锁(optimistic lock),它可以在exec命令执行之前监视任意数量key,并在exec执行时，检查被监视的键是否至少有一个已经被修改过了，如果是，服务器拒绝执行事务，并返回空回复 nil。
 
-Redis保存着储存一个字典，字典的键是被watch命令监视的key，值是一个监视该键的所有客户端，所有对数据库进行修改的命令都会将key下的客户端标识为 REDIS_DIRTY_CAS,通过该字段在exec执行时可以判断key有没有被修改过。
+Redis保存着储存一个字典，字典的键是被watch命令监视的key，值是一个监视该键的所有客户端，所有对数据库进行修改的命令都会将key下的客户端标识为 `REDIS_DIRTY_CAS`,通过该字段在exec执行时可以判断key有没有被修改过。
 
 ### 事务的ACID
 
@@ -2106,8 +2106,8 @@ slowlog reset
 
 1. CPU竞争：多个CPU密集型服务部署在一起；一台机器上部署了多个实例时，使用绑定redis进程到CPU上，降低上下线切换的开销，正常情况下没问题，但子进程存在时会和父进程共享一个CPU，子进程重写时对单核CPU使用率通常在90%一次，父子进程竞争，所以开启了持久化不建议绑定CPU。
 2. 内存交换：redis保证高性能的前提是所有数据在内存中，如果操作系统把redis部分内存换出到硬盘，将会极大影响性能。
-   识别的方法：先找到redis的进程号 pid，在使用 cat /proc/`<pid>`/smaps |grep Swap,如果交换量都是0KB或者个别是4KB，都是正常现象，说明redis进程内存没有被交换。
-   预防的办法：保证内存充足；确保所有Redis设置maxmemory，防止极端情况内存不可控增长；降低系统使用swap优先级。
+   - 识别的方法：先找到redis的进程号 pid，在使用 `cat /proc/<pid>/smaps |grep Swap`,如果交换量都是0KB或者个别是4KB，都是正常现象，说明redis进程内存没有被交换。
+   - 预防的办法：保证内存充足；确保所有Redis设置maxmemory，防止极端情况内存不可控增长；降低系统使用swap优先级。
 3. 网络原因：超过maxclients（默认10000）连接拒绝；backlog队列（默认511）溢出。
 
 ## 内存
@@ -2116,12 +2116,12 @@ info memory内存相关字段：
 
 ![image.png](./assets/44.png)
 
-需要重点关注的有：used_memory_rss、used_memory和它们的比值mem_fragmentation_ratio。
+需要重点关注的有：`used_memory_rss`、`used_memory`和它们的比值`mem_fragmentation_ratio`。
 
-1. mem_fragmentation_ratio>1时，说明used_memory_rss比used_memory多出的部分内存并没有用于数据储存，而是被内存碎片消耗。
-2. mem_fragmentation_ratio<1时，说明操作系统把redis内存交换到硬盘，性能急剧下降。
+1. `mem_fragmentation_ratio>1`时，说明`used_memory_rss`比`used_memory`多出的部分内存并没有用于数据储存，而是被内存碎片消耗。
+2. `mem_fragmentation_ratio<1`时，说明操作系统把redis内存交换到硬盘，性能急剧下降。
 
-redis进程消耗内存 = 自身内存 + 对象内存 + 缓存内存 + 内存碎片。
+`redis进程消耗内存 = 自身内存 + 对象内存 + 缓存内存 + 内存碎片`。
 
 ![image.png](./assets/38.png)
 

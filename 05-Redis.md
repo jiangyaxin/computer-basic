@@ -2098,8 +2098,8 @@ slowlog reset
 
 内在原因：
 
-1. API或数据结构使用不合理：尽量避免使用超过O(n)的命令，缩减大对象或把大对象拆分为多个小对象，使用redis-cli -h `<ip>` -p `<port>` bigkeys 查找大对象。
-2. CPU饱和：可以使用redis-cli -h `<ip>` -p `<port>` --stat获取当前使用情况，这时候需要做集群来分摊压力。
+1. API或数据结构使用不合理：尽量避免使用超过O(n)的命令，缩减大对象或把大对象拆分为多个小对象，使用｀redis-cli -h <ip> -p <port> bigkeys` 查找大对象。
+2. CPU饱和：可以使用｀redis-cli -h <ip> -p <port> --stat`获取当前使用情况，这时候需要做集群来分摊压力。
 3. 持久化阻塞：fork阻塞、AOF刷盘阻塞、HugePage写操作阻塞（子进程在执行重写期间利用linux写时复制技术降低内存开销，对于开启 Transparent HugePages的操作系统，每次写命令引起的复制内存页单位由4k变为2MB，拖慢写操作执行时间）。
 
 外在原因：

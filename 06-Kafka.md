@@ -389,11 +389,11 @@ KafkaProducer 线程安全，但 KafkaConsumer 非线程安全，一个消费者
 
 ![image.png](./assets/1006.png)
 
-其中 timestampType 有两种类型：CreateTime(消息的创建时间戳)、LogAppendTime(消息追加到日志的时间戳)。poll方法的返回值为ConsumerRecords,该类提供 partitions（获取返回值的所有分区）、records(TopicPartition)（获取某个分区消息）、records(String topic)（根据主题进行取数据）。
+其中 `timestampType` 有两种类型：`CreateTime`(消息的创建时间戳)、`LogAppendTime`(消息追加到日志的时间戳)。poll方法的返回值为ConsumerRecords,该类提供 `partitions`（获取返回值的所有分区）、`records(TopicPartition)`（获取某个分区消息）、`records(String topic)`（根据主题进行取数据）。
 
 #### 分配分区
 
-当消费者加入群组时，它会向群组协调器(存在于服务端)发送一个JoinGroup请求，第一个加入群组的消费者将会成为消费者协调器的leader，他负责给每个消费者分配分区，他使用一个实现PartitionAssignor接口的类来决定哪些分区该被分配给那个消费者，分配完成后，消费者leader负责把分配情况发送给群组协调器，群组协调器再把这些信息发送给所有消费者，每个消费者只能看到自己的分配信息，只有leader知道群组里所有消费者的分配信息。
+当消费者加入群组时，它会向群组协调器(存在于服务端)发送一个JoinGroup请求，第一个加入群组的消费者将会成为消费者协调器的leader，他负责给每个消费者分配分区，他使用一个实现`PartitionAssignor`接口的类来决定哪些分区该被分配给那个消费者，分配完成后，消费者leader负责把分配情况发送给群组协调器，群组协调器再把这些信息发送给所有消费者，每个消费者只能看到自己的分配信息，只有leader知道群组里所有消费者的分配信息。
 
 通过 `partition.assignment.stragetegy` 来设置消费者与订阅主题之间的分区分配策略，默认情况下采用 RangeAssignor 策略。
 
@@ -429,18 +429,18 @@ KafkaProducer 线程安全，但 KafkaConsumer 非线程安全，一个消费者
 
 再均衡的阶段：
 
-1. FIND_COORDINATOR：消费者需要确定它所对应的组协调器的broker，如果已经创建连接，则进行第二阶段，否则向 leastLoadedNode 发送 FindCoordinatorRequest请求，请求中包含 groupId，每个groupId在 __consumer_offsets 中都可以找到一个分区记录它的偏移量信息，计算规则为`Utils.abs(groupId.hashCode) % groupMetadataTopicPartitionCount`,groupMetadataTopicPartitionCount 等于 __consumer_offsets 分区的个数，可由 offsets.topic.num.partitions 配置，默认50，找到该分区后，该分区leader副本 所在broker即为 组协调器的位置，这个broker节点 扮演 组协调器、保存分区分配方案、保存组内消费者偏移量 的角色。
-2. JOIN_GROUP：消费者向组协调器发起 JoinGroupRequest 请求，请求中包含自己支持的分区分配策略，即 partition.assignment.strategy ，然后等待组协调器响应，组协调器首先会选出消费者leader，第一个加入消费组的消费者即为消费者leader，并且为消费者选举分配策略，然后返回响应给客户端。
+1. `FIND_COORDINATOR`：消费者需要确定它所对应的组协调器的broker，如果已经创建连接，则进行第二阶段，否则向 leastLoadedNode 发送 FindCoordinatorRequest请求，请求中包含 groupId，每个groupId在 `__consumer_offsets` 中都可以找到一个分区记录它的偏移量信息，计算规则为`Utils.abs(groupId.hashCode) % groupMetadataTopicPartitionCount`,`groupMetadataTopicPartitionCount` 等于 `__consumer_offsets` 分区的个数，可由 `offsets.topic.num.partitions` 配置，默认50，找到该分区后，该分区leader副本 所在broker即为 组协调器的位置，这个broker节点 扮演 组协调器、保存分区分配方案、保存组内消费者偏移量 的角色。
+2. `JOIN_GROUP`：消费者向组协调器发起 JoinGroupRequest 请求，请求中包含自己支持的分区分配策略，即 `partition.assignment.strategy` ，然后等待组协调器响应，组协调器首先会选出消费者leader，第一个加入消费组的消费者即为消费者leader，并且为消费者选举分配策略，然后返回响应给客户端。
    选举分区分配策略：
    * 收集各个消费者支持的所有分配策略，组成候选集。
    * 每个消费者从候选集中找出第一个自身支持的策略，为策略投票。
    * 计算候选集中各个策略的选票数，选票最多的即为消费组的分配策略，如果有消费者不支持选出的分配策略，抛出 Member does not support protocol。
-3. SYNC_GROUP：leader消费者根据第二阶段选举的分配策略实施具体的分配，然后通过 组协调器 将方案转发给各消费者。
-4. HEARTBEAT：进入这个阶段后，消费组处于正常工作状态。消费者只要以正常的时间间隔发送心跳，就被认为是活跃的。
+3. `SYNC_GROUP`：leader消费者根据第二阶段选举的分配策略实施具体的分配，然后通过 组协调器 将方案转发给各消费者。
+4. `HEARTBEAT`：进入这个阶段后，消费组处于正常工作状态。消费者只要以正常的时间间隔发送心跳，就被认为是活跃的。
 
 ### 拦截器
 
-通过实现 ConsumerInterceptor 接口使用，包含3个方法：onConsume，onCommit，close。
+通过实现 `ConsumerInterceptor` 接口使用，包含3个方法：`onConsume`，`onCommit`，`close`。
 
 KafkaConsumer会在调用 poll 方法返回前调用 onConsume 方法，可以对消息进行修改或者过滤，如通过判断消息中的时间戳来判断消息是否过期，如果过期就将消息直接过滤。
 
@@ -469,48 +469,57 @@ public void test() {
 
 所以需要确保轮询期间所做的任何处理工作都应该尽快完成。
 
-跳出轮询，需要调用 consumer.wakeup()，并抛出 WakeupExcetion 。
+跳出轮询，需要调用 `consumer.wakeup()`，并抛出 WakeupExcetion 。
 
 ### 消费者配置
 
 ```yaml
-fetch.min.bytes
 # 默认1B，消费者从服务器获取记录的最小字节数，broker 收到消费者的数据请求时，
 # 如果可用的数据量小于 fetch.min.bytes 指定大小，会等到有足够的可用数据时才会返回，这样可以减低CPU负载。
-fetch.max.bytes
+fetch.min.bytes
+
 # 默认50MB，该值并不是绝对的最大值，如果在第一个非空分区中拉取的第一个消息大于该值，那么该消息将仍然返回。
-fetch.max.wait.ms
+fetch.max.bytes
+
 # 指定broker等待足够可用数据的最大等待时间，默认500ms，什么时候返回取决于该值和fetch.min.bytes谁先满足。
-max.partition.fetch.bytes
+fetch.max.wait.ms
+
 # 指定了服务器从每个分区返回给消费者最大的字节数，默认1MB，poll()方法每个分区返回的数据量不超该值。
 # 如 一个主题有20个分区和5个消费者，那么一个消费者分到4个分区，poll()方法最多可能返回4MB数据。
 # 在为消费者分配内存时，可以多分配一些，如果群组里有消费者发送崩溃，剩下的消费者需要处理更多的分区，可能会处理更多的数据。
 # 该值需要大于broker能够接受的最大消息字节数(max.message.size)，防止生产者发送大于消费者能消费的最大消息。
 # 如果该值太大，获取数据过多，消费者需要更多时间来处理，可能无法进行下一次轮询来避免会话过期。
-session.timeout.ms
+max.partition.fetch.bytes
+
 # 消费者在被认为死亡之前可以与服务器断开连接的时间，默认10秒，如果消费者没有在该时间内发送心跳给群组协调器，则被认为死亡。
 # heartbeat.interval.ms 指定 poll() 方法向协调器发送心跳的频率，需要比该值小，一般是该值得三分之一，默认3s。
-auto.offset.reset
+session.timeout.ms
+
 # 消费者在读取一个没有偏移量的分区或者偏移量无效的分区时该如何处理。
 # 消费者长时间失效，offset超过7天，该值由 offsets.retention.minutes 决定。
 # 默认是latest，即消费者从它启动之后的最新记录开始读取数据。
 # 另一个值是 earliest，从起始位置读取分区记录。
 # 设置为none,不会进行重置，抛出OffsetOutOfRangeException异常，可以避免重置问题，但增加分区时需要人工区设置offset并消费。
-enable.auto.commit
+auto.offset.reset
+
 # 默认值为 true，消费者自动提交偏移量，可以通过 auto.commit.interval.ms来控制提交的频率，默认5秒。为了避免重复数据和数据丢失，可以设为false，自己控制何时提交偏移量。
-partition.assignment.strategy
+enable.auto.commit
+
 # 决定分区应该被分配给哪个消费者，存在两个默认策略：
 # Range：默认值，策略会把主题的若干连续分区分配给消费者，org.apache.kafka.clients.consumer.RangeAssignor。
 # RoundRobin：把主题的所有分区逐个分配给消费者，org.apache.kafka.clients.consumer.RoundRobinAssignor。
-max.poll.records
+partition.assignment.strategy
+
 # 单次poll最大数据条数。
-receive.buffer.bytes 和 send.buffer.bytes
+max.poll.records
+
 # TCP socket 接受和发送数据包的缓冲区大小，如果设为 -1，则使用操作系统的默认值。
+receive.buffer.bytes 和 send.buffer.bytes
 ```
 
 ### 偏移量
 
-消费者往_consumer_offset的特殊主题发送消息，消息里包含每个分区的偏移量，叫做提交偏移量。
+消费者往`_consumer_offset`的特殊主题发送消息，消息里包含每个分区的偏移量，叫做提交偏移量。
 
 如果消费者发送崩溃或者有新的消费者加入群组，会触发再均衡，完成均衡之后，消费者可能分配到新的分区，为了能够继续之前的工作，消费者需要读取每个分区最后一次提交的偏移量，然后从偏移量指定的地方继续处理。
 
@@ -526,17 +535,17 @@ receive.buffer.bytes 和 send.buffer.bytes
 
 `commitAsync()` 存在问题：由于不等待服务器响应提交偏移量结果，可能存在这样情况：先提交的偏移量200失败，后提交的偏移量300成功，然后偏移量200重试成功，如果触发再均衡就会出现重复消息。
 
-`commitAsync()` 可以传入参数 OffsetCommitCallback 来执行回调，如果使用回调来重试需要注意提交顺序，可以使用一个递增序列号来维护提交的顺序，每次提交偏移量后递增序列号，再重试前检查回调序列号和即将提交的偏移量是否能够进行重试。
+`commitAsync()` 可以传入参数 `OffsetCommitCallback` 来执行回调，如果使用回调来重试需要注意提交顺序，可以使用一个递增序列号来维护提交的顺序，每次提交偏移量后递增序列号，再重试前检查回调序列号和即将提交的偏移量是否能够进行重试。
 
 可以使用组合提交，循环中使用 `commitAsync()` 保证效率、最后 finally 块使用 `commitSync() ` 保底，另外可以使用 `commitAsync()` 分阶段提交，参入偏移量参数。
 
 值得注意的是：如果x表示某次拉取操作中此分区的最大偏移量，那么提交的偏移量为x+1。
 
-当分区再均衡时，需要在这之前提交偏移量，在 subscribe() 传入 ComsumerRebalanceListener 的实现，有两个方法：
+当分区再均衡时，需要在这之前提交偏移量，在 `subscribe()` 传入 `ComsumerRebalanceListener` 的实现，有两个方法：
 
-onPartitionsRevoked：在再均衡之前、消费者停止读取消息之后调用，可以在这里提交偏移量。
+`onPartitionsRevoked`：在再均衡之前、消费者停止读取消息之后调用，可以在这里提交偏移量。
 
-onPartitionsAssigned：会在重新分配分区之后和消费者开始读取消息之前被调用。
+`onPartitionsAssigned`：会在重新分配分区之后和消费者开始读取消息之前被调用。
 
 如果需要从特定的偏移量读取消息，可以使用 ` seekToBeginning(Collection<TopicPartition> tp)`和 `seekToEnd(Collection<TopicPartition> tp)`方法。
 
@@ -546,7 +555,7 @@ onPartitionsAssigned：会在重新分配分区之后和消费者开始读取消
 
 使用 Zookeeper 来维护集群成员，每个broker都有一个唯一标识符，可以在配置文件指定，也可以自动生成。
 
-在broker启动时它通过创建临时节点把自己id注册到Zookeeper，并订阅/brokers/ids路径,当有broker加入集群或者退出集群时，组件就可以获得通知。
+在broker启动时它通过创建临时节点把自己id注册到Zookeeper，并订阅`/brokers/ids`路径,当有broker加入集群或者退出集群时，组件就可以获得通知。
 
 在broker停机、出现网络分区、长时间停顿时，broker会从zookeeper断开连接，此时临时节点将会自动移除，监听broker列表的kafka组件会被告知该broker已移除。
 
@@ -554,26 +563,26 @@ onPartitionsAssigned：会在重新分配分区之后和消费者开始读取消
 
 ### 控制器
 
-集群里第一个启动的broker在Zookeeper里创建一个临时节点/controller让自己成为控制器，其他节点启动时，也会尝试创建该节点，但会收到节点已存在的异常，然后在控制器节点上创建 Zookeeper watch对象，当控制器节点发送变更时，可以收到变更通知。
+集群里第一个启动的broker在Zookeeper里创建一个临时节点`/controller`让自己成为控制器，其他节点启动时，也会尝试创建该节点，但会收到节点已存在的异常，然后在控制器节点上创建 Zookeeper watch对象，当控制器节点发送变更时，可以收到变更通知。
 
-如果控制器被关闭或者与Zookeeper断开连接，控制器节点就会消失，集群中的其他节点通过 watch 对象得到控制器节点消失的通知，它们会尝试让自己成为新的控制器，最先成功创建控制器节点的broker就会成为新的而控制器，其他节点收到节点已存在的异常，然后在新的控制器节点上创建watch对象，每个新选出的控制器通过递增操作在/controller_epoch获得一个全新的、数值更大的 controller epoch，其他broker在知道当前 controller epoch后，如果收到控制器发出的包含较旧 epoch消息时就会忽略，控制器使用 epoch 来避免脑裂。
+如果控制器被关闭或者与Zookeeper断开连接，控制器节点就会消失，集群中的其他节点通过 watch 对象得到控制器节点消失的通知，它们会尝试让自己成为新的控制器，最先成功创建控制器节点的broker就会成为新的而控制器，其他节点收到节点已存在的异常，然后在新的控制器节点上创建watch对象，每个新选出的控制器通过递增操作在`/controller_epoch`获得一个全新的、数值更大的 controller epoch，其他broker在知道当前 controller epoch后，如果收到控制器发出的包含较旧 epoch消息时就会忽略，控制器使用 epoch 来避免脑裂。
 
 kafka使用Zookeeper的临时节点来选举控制器，并在其他节点加入集群或退出集群时通知控制器，分区首领退出集群后由控制器进行分区首领选举。
 
 控制器的作用：
 
 1. 管理主题，完成对主题的增减、删除。
-2. 监听分区的变化，处理kafka-reassign-partitions.sh的分区重分配动作、处理ISR集合的变更、处理kafka-preferred-replica-election.sh的首选副本选举、负责分区首领的选举。
+2. 监听分区的变化，处理`kafka-reassign-partitions.sh`的分区重分配动作、处理ISR集合的变更、处理`kafka-preferred-replica-election.sh`的首选副本选举、负责分区首领的选举。
 3. 监听broker的变化，当控制器发现一个broker加入集群时，它会使用broker ID来检查新加入的broker是否包含现有分区的副本，如果有，控制器就把变更通知发送给新加入的broker和其他broker，新broker上的副本开始从首领那里复制消息。
 4. 管理集群的元数据。
-5. 当 auto.leader.rebalance.enable 设为true，负责维护分区首选副本的平衡。
+5. 当 `auto.leader.rebalance.enable=true`，负责维护分区首选副本的平衡。
 
 ### 分区首领选举
 
-1. 选举的策略为 OfflinePartitionLeaderElectionStrategy ，按照 AR 集合中副本的顺序查找第一个存活的副本，并且该副本在ISR集合中。如果 ISR 集合中没有可用副本，那么检查 unclean.leader.election.enable，若为true，进行不完全的首领选举，从 AR 列表找到一个存活的副本 即为 leader。只要不发送重分配的情况，AR 集合内部副本的顺序保持不变。
-2. 当分区进行重分配时也需要执行 leader 的选举动作，对应的策略为 ReassignPartitionLeaderElectionStrategy,即从重分配的AR列表中找到第一个存活的副本，且这个副本在目前的ISR中。
-3. 当发生首选副本选举时，直接将首选副本设置为leader，策略为 PreferredReplicaPartitionLeaderElectionStrategy,AR 中第一个副本即为优先副本。
-4. 当某节点 kafka-server-stop.sh 使用执行 ControlledShutdown 时，位于这个节点上leader副本都会下线，对此执行的选举策略为 ControlledShutdownPartitionLeaderElectionStrategy,即在 AR 中找到第一个存活、在 ISR 中、不处于被关闭节点上的副本。
+1. 选举的策略为 `OfflinePartitionLeaderElectionStrategy` ，按照 AR 集合中副本的顺序查找第一个存活的副本，并且该副本在ISR集合中。如果 ISR 集合中没有可用副本，那么检查 `unclean.leader.election.enable`，若为true，进行不完全的首领选举，从 AR 列表找到一个存活的副本 即为 leader。只要不发送重分配的情况，AR 集合内部副本的顺序保持不变。
+2. 当分区进行重分配时也需要执行 leader 的选举动作，对应的策略为 `ReassignPartitionLeaderElectionStrategy`,即从重分配的AR列表中找到第一个存活的副本，且这个副本在目前的ISR中。
+3. 当发生首选副本选举时，直接将首选副本设置为leader，策略为 `PreferredReplicaPartitionLeaderElectionStrategy`,AR 中第一个副本即为优先副本。
+4. 当某节点 `kafka-server-stop.sh` 使用执行 ControlledShutdown 时，位于这个节点上leader副本都会下线，对此执行的选举策略为 `ControlledShutdownPartitionLeaderElectionStrategy`,即在 AR 中找到第一个存活、在 ISR 中、不处于被关闭节点上的副本。
 
 ### 复制
 
@@ -587,9 +596,9 @@ kafka使用Zookeeper的临时节点来选举控制器，并在其他节点加入
 
 首领的另一个任务是搞清楚哪个跟随者的状态与自己是一致的。跟随者为了保持与首领的状态一致，在有新消息到达时会尝试从首领那里复制消息，跟随者向首领发送获取数据的请求，请求中包含了跟随者想要获取消息的偏移量，然后首领将响应消息发送给跟随者。
 
-一个跟随者副本会依次请求消息1、消息2、消息3，在收到3个请求的响应之前，不会发送第4个消息，如果跟随者发送了消息4，那么首领就知道它收到了前面3个消息的响应，通过查看每个跟随者请求的最新偏移量，首领就会知道每个跟随者复制的进度，如果跟随者在10s内没有请求任何消息，或者10s内没有请求最新数据，那么它会被认为不同步，相反称为同步副本，在首领失效时，只有同步副本才有可能选为首领。成为不同步副本之前的时间通过replica.lag.time.max.ms来设置。
+一个跟随者副本会依次请求消息1、消息2、消息3，在收到3个请求的响应之前，不会发送第4个消息，如果跟随者发送了消息4，那么首领就知道它收到了前面3个消息的响应，通过查看每个跟随者请求的最新偏移量，首领就会知道每个跟随者复制的进度，如果跟随者在10s内没有请求任何消息，或者10s内没有请求最新数据，那么它会被认为不同步，相反称为同步副本，在首领失效时，只有同步副本才有可能选为首领。成为不同步副本之前的时间通过`replica.lag.time.max.ms`来设置。
 
-每个分区都有一个首选首领，即创建主题时选定的首领就是分区的首选首领，因为在创建分区时，选择的分区首领在broker间的负载是均衡的，默认情况下 auto.leader.rebalance.enable = true，它会检查首选首领是不是当前首领，如果不是，并且首选首领副本是同步的，就会触发首领选举，让首选首领成为当前首领，该值在生产环境应该关闭，否则会导致首选首领选举时间不可控，在关键时候由于换首领，导致分区不可用，可使用kafka-preferred-replica-election.sh手动触发。
+每个分区都有一个首选首领，即创建主题时选定的首领就是分区的首选首领，因为在创建分区时，选择的分区首领在broker间的负载是均衡的，默认情况下 `auto.leader.rebalance.enable = true`，它会检查首选首领是不是当前首领，如果不是，并且首选首领副本是同步的，就会触发首领选举，让首选首领成为当前首领，该值在生产环境应该关闭，否则会导致首选首领选举时间不可控，在关键时候由于换首领，导致分区不可用，可使用`kafka-preferred-replica-election.sh`手动触发。
 
 所以当手动分配副本时，需要确保负载均衡，第一个指定的副本就是首选副本。
 
@@ -658,7 +667,7 @@ kafka 使用零拷贝技术向客户端发送消息：直接从Linux文件缓存
 
 保留数据是kafka的基本特性，kafka不会一直保留数据，也不会等到所有消费者都读取消息之后才会删除。
 
-一个分区会分成若干个日志片段，默认情况下，每个片段包含1GB(log.segment.bytes)或者一周数据(log.roll.hours)，以较小的哪个为准，在broker往分区写入数据时，如果达到片段上限，就关闭当前文件，并打开一个新文件。
+一个分区会分成若干个日志片段，默认情况下，每个片段包含1GB(`log.segment.bytes`)或者一周数据(`log.roll.hours`)，以较小的哪个为准，在broker往分区写入数据时，如果达到片段上限，就关闭当前文件，并打开一个新文件。
 
 每个日志片段都会包含日志文件、偏移量索引文件、时间戳索引文件。每个日志片段第一条消息的偏移量叫做基准偏移量 BaseOffset，日志文件和索引文件名词都是以 BaseOffset来命名。
 
@@ -666,14 +675,14 @@ kafka 使用零拷贝技术向客户端发送消息：直接从Linux文件缓存
 
 当前正在写入的片段是活跃片段，活跃片段永远不会清理。
 
-log.cleanup.policy 默认值为 delete，也就是删除策略，还可以设置为 compact，也就是 日志不会被删除，会被去重清理，对于同一个key只保留最后的那个key，同样的，compact也只针对不活跃的segment。
+`log.cleanup.policy` 默认值为 delete，也就是删除策略，还可以设置为 compact，也就是 日志不会被删除，会被去重清理，对于同一个key只保留最后的那个key，同样的，compact也只针对不活跃的segment。
 
 ###### 删除(retention)
 
-执行删除操作时，先从 Log 对象所维护日志分段中移除待删除的日志分段，以保证没有线程对这些日志分段进行读取操作，然后在对应的日志分段添加上".deleted"的后缀，最后由"delete-file"的任务延迟删除这些文件，延迟时间通过file.delete.delay.ms 来控制，默认为1分钟。
+执行删除操作时，先从 Log 对象所维护日志分段中移除待删除的日志分段，以保证没有线程对这些日志分段进行读取操作，然后在对应的日志分段添加上`.deleted`的后缀，最后由`delete-file`的任务延迟删除这些文件，延迟时间通过`file.delete.delay.ms` 来控制，默认为1分钟。
 
-1. 基于时间，以 log.retention.ms > log.retention.minutes > log.retention.hours 的优先级执行保留策略。
-2. 基于日志大小，当前日志大小超过 log.retention.bytes 的部分执行删除。
+1. 基于时间，以 `log.retention.ms > log.retention.minutes > log.retention.hours` 的优先级执行保留策略。
+2. 基于日志大小，当前日志大小超过 `log.retention.bytes` 的部分执行删除。
 
 ###### 压缩(compact)
 
@@ -682,9 +691,9 @@ log.cleanup.policy 默认值为 delete，也就是删除策略，还可以设置
 1. 干净的部分：消息被清理过，每个key只保留了上次清理前最新数据，偏移量不连续，是上次清理保留下来的。
 2. 污浊的部分：这些数据是在上次清理之后写入的，偏移量连续。
 
-如果Kafka启用了清理功能(log.cleaner.enabled)，每个broker会启动一个清理管理器线程和多个清理线程，这些线程会选择污浊率(污浊消息占分区总大小的比例)较高的分区进行清理，清理线程会清理除了活动日志片段其他所有日志片段，然后对片段进行分组，每一组大小不超过 log.segments.bytes(默认1G)，且索引文件占用大小不超过log.index.interval.bytes(默认10M)，首先会遍历污浊部分，使用消息的key作为map的key，消息的偏移量作为map的value，然后从干净的部分最开始的消息开始，如果key在map中不存在则把消息复制到新的日志片段，如果key在map中存在则忽略复制，处理完干净部分后，将map中各个key对应的偏移量的消息也复制到新的日志片段，然后使用新的日志片段替换旧的日志片段。
+如果Kafka启用了清理功能`log.cleaner.enabled`，每个broker会启动一个清理管理器线程和多个清理线程，这些线程会选择污浊率(污浊消息占分区总大小的比例)较高的分区进行清理，清理线程会清理除了活动日志片段其他所有日志片段，然后对片段进行分组，每一组大小不超过 `log.segments.bytes`(默认1G)，且索引文件占用大小不超过`log.index.interval.bytes`(默认10M)，首先会遍历污浊部分，使用消息的key作为map的key，消息的偏移量作为map的value，然后从干净的部分最开始的消息开始，如果key在map中不存在则把消息复制到新的日志片段，如果key在map中存在则忽略复制，处理完干净部分后，将map中各个key对应的偏移量的消息也复制到新的日志片段，然后使用新的日志片段替换旧的日志片段。
 
-由于每个key总是保留最新的数据，所以如果要把一个key从系统中删除，需要发送一个包含该key但值为null的墓碑消息，清理线程发现该消息时，会先进行常规的清理，只保留值为null的消息，该消息会保留一段时间，在这个时间内消费者看到这个消息，就知道应该要把该key的数据清理感觉，过了保留时间后，清理线程会清除墓碑消息，如果消费者错过了墓碑消息，就会不知道该key已经被删除。保留墓碑消息的条件 = 所在日志分段的最后修改时间 大于 (活动片段前一个片段的最后修改时间 - log.cleaner.delete.retention.ms(默认86400000，即24小时))。
+由于每个key总是保留最新的数据，所以如果要把一个key从系统中删除，需要发送一个包含该key但值为null的墓碑消息，清理线程发现该消息时，会先进行常规的清理，只保留值为null的消息，该消息会保留一段时间，在这个时间内消费者看到这个消息，就知道应该要把该key的数据清理感觉，过了保留时间后，清理线程会清除墓碑消息，如果消费者错过了墓碑消息，就会不知道该key已经被删除。保留墓碑消息的条件 = 所在日志分段的最后修改时间 大于 (活动片段前一个片段的最后修改时间 - `log.cleaner.delete.retention.ms`(默认**86400000**，即**24小时**))。
 
 #### 文件格式
 
@@ -694,13 +703,13 @@ log.cleanup.policy 默认值为 delete，也就是删除策略，还可以设置
 
 消息中包含 键、值、偏移量、消息大小、检验和、消息格式版本号、压缩算法、时间戳。
 
-kafka-run-class.sh kafka.tools.DumpLogSegmets 可以查看片段的内容，--deep-iteration 可以查看压缩的包装消息，--files参数，用于指定想查看的分区片段，--print-data-log参数，指定打印详细内容。
+`kafka-run-class.sh kafka.tools.DumpLogSegmets` 可以查看片段的内容，`--deep-iteration` 可以查看压缩的包装消息，`--files`参数，用于指定想查看的分区片段，`--print-data-log`参数，指定打印详细内容。
 
 #### 索引
 
 每个分区都维护了一个偏移量映射到日志片段、日志片段中偏移量的位置的索引，这样broker可以快速定位到偏移量的位置。
 
-索引文件采用的是稀疏索引，每当写入一定量(log.index.interval.bytes，默认4096)，增加一个索引。
+索引文件采用的是稀疏索引，每当写入一定量(`log.index.interval.bytes`，默认4096)，增加一个索引。
 
 索引也被分成片段，在删除消息时，也可以删除相应的索引，kafka并不维护索引，如果索引损坏，kafka会重新读取消息并录制偏移量和位置来重新生产索引，当删除索引后，kafka会自动重新生产索引。
 
@@ -708,7 +717,7 @@ kafka-run-class.sh kafka.tools.DumpLogSegmets 可以查看片段的内容，--de
 
 每个索引项包含8个字节，前4个字节(RelativeOffset)是基于 BaseOffset 的相对偏移量，后4个字节(Position)是基于 文件对应物理地址 的相对物理位置，也就是说索引文件一条数据的物理位置为0。
 
-对于任意一个偏移量，先根据 BaseOffset 定位到所在的日志分段，再计算相对偏移量RelativeOffset = 偏移量 - BaseOffset，通过二分法在索引文件找到不大于 RelativeOffset的最大索引项，然后根据此索引项顺序查找到目标偏移量。
+对于任意一个偏移量，先根据 BaseOffset 定位到所在的日志分段，再计算`相对偏移量RelativeOffset = 偏移量 - BaseOffset`，通过二分法在索引文件找到不大于 RelativeOffset的最大索引项，然后根据此索引项顺序查找到目标偏移量。
 
 ##### 时间戳索引
 
@@ -717,12 +726,10 @@ kafka-run-class.sh kafka.tools.DumpLogSegmets 可以查看片段的内容，--de
 #### 使用磁盘存储会不会造成性能问题？
 
 1. kafka在设计时采用文件追加的方式来写入消息，即只能在日志文件尾部追加新的信息，并且也不允许修改已写入的消息，这是典型的顺序写盘，即使使用磁盘，吞吐量也不可小觑。
-2. 页缓存：
-   页缓存是操作系统的设计，当一个进程准备读取磁盘上的文件内容时，操作系统先查看待读取的数据所在页是否在页缓存中，如果存在则之间返回，如果没有命中，操作系统会向磁盘发起读取请求并将读取的数据页页缓存，并且会预读出一些相邻的块放入页缓存中，当写入数据时，操作系统会检查数据对应页是否存在页缓存中，如果不存在则会先在页缓存中添加相应的页，最后将数据写入对应的页，被修改的页成为脏页，操作系统会根据一定规则来将脏页写回磁盘，可以通过操作系统配置参数来设置如:vm.dirty_background_ratio 指定脏页数据占总内存的百分比。
+2. 页缓存：页缓存是操作系统的设计，当一个进程准备读取磁盘上的文件内容时，操作系统先查看待读取的数据所在页是否在页缓存中，如果存在则之间返回，如果没有命中，操作系统会向磁盘发起读取请求并将读取的数据页页缓存，并且会预读出一些相邻的块放入页缓存中，当写入数据时，操作系统会检查数据对应页是否存在页缓存中，如果不存在则会先在页缓存中添加相应的页，最后将数据写入对应的页，被修改的页成为脏页，操作系统会根据一定规则来将脏页写回磁盘，可以通过操作系统配置参数来设置如:vm.dirty_background_ratio 指定脏页数据占总内存的百分比。
 
-   kafka大量使用页缓存，文件不可避免的直接或间接的使用页缓存（如 FileChannel.write() 需要先写入java heap，在从java heap 拷贝到 jvm 堆外内存，再由jvm进行系统调用write，拷贝到内核内存中，然后再写入pagebuffer，再由操作系统决定刷盘时机）java中直接使用页缓存的使用主要是通过mmap将文件映射到进程虚拟地址空间(对应具体的方法为FileChannel.map()得到MappedByteBuffer，然后对MappedByteBuffer进行put操作，以及force操作要求操作系统刷盘，**不过需要注意的是MappedByteBuffer的释放**)，kafka中可以通过 log.flush.interval.messages 、 log.flush.interval.ms 等参数控制刷盘时机，另外由于Linux当内存不够是会将内存换出到 swap分区，可以将vm.swappiness = 0 ，限制内存换出操作，建议设置为1。
-3. 零拷贝：
-   将数据从磁盘文件直接复制到网卡设备，对操作系统而言依赖于底层的sendfile()方法，对应java而言，FileChannel.transferTo()方法的底层实现就是sendfile()。
+   kafka大量使用页缓存，文件不可避免的直接或间接的使用页缓存（如 `FileChannel.write()` 需要先写入java heap，在从java heap 拷贝到 jvm 堆外内存，再由jvm进行系统调用write，拷贝到内核内存中，然后再写入pagebuffer，再由操作系统决定刷盘时机）java中直接使用页缓存的使用主要是通过mmap将文件映射到进程虚拟地址空间(对应具体的方法为`FileChannel.map()`得到`MappedByteBuffer`，然后对`MappedByteBuffer`进行put操作，以及force操作要求操作系统刷盘，**不过需要注意的是MappedByteBuffer的释放**)，kafka中可以通过 `log.flush.interval.messages` 、 `log.flush.interval.ms` 等参数控制刷盘时机，另外由于Linux当内存不够是会将内存换出到 swap分区，可以将`vm.swappiness = 0`，限制内存换出操作，建议设置为1。
+3. 零拷贝：将数据从磁盘文件直接复制到网卡设备，对操作系统而言依赖于底层的`sendfile()`方法，对应java而言，`FileChannel.transferTo()`方法的底层实现就是`sendfile()`。
 
    正常情况下，数据发送到网卡需要经历4次复制：
 
@@ -755,15 +762,15 @@ kafka-run-class.sh kafka.tools.DumpLogSegmets 可以查看片段的内容，--de
 
 更高的复制系数带来高可用性、可靠性、更少的故障，但也消耗更多的磁盘空间。默认的复制系数为3，并且kafka会确保分区的每个副本被放在不同的broker上，另外还可以使用 broker.rack 参数配置broker的机架，kafka会保证分区的副本分布在多个机架上。
 
-broker级别：default.replication.factor
+broker级别：`default.replication.factor`
 
-topic级别：replication.factor
+topic级别：`replication.factor`
 
 #### 不完全的首领选举
 
 当首领分区不可用时，一个同步副本会被选为首领，如果在选举过程中没有丢失数据，所有副本都是同步的，就叫完全选举。
 
-在首领不可用时所有副本都不同步情况下，是否选举由参数(unclean.leader.election.enable 默认值为false 只能在broker上配置)控制，这两种场景会出现：
+在首领不可用时所有副本都不同步情况下，是否选举由参数(`unclean.leader.election.enable` 默认值为false 只能在broker上配置)控制，这两种场景会出现：
 
 1. 分区有3个副本，两个跟随者副本不可用，如果生产者继续写入数据，由于只有首领分区副本唯一一个同步副本，所以所有消息都会得到确认并提交，如果这时候首领不可用，而另外一个跟随者重启，它就成为了分区的唯一不同步副本。
 2. 分区有3个副本，两个跟随者副本可用但不同步，首领作为唯一同步副本继续接受消息，如果这时候首领不可用，另外两个副本再也无法变成同步。
@@ -772,7 +779,7 @@ topic级别：replication.factor
 
 #### 最少的同步副本
 
-min.insync.replicas,可以作用于 topic 或者 broker，表示至少需要 n 个同步副本才能向分区写入数据，如果这时候生产者发送数据会收到 NotEnoughReplicasException 异常。但是消费者仍然可以继续读取已有的数据。
+`min.insync.replicas`,可以作用于 topic 或者 broker，表示至少需要 n 个同步副本才能向分区写入数据，如果这时候生产者发送数据会收到 NotEnoughReplicasException 异常。但是消费者仍然可以继续读取已有的数据。
 
 ### 生产者的可靠性配置
 
@@ -780,13 +787,13 @@ min.insync.replicas,可以作用于 topic 或者 broker，表示至少需要 n �
 
 1. acks = 0，生产者发送消息后不等待响应，如果这时候发生首领选举，即使是完全选举，但生产者不知道首领暂时不可用，仍会丢失消息。
 2. acks = 1，首领收到消息并写入分区数据文件就会响应，但是当首领选举时，生产者会收到 LeaderNotAvailableException 异常，如果生产者没有处理这个消息会丢失，但是如果生产者进行重试并成功，但是还未复制到跟随者副本是首领崩溃，消息也会丢失。
-3. acks = all 或 -1，首领在返回确认或错误响应之前，会等待所有同步副本都收到消息，可以和 min.insync.replicas 结合使用，就可以决定在返回确认之前至少有多少个副本能收到消息。不过会降低吞吐量，可以使用异步模式和更大的批次来加快速度。
+3. acks = all 或 -1，首领在返回确认或错误响应之前，会等待所有同步副本都收到消息，可以和 `min.insync.replicas` 结合使用，就可以决定在返回确认之前至少有多少个副本能收到消息。不过会降低吞吐量，可以使用异步模式和更大的批次来加快速度。
 
 #### 重试
 
 生产需要处理的错误包含两部分：生产者可以自动处理的错误，例如LeaderNotAvailableException；开发者手动处理的错误，例如INVALID_CONFIG。如果重试造成的延迟已经失去发送消息的意义，可以放弃重试。如果想把消息保存然后回过头来再继续处理，可以放弃重试。
 
-kafka 的跨数据中心复制工具(MirrorMaker)会无限制重试 retries = MAX_INT。
+kafka 的跨数据中心复制工具(MirrorMaker)会无限制重试 `retries = MAX_INT`。
 
 另外重试会带来风险，如果两个消息都写入成功，会导致重复消息，例如因为网络问题broker已经写入，但是生产者没有收到确认并进行重试，可以在消息里加入唯一标识符来判断实现幂等消费。
 
@@ -804,10 +811,10 @@ kafka 的跨数据中心复制工具(MirrorMaker)会无限制重试 retries = MA
 
 相关参数:
 
-1. group.id,如果多个消费者具有相同group.id,并且订阅了一个主题，那么每个消费者会分到主题分区的一个子集，如果需要一个消费者可以看到主题的所有分区，需要设置唯一的group.id。
-2. auto.offset.reset,没有偏移的时候(如消费者第一次消费，或者请求的偏移量在broker上不存在时)，消费者会做什么。earliest，消费者会从分区的开始位置读取消息。latest,消费者会从分区末尾开始读取数据。
-3. enable.auto.commit,让消费者在轮询操作中自动提交偏移量，自动提交可能导致重复消费或者丢失，例如消费者者在自动提交偏移量前停止轮询处理消息，那有一个部分已经处理的消息偏移量不会提交，会导致重复消费，或者使用后台线程去处理时，自动提交可能会在消息还没处理完成就提交偏移量导致消息丢失。
-4. auto.commit.interval.ms，自动提交偏移量的频率，默认5s。
+1. `group.id`,如果多个消费者具有相同group.id,并且订阅了一个主题，那么每个消费者会分到主题分区的一个子集，如果需要一个消费者可以看到主题的所有分区，需要设置唯一的group.id。
+2. `auto.offset.reset`,没有偏移的时候(如消费者第一次消费，或者请求的偏移量在broker上不存在时)，消费者会做什么。earliest，消费者会从分区的开始位置读取消息。latest,消费者会从分区末尾开始读取数据。
+3. `enable.auto.commit`,让消费者在轮询操作中自动提交偏移量，自动提交可能导致重复消费或者丢失，例如消费者者在自动提交偏移量前停止轮询处理消息，那有一个部分已经处理的消息偏移量不会提交，会导致重复消费，或者使用后台线程去处理时，自动提交可能会在消息还没处理完成就提交偏移量导致消息丢失。
+4. `auto.commit.interval.ms`，自动提交偏移量的频率，默认5s。
 
 #### 手动提交偏移量需要注意的问题
 
@@ -829,7 +836,7 @@ kafka 的跨数据中心复制工具(MirrorMaker)会无限制重试 retries = MA
 
 #### 配置验证
 
-使用VerifiableProducer(生成从1到指定的某个数字，并把是否成功发送到broker的结果打印出来)和VerifiableConsumer(读取消息并打印，同时会打印已提交的偏移量和再均衡相关信息),并使用和正常生产者消费者相同的配置，然后进行相关测试：
+使用`VerifiableProducer`(生成从1到指定的某个数字，并把是否成功发送到broker的结果打印出来)和`VerifiableConsumer`(读取消息并打印，同时会打印已提交的偏移量和再均衡相关信息),并使用和正常生产者消费者相同的配置，然后进行相关测试：
 
 1. 首领选举：如果停掉首领会发生什么，生产者、消费者重新恢复正常状态需要多久？
 2. 控制器选举：重启控制器后系统需要多少时间来恢复状态？
@@ -852,35 +859,35 @@ kafka 的跨数据中心复制工具(MirrorMaker)会无限制重试 retries = MA
 
 Kafka启动时添加 JMX_PORT 参数，开启 JMX 监控。对于生产者需要监控 error-rate 和 retry-rate,若这两个指标上升，说明系统出现了问题。对于消费者重要的指标的是 consumer-lag ,该指标表明消费者的处理速度与最近提交到分区里的偏移量之间还有多少差距。
 
-非同步分区：kafka.server:type=ReplicaManager,name=UnderReplicatedPartitionis。如果多个broker的非同步分区数量一直保持不变，说明某个broker已经离线。如果数量时波动的，说明集群出现了性能问题，如果所有的非同步分区都属于一个broker，那么可能是这个broker出现的问题。集群负载不均衡可以通过各broker流入流出流量来判断，加入进行首选首领副本选举后，指标出现很大偏差，说明流量出现了不均衡。另外 CPU的使用、网络输入输出吞吐量、磁盘平均等待时间、磁盘使用百分比 大量消耗也会出现分区不同步。
+非同步分区：`kafka.server:type=ReplicaManager,name=UnderReplicatedPartitions`。如果多个broker的非同步分区数量一直保持不变，说明某个broker已经离线。如果数量时波动的，说明集群出现了性能问题，如果所有的非同步分区都属于一个broker，那么可能是这个broker出现的问题。集群负载不均衡可以通过各broker流入流出流量来判断，加入进行首选首领副本选举后，指标出现很大偏差，说明流量出现了不均衡。另外 CPU的使用、网络输入输出吞吐量、磁盘平均等待时间、磁盘使用百分比 大量消耗也会出现分区不同步。
 
-活跃控制器数量：kafka.controller:type=KafkaController,name=ActiveControllerCount。
+活跃控制器数量：`kafka.controller:type=KafkaController,name=ActiveControllerCount`。
 
-请求处理器空闲率：kafka.server:type=KafkaRequestHandlerPool,name=RequestHandlerAvgIdlePercent。值的范围为0-1。kafka使用两个线程池来处理客户端的请求：网络处理器线程池和请求处理器线程池。数值越低负载越高。可能存在两个方面问题，线程数量不够，一般和处理器核数相当；另一个是线程做了不该做的事，请求处理器线程负责解压消息批次、验证消息、分配偏移量、重新压缩写入磁盘，可以在生产者发送消息批次前设置相对的偏移量，这样可以避免解压和压缩。
+请求处理器空闲率：`kafka.server:type=KafkaRequestHandlerPool,name=RequestHandlerAvgIdlePercent`。值的范围为0-1。kafka使用两个线程池来处理客户端的请求：网络处理器线程池和请求处理器线程池。数值越低负载越高。可能存在两个方面问题，线程数量不够，一般和处理器核数相当；另一个是线程做了不该做的事，请求处理器线程负责解压消息批次、验证消息、分配偏移量、重新压缩写入磁盘，可以在生产者发送消息批次前设置相对的偏移量，这样可以避免解压和压缩。
 
-主题流入字节：kafka.server:type=BrokerTopicMetrics,name=BytesInPerSec。OneMinuteRate-前1分钟的平均值，FiveMinuteRate-前5分钟的平均值，FifteenMinuteRate-前15分钟的平均值，MeanRate-从broker启动到目前为止的平均值，Count-从broker启动以来接收到流量的字节总数。
+主题流入字节：`kafka.server:type=BrokerTopicMetrics,name=BytesInPerSec`。OneMinuteRate-前1分钟的平均值，FiveMinuteRate-前5分钟的平均值，FifteenMinuteRate-前15分钟的平均值，MeanRate-从broker启动到目前为止的平均值，Count-从broker启动以来接收到流量的字节总数。
 
-主题流出字节：kafka.server:type=BrokerTopicMetrics,name=BytesOutPerSec。
+主题流出字节：`kafka.server:type=BrokerTopicMetrics,name=BytesOutPerSec`。
 
-主题流入消息：kafka.server:type=BrokerTopicMetrics,name=MessagesInPerSec。
+主题流入消息：`kafka.server:type=BrokerTopicMetrics,name=MessagesInPerSec`。
 
-首领数量：kafka.server:type=ReplicaManager,name=LeaderCount。
+首领数量：`kafka.server:type=ReplicaManager,name=LeaderCount`。
 
-离线分区：kafka.controller:type=kafkaController,name=OfflinePartitionsCount。
+离线分区：`kafka.controller:type=kafkaController,name=OfflinePartitionsCount`。
 
 ![image.png](./assets/1004.png)
 
-TotalTime：表示broker花在处理请求上的时间，从收到请求到响应返回给请求者。
+`TotalTime`：表示broker花在处理请求上的时间，从收到请求到响应返回给请求者。
 
-RequestQueueTime：表示请求停留在队列里的时间，从收到请求到开始处理请求。
+`RequestQueueTime`：表示请求停留在队列里的时间，从收到请求到开始处理请求。
 
-LocalTime：首领分区花在处理请求上的时间，包括把消息写入磁盘，但不一定会冲刷同步。
+`LocalTime`：首领分区花在处理请求上的时间，包括把消息写入磁盘，但不一定会冲刷同步。
 
-RemoteTime：请求处理完毕之前，用于等待跟随者的时间。
+`RemoteTime`：请求处理完毕之前，用于等待跟随者的时间。
 
-ResponseQueueTime：响应被发送给请求者之前停留在队列里的时间。
+`ResponseQueueTime`：响应被发送给请求者之前停留在队列里的时间。
 
-ResponseSendTime：实际用于发送响应的时间。
+`ResponseSendTime`：实际用于发送响应的时间。
 
 ## 消息中间件选型
 
@@ -969,14 +976,14 @@ MirrorMaker包含一组消费者从源集群读取数据，然后通过公共的
 配置：
 
 ```yaml
-consumer.config
 # 消费者配置
-producer.config
+consumer.config
 # 生产者配置
-num.streams
+producer.config
 # 消费者数量
-whitelist
+num.streams
 # 正则表达式，哪些主题要被镜像
+whitelist
 ```
 
 ## 事件流

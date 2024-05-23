@@ -118,49 +118,58 @@ kafka-server-stop.sh
 ### Broker
 
 ```yaml
-broker.id
 # broker 的标识符，默认为0，可以是其他任意整数，在集群中必须唯一。
-port
+broker.id
+
 # 端口
-zookeeper.connect
+port
+
 # zookeeper地址，如 localhost:2181
-log.dirs
+zookeeper.connect
+
 # 存放消息的日志片段的目录，它是一组用逗号分割的本地文件系统，如果指定了多个路径，那么broker会根据 “最少使用” 原则，把同一分区的日志片段保存
 # 在同一路径下，broker会往拥有最少数目分区的路径新增分区，而不是拥有最少磁盘空间的路径新增分区。
-num.recovery.threads.per.data.dir
+log.dirs
+
 # 配置线程池数量来处理一下三种情况：
 # 服务正常启动，用于打开每个分区的日志片段。
 # 服务崩溃后重启，用于检查和截短每个分区的日志片段
 # 服务器正常关闭，用于关闭日志片段
 # 默认情况下，每个日志目录使用一个线程，该配置对应的是log.dirs指定的单个日志目录，也就是说如果该配置为 8 ，并且 log.dir 指定了3个路径，那么总共会使用24个线程。
-auto.create.topics.enable
+num.recovery.threads.per.data.dir
+
 # kafka 在以下情形会自动创建主题：
 # 当一个生产者开始往主题写入消息。
 # 当一个消费者开始往主题读取消息。
 # 当任意一个客户端向主题获取元数据。
+auto.create.topics.enable
 ```
 
 ### Topic
 
 ```yaml
-num.partitions
 # 指定新创建的主题将包含多少个分区，如果启动了主题自动创建的功能，主题的分区个数就是该值，默认为1。
 # 可以手动增加已有主题的分区个数，但不能减少，所以如果要想少于该值，应手动创建主题。
 # 集群通过分区对主题进行扩展，分区数量的选择因素：
 # 1.主题的吞吐量。2.单个分区的最大吞吐量，比如分区消费者入库速度不超过50M/s，生产者写入数据的吞吐量。
 # 3.每个broker包含的分区个数、可用的磁盘空间、网络带宽。4.如果消息键和分区有对应关系，那么新增分区会很困难。
 # 5.单个broker对分区个数限制，分区越多，内存占用越多，首领选举时间越长。
-log.retention.ms
+num.partitions
+
 # 决定数据保存多久，最后修改时间往后延迟多久删除。默认使用 log.retention.hours，为168个小时，另外还有 log.retention.minutes 、log.retention.ms,kafka 谁先满足使用谁。
 # 最后修改时间是日志片段的关闭时间，也就是文件里的最后一个消息的时间戳，若日志片段一直未关闭，将一直不会被删除。
-log.retention.bytes
+log.retention.ms
+
 # 通过消息字节数来判断消息是否过期，作用于每个分区上，每个分区独立计算。它和上面的参数谁先满足谁触发。
-log.segment.bytes
+log.retention.bytes
+
 # 当日志片段大小达到 log.segment.bytes 指定的上限（默认1GB）时，当前日志片段就会关闭，一个新的日志片段被打开。如果一个日志片段被关闭，就开始根据 log.retention.ms 等待过期，这个参数越小，就会越频繁地关闭和分配新文件，从而降低磁盘写入的整体效率。
 # 使用基于时间的日志片段，要考虑关闭多个日志片段对磁盘性能的影响，对于数据量小的分区，日志片段的关闭总是同时发送。
-message.max.bytes
+log.segment.bytes
+
 # 限制单个消息大小，默认 1_000_000(也就是1MB)，和其他字节相关的配置一样，是指压缩后的大小，消息实际大小大于该值。值越大，负责网络连接和请求的线程耗时越多，还会增加写入块的大小，从而影响IO吞吐量。
 # 消费者的 fetch.message.max.bytes 和 broker 的 replica.fetch.max.bytes需要与该参数相适应，否则消费者和broker无法处理比较大的消息。
+message.max.bytes
 ```
 
 ### 硬件的选择

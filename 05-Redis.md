@@ -2127,29 +2127,29 @@ info memory内存相关字段：
 
 其中对象内存是占用最大的一块，包含key对象和value对象。
 
-缓冲内存包含：客户端缓冲、复制积压缓冲区、AOF缓冲区，客户端输入缓冲最大1G,无法控制，输出缓冲区通过 `client-output-buffer-limit`控制，复制积压缓冲区根据repl-backlog-size参数控制默认1MB，所有从节点共享此缓冲区，可以设置较大的缓冲空间，如100MB，AOF缓冲区无法由用户控制，取决于AOF重写时间和写入命令量，通常不大。
+缓冲内存包含：客户端缓冲、复制积压缓冲区、AOF缓冲区，客户端输入缓冲最大1G,无法控制，输出缓冲区通过 `client-output-buffer-limit`控制，复制积压缓冲区根据`repl-backlog-size`参数控制默认1MB，所有从节点共享此缓冲区，可以设置较大的缓冲空间，如100MB，AOF缓冲区无法由用户控制，取决于AOF重写时间和写入命令量，通常不大。
 
 内存碎片是因为内存分配器按固定的内存块单位分配，当分配8kb的块给5kb的对象时，剩下3kb未使用不能分配给其他对象存储，就成为了内存碎片。在 频繁更新操作和大量过期键删除 场景下可能会导致碎片率上升。解决办法如下：
 
 1. 尽量做到数据对齐，采用数字类型或者固定长度字符串等。
 2. 重启节点可以做到内存碎片重新整理，因此可以 利用高可用架构，将碎片率过高的主节点切换为从节点，进行安全重启。
 
-子进程内存消耗不需要父进程1倍，根据实际写入命令量消耗，需要设置sysctl vm.overcommit_memory = 1 允许内核可以分配所有的物理内存，防止fork时因剩余内存不足而失败，排查当前系统是否支持开启THP（HugePage），如果开启建议关闭，防止copy-on-write期间内存过渡消耗。
+子进程内存消耗不需要父进程1倍，根据实际写入命令量消耗，需要设置`sysctl vm.overcommit_memory = 1` 允许内核可以分配所有的物理内存，防止fork时因剩余内存不足而失败，排查当前系统是否支持开启THP（HugePage），如果开启建议关闭，防止copy-on-write期间内存过渡消耗。
 
 内存管理：
 
 1. 设置内存最大值maxmemory，用于缓存场景，超过上限使用LRU剔除，防止所有内存超过物理内存，内存碎片的存在实际内存可能大于maxmemory，需要预留好空间，比如一台24G服务器，为系统预留4G，预留4G给其他进程或fork进程，剩下16G可以部署4个maxmemory=4G的redis。
-2. 通过config set maxmemory 动态设置内存上限。
+2. 通过`config set maxmemory` 动态设置内存上限。
 3. 内存回收：删除过期键对象，超过上限使用LRU剔除。
 
 maxmemory-policy策略：
 
-1. noeviction：默认策略，不会删除任何数据，达到上限后拒绝写入。
-2. volatile-lru：根据LRU算法删除设置了超时的键，直到腾出足够空间，如果没有可删除的键回退到noeviction，redis禁止使用共享对象。
-3. allkeys-lru：根据LRU算法删除，不管数据有没有设置超时属性，redis禁止使用共享对象。
-4. allkeys-random：随机删除所有键。
-5. volatile-random：随机删除过期键。
-6. volatile-ttl：根据键值对象的ttl属性，删除最近将要过期数据，如果没有回退到noeviction。
+1. `noeviction`：默认策略，不会删除任何数据，达到上限后拒绝写入。
+2. `volatile-lru`：根据LRU算法删除设置了超时的键，直到腾出足够空间，如果没有可删除的键回退到noeviction，redis禁止使用共享对象。
+3. `allkeys-lru`：根据LRU算法删除，不管数据有没有设置超时属性，redis禁止使用共享对象。
+4. `allkeys-random`：随机删除所有键。
+5. `volatile-random`：随机删除过期键。
+6. `volatile-ttl`：根据键值对象的ttl属性，删除最近将要过期数据，如果没有回退到noeviction。
 
 可以通过info stats中evicted_keys查看已剔除的键数量。
 
@@ -2164,29 +2164,29 @@ maxmemory-policy策略：
 
 ## Linux配置优化
 
-vm.overcommit_memory:该值设为1可以让fork操作能在低内存下也执行成功。
+`vm.overcommit_memory`:该值设为1可以让fork操作能在低内存下也执行成功。
 
 ![image.png](./assets/39.png)
 
-vm.swappiness：如果linux>3.5,为1，否则为0，从而实现内存充足的时候redis足够快，内存不足时避免redis死掉，如果在高可用状态下，死掉比阻塞更好。
+`vm.swappiness`：如果linux>3.5,为1，否则为0，从而实现内存充足的时候redis足够快，内存不足时避免redis死掉，如果在高可用状态下，死掉比阻塞更好。
 
 ![image.png](./assets/40.png)
 
 THP：开启THP特性，支持大内存页2MB分配，当开启时可以减少fork子进程时间，fork操作后每个内存页由4kb变为2mb，会增大重写期间父进程内存消耗。
 
-OOM killker：当内存不足时强制杀死一些用户进程。每个进程的权值放在/proc/pid/oom_score，这个值受/proc/pid/oom_adj控制，当设置为最小值时，不会被杀掉，如果在高可用状态下，死掉比阻塞更好。
+OOM killker：当内存不足时强制杀死一些用户进程。每个进程的权值放在`/proc/pid/oom_score`，这个值受`/proc/pid/oom_adj`控制，当设置为最小值时，不会被杀掉，如果在高可用状态下，死掉比阻塞更好。
 
 NTP：使用ntp使各实例时间同步。
 
-ulimit：ulimit -a 包含open files参数，是单个用户同时打开的最大文件个数，该值应设置为 maxclients + 32，因为redis内部最多使用32个文件描述符。
+ulimit：`ulimit -a` 包含open files参数，是单个用户同时打开的最大文件个数，该值应设置为 maxclients + 32，因为redis内部最多使用32个文件描述符。
 
 tcp backlog：redis默认tcp-backlog为511，需要设置linux的tcp-backlog大于该值。
 
 ## 安全
 
-redis.conf可以配置 requirepass 来设置密码，访问需要 redis-cli -a `<password>`来访问。
+redis.conf可以配置 requirepass 来设置密码，访问需要 `redis-cli -a <password>`来访问。
 
-使用rename-command来修改命令关键字，屏蔽危险命令，如keys、flushall/flushdb。
+使用`rename-command`来修改命令关键字，屏蔽危险命令，如`keys`、`flushall`/`flushdb`。
 
 使用防火墙限制外网访问。
 
@@ -2204,7 +2204,7 @@ redis.conf中bind字段指的是和那个网卡绑定，不是只接受某个网
 2. 超时阻塞。
 3. 网络阻塞。
 
-发现：使用redis-cli --bigkeys查看分布,然后使用 scan + debug object `<key>`查看序列化后的value字节数，该值小于实际值，找到对应的bigkey进行相应的处理和报警。
+发现：使用`redis-cli --bigkeys`查看分布,然后使用 `scan` + `debug object <key>`查看序列化后的value字节数，该值小于实际值，找到对应的bigkey进行相应的处理和报警。
 
 可以利用从节点执行，并利用pipeline机制。
 

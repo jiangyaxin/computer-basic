@@ -2155,11 +2155,11 @@ maxmemory-policy策略：
 
 内存优化：
 
-1. 对于值对象是字符串且长度<=39字节的数据，内部编码为embstr类型，字符串sds和redisobject一起分配，从而只需要一次内存操作，高并发场景下，字符串控制在39字节以内。
+1. 对于值对象是字符串且长度<=39字节的数据，内部编码为`embstr`类型，字符串`sds`和`redisobject`一起分配，从而只需要一次内存操作，高并发场景下，字符串控制在39字节以内。
 2. 缩减key-value的长度，精简业务对象，去掉不必要的属性，甚至可以把业务对象系列化成二进制数组放入redis，或者使用压缩算法压缩json再存储，比如Snappy。
-3. 使用整数对象池，redis内部维护[0-9999]的整数对象池，在满足需求的前提下，尽量使用整数对象，但是使用maxmemory和LRU淘汰策略后无法共享对象，对于ziplist编码的值对象也无法使用。
-4. 尽量减少字符串频繁修改操作如append、setrange，应改为set修改，降低预分配带来的内存浪费和内存碎片化。
-5. 控制编码类型，编码类型转换在redis写入数据时完成，只能从小内存编码转向大内存编码。对于性能要求高的场景使用ziplist，建议长度不超过1000，每个元素控制在512字节内。使用intset编码时，尽量保持整数范围一致，防止个别大证书触发集合升级操作，产生内存浪费。
+3. 使用整数对象池，redis内部维护[0-9999]的整数对象池，在满足需求的前提下，尽量使用整数对象，但是使用`maxmemory`和LRU淘汰策略后无法共享对象，对于`ziplist`编码的值对象也无法使用。
+4. 尽量减少字符串频繁修改操作如`append`、`setrange`，应改为set修改，降低预分配带来的内存浪费和内存碎片化。
+5. 控制编码类型，编码类型转换在redis写入数据时完成，只能从小内存编码转向大内存编码。对于性能要求高的场景使用ziplist，建议长度不超过1000，每个元素控制在512字节内。使用`intset`编码时，尽量保持整数范围一致，防止个别大证书触发集合升级操作，产生内存浪费。
 6. 控制键的数量，利用redis数据结构降低外层键的数量，如把大量键分组映射到多个hash结构降低键数量。
 
 ## Linux配置优化
@@ -2180,11 +2180,11 @@ NTP：使用ntp使各实例时间同步。
 
 ulimit：`ulimit -a` 包含open files参数，是单个用户同时打开的最大文件个数，该值应设置为 maxclients + 32，因为redis内部最多使用32个文件描述符。
 
-tcp backlog：redis默认tcp-backlog为511，需要设置linux的tcp-backlog大于该值。
+tcp backlog：redis默认`tcp-backlog`为511，需要设置linux的`tcp-backlog`大于该值。
 
 ## 安全
 
-redis.conf可以配置 requirepass 来设置密码，访问需要 `redis-cli -a <password>`来访问。
+redis.conf可以配置 `requirepass` 来设置密码，访问需要 `redis-cli -a <password>`来访问。
 
 使用`rename-command`来修改命令关键字，屏蔽危险命令，如`keys`、`flushall`/`flushdb`。
 

@@ -355,17 +355,17 @@ ProducerRecord 包含主题、键、值。键有两个用途：作为消息的�
 
 #### 分区数量的选择
 
-kafka 提供 kafka-producer-perf-test.sh 和 kafka-consumer-perf-test.sh 测试生产者和消费者性能。
+kafka 提供 `kafka-producer-perf-test.sh` 和 `kafka-consumer-perf-test.sh` 测试生产者和消费者性能。
 
 `kafka-producer-perf-test.sh --topic <topic-name> --num-records <1000000> --record-size <1024> --producer-props bootstrap.server=<ip:port> acks=1`
 
 `kafka-consumer-perf-test.sh --topic <topic-name> --messages <1000000> --broker-list <ip:port>`
 
---num-records:生产的消息总条数。
+`--num-records`:生产的消息总条数。
 
---record-size:消息大小，单位B。
+`--record-size`:消息大小，单位B。
 
---messages:消费的消息总条数
+`--messages`:消费的消息总条数
 
 ![image.png](./assets/1007.png)
 
@@ -375,9 +375,9 @@ kafka 提供 kafka-producer-perf-test.sh 和 kafka-consumer-perf-test.sh 测试�
 
 ### 拦截器
 
-通过实现 ProducerInterceptor 来使用，包含三个方法:onSend,onAcknowledgement,close。三个方法中抛出异常都会直接捕获并记录日志。
+通过实现 ProducerInterceptor 来使用，包含三个方法:`onSend`,`onAcknowledgement`,`close`。三个方法中抛出异常都会直接捕获并记录日志。
 
-可以用来在消息发送之前做一些准备工作，比如添加消息前缀，进行消息数量统计等，但一般不修改topic、key、partition等，否则会如修改key影响分区的计算等。 onAcknowledgement() 优先于用户设定的 Callback 之前执行，由于方法在生产者的 I/O 线程中执行，逻辑应越简单越好。
+可以用来在消息发送之前做一些准备工作，比如添加消息前缀，进行消息数量统计等，但一般不修改topic、key、partition等，否则会如修改key影响分区的计算等。 `onAcknowledgement()` 优先于用户设定的 Callback 之前执行，由于方法在生产者的 I/O 线程中执行，逻辑应越简单越好。
 
 ## 消费者
 
@@ -395,13 +395,13 @@ KafkaProducer 线程安全，但 KafkaConsumer 非线程安全，一个消费者
 
 当消费者加入群组时，它会向群组协调器(存在于服务端)发送一个JoinGroup请求，第一个加入群组的消费者将会成为消费者协调器的leader，他负责给每个消费者分配分区，他使用一个实现PartitionAssignor接口的类来决定哪些分区该被分配给那个消费者，分配完成后，消费者leader负责把分配情况发送给群组协调器，群组协调器再把这些信息发送给所有消费者，每个消费者只能看到自己的分配信息，只有leader知道群组里所有消费者的分配信息。
 
-通过 partition.assignment.stragetegy 来设置消费者与订阅主题之间的分区分配策略，默认情况下采用 RangeAssignor 策略。
+通过 `partition.assignment.stragetegy` 来设置消费者与订阅主题之间的分区分配策略，默认情况下采用 RangeAssignor 策略。
 
-RangeAssignor 会将消费组内所有订阅这个主题的消费者按照名词的字典序排序，然后为每个消费者划分固定的分区范围，如果不够平均分配，那么字典序靠前的消费者会被多分配一个分区。
+`RangeAssignor` 会将消费组内所有订阅这个主题的消费者按照名词的字典序排序，然后为每个消费者划分固定的分区范围，如果不够平均分配，那么字典序靠前的消费者会被多分配一个分区。
 
-RoundRobinAssignor 会将 消费组内所有的消费者以及消费者订阅的所有主题的分区按照字典序排序，然后通过轮询方式逐个将分区依次分配给每个消费者。例如消费组C0-C2订阅3个主题的 t0p0、t1p0、t1p1、t2p0、t2p1、t2p2，C0订阅t0，C1订阅t0、t1，C2订阅t0、t1、t2，最后的分配结果为：C0：t0p0  |  C1：t1p0  |  C2：t1p1、t2p0、t2p1、t2p2
+`RoundRobinAssignor` 会将 消费组内所有的消费者以及消费者订阅的所有主题的分区按照字典序排序，然后通过轮询方式逐个将分区依次分配给每个消费者。例如消费组C0-C2订阅3个主题的 t0p0、t1p0、t1p1、t2p0、t2p1、t2p2，C0订阅t0，C1订阅t0、t1，C2订阅t0、t1、t2，最后的分配结果为：C0：t0p0  |  C1：t1p0  |  C2：t1p1、t2p0、t2p1、t2p2
 
-StickyAssignor 有两个原则：分区的分配要尽可能均匀；分区的分配尽可能与上次分配保持相同，当两者发生冲突时，以前面的原则为准。该策略会减少不必要的分区移动，即剥离之前的消费者，转而分配给另一个消费者。
+`StickyAssignor` 有两个原则：分区的分配要尽可能均匀；分区的分配尽可能与上次分配保持相同，当两者发生冲突时，以前面的原则为准。该策略会减少不必要的分区移动，即剥离之前的消费者，转而分配给另一个消费者。
 
 ##### 消费者协调器和组协调器
 

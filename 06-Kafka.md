@@ -189,9 +189,9 @@ message.max.bytes
 
 调优：
 
-1. 虚拟内存：vm.swapiness设置为除非发生内存溢出否则不进行内存交换。vm.dirty_background_ratio设为小于10,减少脏页的数量，提高刷新脏页的频率，不应该设为0，否则会频繁刷新页面。
+1. 虚拟内存：`vm.swapiness`设置为除非发生内存溢出否则不进行内存交换。`vm.dirty_background_ratio`设为小于10,减少脏页的数量，提高刷新脏页的频率，不应该设为0，否则会频繁刷新页面。
 2. 磁盘文件系统：文件元数据包含3个时间戳:创建时间(ctime)、最后修改时间(mtime)、最后访问时间(atime)，文件每次读取都会更新atime，这会导致磁盘的大量写入。Kafka用不到该属性，可以将它禁用。
-3. 网络：调整socket读写缓冲区大小，为网络连接提供更大的缓冲空间。增大tcp_backlog接受更多的并发连接。增大net_backlog提供更大的网络流量爆发，接受更多的数据包。
+3. 网络：调整socket读写缓冲区大小，为网络连接提供更大的缓冲空间。增大`tcp_backlog`接受更多的并发连接。增大`net_backlog`提供更大的网络流量爆发，接受更多的数据包。
 4. 垃圾回收器：kafka对堆内存的使用率非常高，容易产生垃圾对象，可以使用G1垃圾回收器，并减少停顿时间和提前启动垃圾回收时机。kafka默认使用Parallel New 和 CMS。
 
 ## 生产者
@@ -200,7 +200,7 @@ message.max.bytes
 2. 另外还可以指定键或者分区，在发送 ProducerRecord 对象时，生产者需要把键和值对象序列化成字节数组。
 3. 然后数据被传到分区器，如果在 ProducerRecord 中指定了分区，那么分区器就不会做任何事情，直接把指定的分区返回，如果没有指定分区，那么分区器会根据 ProducerRecord 的键来选择一个分区，选好分区后，生产者就知道该往哪个主题和分区发送这条记录。
 4. 然后这条记录被添加到一个记录批次里，这个批次里的所有消息会被发送到相同的主题和分区上，有一个独立的线程负责把这些记录批次发送到相应的 broker。
-5. 服务器收到这些消息会返回一个相应，如果消息成功写入，就返回一个 RecordMetadata，它包含了主题、分区信息、记录在分区里的偏移量，如果写入失败，则会返回一个错误。
+5. 服务器收到这些消息会返回一个响应，如果消息成功写入，就返回一个 RecordMetadata，它包含了主题、分区信息、记录在分区里的偏移量，如果写入失败，则会返回一个错误。
 6. 生产者在收到错误之后会尝试重新发送消息，几次之后如果还失败，就会返回错误信息。
 
 错误分为两类：
@@ -214,33 +214,35 @@ message.max.bytes
 
 生产者由两个线程协调运行，分别是主线程和Sender线程(发送线程)，主线程由 KafkaProducer 创建消息，然后可能通过拦截器、序列化器、分区器，再缓存到消息累加器(RecordAccumulator)，发送线程负责从RecordAccumulator中获取消息并将其发送到kafka中。
 
-RecordAccumulator 缓存的大小可以通过生产者客户端参数buffer.memory配置，默认33554432B，即32MB，当生产者发送消息的速度超过发送到服务器的速度，会导致生产者空间不足，这时要么阻塞，要么抛出异常，取决于max.block.ms,默认 60000，即60秒。
+RecordAccumulator 缓存的大小可以通过生产者客户端参数`buffer.memory`配置，默认**33554432B**，即**32MB**，当生产者发送消息的速度超过发送到服务器的速度，会导致生产者空间不足，这时要么阻塞，要么抛出异常，取决于`max.block.ms`,默认 **60000**，即**60秒**。
 
 主线程发送的消息会被追加到 RecordAccumulator 的某个双端队列(Deque)中,在其内部为每个分区都维护了一个双端队列，即 `Deque<ProducerBatch>`,消息写入缓存时，追加到尾部，Sender读取时从头部读取。一个 ProducerBatch 包含多个 ProducerRecord。
 
-消息在网络以字节传输，在发送之前需要创建一块内存区域来保存对应的消息，kafka 中使用 java.io.ByteBuffer来进行消息内存的创建和释放，另外 RecordAccumulator 中还有一个BufferPool ，用来实现 ByteBuffer 的复用，BufferPool 只针对特定大小 ByteBuffer 进行管理，该值有 batch.size 来指定，默认16384B，即16KB。
+消息在网络以字节传输，在发送之前需要创建一块内存区域来保存对应的消息，kafka 中使用 java.io.ByteBuffer来进行消息内存的创建和释放，另外 RecordAccumulator 中还有一个BufferPool ，用来实现 ByteBuffer 的复用，BufferPool 只针对特定大小 ByteBuffer 进行管理，该值有 `batch.size` 来指定，默认**16384B**，即**16KB**。
 
-当一条消息流入 RecordAccumulator 时，会先寻找与消息分区对应的双端队列，再从队列尾部获取一个ProducerBatch，查看 ProducerBatch 是否还可以写入ProducerRecord，如果不可以则需新建一个ProducerBatch，新建时会对消息大小进行评估，如果消息大小小于 batch.size 则以该值创建 ProducerBatch ，若大于则以评估值创建，但该段内存不会被复用。
+当一条消息流入 RecordAccumulator 时，会先寻找与消息分区对应的双端队列，再从队列尾部获取一个ProducerBatch，查看 ProducerBatch 是否还可以写入ProducerRecord，如果不可以则需新建一个ProducerBatch，新建时会对消息大小进行评估，如果消息大小小于 `batch.size` 则以该值创建 ProducerBatch ，若大于则以评估值创建，但该段内存不会被复用。
 
 Sender 获取消息后会将 `<分区,Deque<ProducerBatch>>`转换为 `<Node,List<ProducerBatch>>`,再进行封装为 `<Node,Request>`,对于生产者主线程关注的是向哪个分区发送消息，Sender线程关注的是向哪个 broker 发送消息，Request 对应的是相应的协议数据。
 
-Sender 在发送之前还会保存到 InFlightRequest 中，其中保存的是已经发出去但还没收到响应的请求，其数据结构为 `Map<NodeId,Deque<Request>`，该值可以通过 max.in.flight.requests.per.connection 来控制，默认为5，即每个连接最多只能缓存5个未响应的请求。
+Sender 在发送之前还会保存到 InFlightRequest 中，其中保存的是已经发出去但还没收到响应的请求，其数据结构为 `Map<NodeId,Deque<Request>`，该值可以通过 `max.in.flight.requests.per.connection` 来控制，默认为5，即每个连接最多只能缓存5个未响应的请求。
 
 通过 InFlightRequest 可以判断 Node 的负载情况，找到最小的leastLoadedNode,当需要更新元数据时会挑选出 leastLoadedNode 来获取元数据。
 
-发送消息时，如果客户端没有能够使用的元数据或超过 metadata.max.age.ms（默认300000 即5分钟）时间没有更新元数据则会引起元数据的更新。
+发送消息时，如果客户端没有能够使用的元数据或超过 `metadata.max.age.ms`（默认**300000** 即**5分钟**）时间没有更新元数据则会引起元数据的更新。
 
 ### 生产者配置
 
 ```yaml
-bootstrap.servers
 # broker的地址清单，格式 ip:port,ip:port,ip:port ，清单里不需要包含所有的broker地址，
 # 生产者会从给定的broker里查找到其他broker的信息，不过建议至少要提供两个 broker，一旦其中一个宕机仍能连接到集群。
-key.serializer
+bootstrap.servers
+
 # 默认提供了 ByteArraySerializer、StringSerializer、IntegerSerializer,该值必须设置。
-value.serializer
+key.serializer
+
 # 提供 value 的序列化
-acks
+value.serializer
+
 # 指定必须要多少个分区收到消息，生产者才会认为消息写入是成功的。
 # acks = 0，生产者不需要等待服务器的响应。
 # acks = 1, 只要分区的 leader 节点收到消息，服务器就会返回生产者一个成功响应。如果消息无法到达 leader 节点，
@@ -250,36 +252,49 @@ acks
 # 例如生产者在收到服务器响应前可以发送多少个消息。
 # acks = -1 或 all,只有当参与复制的节点全部收到消息，生产者才会收到服务器的响应，
 # 这种模式最安全，但是它的延迟也比 acks=1 时高。
-buffer.memory
+acks
+
 # 设置生产者内存缓冲区的大小，发送出去的消息都是先进入到客户端本地的内存缓冲里，
 # 然后把很多消息收集成一个一个的Batch，再发送到Broker上去的，该值如果太小，消息快速的写入内存缓冲里，
 # Sender线程来不及发送到broker，缓冲很快被写满，然后再调用send()要么被阻塞，要么抛出异常，
 # 这取决于 max.block.ms 参数，表示抛出异常前可以阻塞一段时间。
-max.block.ms
+buffer.memory
+
 # 生产者阻塞的时间。
-max.request.size
+max.block.ms
+
 # 生产者发送请求的大小，既可以是单个消息的最大值，也是一个批次的最大值，
 # 另外broker对接受消息最大值也有限制( message.max.bytes)。
-batch.size
+max.request.size
+
 # 一个批次可以使用的内存大小，按照字节数计算，但并不一定会等批次被填满才发送，还取决于 linger.ms 。
 # 如果要发送大文件需要同时提高 buffer.memory、batch.size、max.request.size、以及broker的 message.max.bytes 配置的大小。
-receive.buffer.bytes 和 send.buffer.bytes
+batch.size
+
 # TCP socket 接受和发送数据包的缓冲区大小，如果设为 -1，则使用操作系统的默认值。
-linger.ms
+receive.buffer.bytes 和 send.buffer.bytes
+
 # 生产者在发送批次之前等待的时间，默认情况下，只要有可用线程，生产者就会把消息发送，
 # 如果把该值设置大于0，可以让生产者发送批次前等一会儿。
-retries
+linger.ms
+
 # 收到可重试错误时可重试的次数，重试的时间间隔可以通过 retry.backoff.ms 设置。
-max.in.flight.requests.per.connection
+retries
+
 # 生产者在收到服务器响应前可以发送多少个消息，设置为1可以保证消息按照发送的顺序写入服务器。
-timeout.ms
+max.in.flight.requests.per.connection
+
 # broker等待同步副本返回消息确认的时间，与 asks 相匹配，如果在指定时间内没有收到同步副本的确认，broker会返回错误。
-request.timeout.ms
+timeout.ms
+
 # 生产者在发送数据时等待服务器返回响应的时间，应当比broker端 replica.lag.time.max.ms（判定副本非同步状态时间） 大。
-metadata.fetch.timeout.ms
+request.timeout.ms
+
 # 生产者获取元数据等待服务器响应的时间。
-compression.type
+metadata.fetch.timeout.ms
+
 # 默认不会压缩，可以设置 snappy(占用CPU较少)、gzip(压缩率高)。
+compression.type
 ```
 
 ### 消息发送

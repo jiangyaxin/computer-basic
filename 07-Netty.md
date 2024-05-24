@@ -582,7 +582,7 @@ Netty是 一个异步事件驱动的网络应用程序框架，用于快速开�
 * JDK的`SocketChannel`和`ServerSocketChannel`是SPI类接口，由具体的虚拟机厂家来提供适应不同的操作系统，不方便扩展。
 * Netty的channel需要能跟Netty整体框架融合在一起，比如IO模型、基于`ChannelPipeline`的定制模型，以及基于元数据描述配置化的TCP参数等，JDK的`SocketChannel`和`ServerSocketChannel`都没有提供。
 
-`Channel` 继承 `ChannelOutboundInvoker` 、 `AttributeMap` 、`Comparable`，其中 `ChannelOutboundInvoker` 负责 网络的连接断开、读写等操作，AttributeMap 提供 Channel 上传输数据的能力。另外Chanel 自己提供一些 聚合 框架其他部分的功能，例如 获取该Channel的EventLoop、获取ByteBuf分配器ByteBufAllocator、获取Pipeline 等。
+`Channel` 继承 `ChannelOutboundInvoker` 、 `AttributeMap` 、`Comparable`，其中 `ChannelOutboundInvoker` 负责 网络的连接断开、读写等操作，`AttributeMap` 提供 Channel 上传输数据的能力。另外Chanel 自己提供一些 聚合 框架其他部分的功能，例如 获取该Channel的`EventLoop`、获取ByteBuf分配器`ByteBufAllocator`、获取`Pipeline` 等。
 
 `Channel` 所有的IO操作都是异步的，使用 `ChannelFuture` 占位。
 
@@ -638,12 +638,17 @@ public class AbstractChannel {
 
 ##### register
 
-ServerSocketChannel注册流程：
-AbstractChannel#doRegister()
--> pipeline.invokeHandlerAddedIfNeeded()（即 ChannelHandler#handlerAdded）
--> pipeline.fireChannelRegistered();
+`ServerSocketChannel`注册流程：
 
-SocketChannel注册流程：
+```text
+AbstractChannel#doRegister()
+-> pipeline.invokeHandlerAddedIfNeeded()(即 ChannelHandler#handlerAdded)
+-> pipeline.fireChannelRegistered();
+```
+
+
+`SocketChannel`注册流程：
+```text
 AbstractChannel#doRegister()
 -> pipeline.invokeHandlerAddedIfNeeded()（即ChannelHandler#handlerAdded）
 -> pipeline.fireChannelRegistered()
@@ -653,6 +658,7 @@ AbstractChannel#doRegister()
 -> beginRead()
 -> AbstractChannel#doBeginRead()
 -> AbstractNioChannel覆盖doBeginRead方法注册 READ 事件
+```
 
 ```java
 

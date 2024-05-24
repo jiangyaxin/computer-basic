@@ -578,31 +578,30 @@ Netty是 一个异步事件驱动的网络应用程序框架，用于快速开�
 
 为什么新开发 Channel ？
 
-* JDK的SocketChannel和ServerSocketChannel没有提供统一的操作接口，使用起来不方便。
-* JDK的SocketChannel和ServerSocketChannel是SPI类接口，由具体的虚拟机厂家来提供适应不同的操作系统，不方便扩展。
-* Netty的channel需要能跟Netty整体框架融合在一起，比如IO模型、基于ChannelPipeline的定制模型，以及基于元数据描述配置化的TCP参数等，JDK的SocketChannel和ServerSocketChannel都没有提供。
+* JDK的`SocketChannel`和`ServerSocketChannel`没有提供统一的操作接口，使用起来不方便。
+* JDK的`SocketChannel`和`ServerSocketChannel`是SPI类接口，由具体的虚拟机厂家来提供适应不同的操作系统，不方便扩展。
+* Netty的channel需要能跟Netty整体框架融合在一起，比如IO模型、基于`ChannelPipeline`的定制模型，以及基于元数据描述配置化的TCP参数等，JDK的`SocketChannel`和`ServerSocketChannel`都没有提供。
 
-Channel 继承 `ChannelOutboundInvoker` 、 `AttributeMap` 、`Comparable`，其中 `ChannelOutboundInvoker` 负责 网络的连接断开、读写等操作，AttributeMap 提供 Channel 上传输数据的能力。另外Chanel 自己提供一些 聚合 框架其他部分的功能，例如 获取该Channel的EventLoop、获取ByteBuf分配器ByteBufAllocator、获取Pipeline 等。
+`Channel` 继承 `ChannelOutboundInvoker` 、 `AttributeMap` 、`Comparable`，其中 `ChannelOutboundInvoker` 负责 网络的连接断开、读写等操作，AttributeMap 提供 Channel 上传输数据的能力。另外Chanel 自己提供一些 聚合 框架其他部分的功能，例如 获取该Channel的EventLoop、获取ByteBuf分配器ByteBufAllocator、获取Pipeline 等。
 
-Channel 所有的IO操作都是异步的，使用 `ChannelFuture` 占位。
+`Channel` 所有的IO操作都是异步的，使用 `ChannelFuture` 占位。
 
 Server端启动主流程：
 
 * `ServerSocketChannel` 注册到 `BossEventLoop`
-* `ServerSocketChannel` 绑定端口（并注册ACCPET事件）
-* 调用 `AbstractNioMessageChannel.NioMessageUnsafe#read()` （由BossEventLoop `select` 获取到ACCPET事件后调用）
+* `ServerSocketChannel` 绑定端口（并注册`ACCPET`事件）
+* 调用 `AbstractNioMessageChannel.NioMessageUnsafe#read()` （由BossEventLoop `select` 获取到`ACCPET`事件后调用）
 * 从`ServerSocketChannel`获取`SocketChannel`并创建`NioSocketChannel`(`read()`方法调用`NioServerSocketChannel#doReadMessages`)
 * `pipeline.fireChannelRead(NioSocketChannel Pipeline)`
 * `ServerBootstrap.ServerBootstrapAcceptor#channelRead()` 将 `ChannelInitializer` 添加到 NioSocketChannel Pipeline
 * 将`NioSocketChannel` 注册到 WorkEventLoop，触发 `ChannelInitializer#initChannel` 添加 自定义`ChannelHandler`，并移除`ChannelInitializer`
-* WorkEventLoop select 获取到 `READ` 事件 调用 `AbstractNioByteChannel.NioByteUnsafe#read()`
+* WorkEventLoop `select` 获取到 `READ` 事件 调用 `AbstractNioByteChannel.NioByteUnsafe#read()`
 * 使用`NioSocketChannel#doReadBytes` 循环读取数据，并触发 `pipeline.fireChannelRead(byteBuf)`，
 * 读取完成后调用 `pipeline.fireChannelReadComplete()`
 
 #### AbstractChannel
 
-负责聚合Channel所使用的功能，例如 Pipeline、EventLoop、Unsafe 等，实现 ChannelOutboundInvoker 接口功能，即直接通知
-Pipeline，经过 pipeline 异步调用，除此之外还实现调用 Unsafe 获取 localAddress 、 remoteAddress 的模板方法。
+负责聚合`Channel`所使用的功能，例如 `Pipeline`、`EventLoop`、`Unsafe` 等，实现 `ChannelOutboundInvoker` 接口功能，即直接通知`Pipeline`，经过 `pipeline` 异步调用，除此之外还实现调用 `Unsafe` 获取 `localAddress` 、 `remoteAddress` 的模板方法。
 
 属性：
 

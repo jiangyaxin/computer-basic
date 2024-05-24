@@ -117,13 +117,13 @@ public class GatheringByteChannelTest {
 }
 ```
 
-scatter / gather经常用于需要将传输的数据分开处理的场合，例如传输一个由消息头和消息体组成的消息，你可能会将消息体和消息头分散到不同的buffer中，这样你可以方便的处理消息头和消息体。
+`scatter/gather`经常用于需要将传输的数据分开处理的场合，例如传输一个由消息头和消息体组成的消息，你可能会将消息体和消息头分散到不同的buffer中，这样你可以方便的处理消息头和消息体。
 
 ### FileChannel
 
 创建：
 
-1. FileChannel#open ：
+1. `FileChannel#open` ：
 
 ```java
 public static FileChannel open(Path path, OpenOption... options) throws IOException;
@@ -131,7 +131,7 @@ public static FileChannel open(Path path, OpenOption... options) throws IOExcept
 public static FileChannel open(Path path, Set<? extends OpenOption> options, FileAttribute<?>... attrs) throws IOException;
 ```
 
-2. 通过FileInputStream/FileOutputStream 获取
+2. 通过`FileInputStream/FileOutputStream` 获取
 
 ```java
 FileInputStream inputStream = new FileInputStream("D:/test.txt");
@@ -141,7 +141,7 @@ FileOutputStream outputStream = new FileOutputStream("D:/test.txt");
 FileChannel channel1 = outputStream.getChannel();
 ```
 
-3. 通过RandomAccessFile获取
+3. 通过`RandomAccessFile`获取
 
 ```java
 RandomAccessFile randomAccessFile = new RandomAccessFile("./test.txt", "rw");
@@ -179,17 +179,15 @@ public class ByteBufferTest {
 
 ```
 
-force：强制将 Channel 中的内容写入文件，参数false 表示将文件内容写入文件，true 表示将 文件内容 和
-元数据（比如权限信息，文件修改时间）一起写入到文件，可能需要至少一次IO操作，取决于底层操作系统。不能保证对 MappedByteBuffer
-的修改也写入，可以调用 MappedByteBuffer#force 来保证。
+`force`：强制将 Channel 中的内容写入文件，参数false 表示**将文件内容写入文件**，true 表示将 **文件内容 和 元数据（比如权限信息，文件修改时间）一起写入到文件，可能需要至少一次IO操作，取决于底层操作系统**。不能保证对 `MappedByteBuffer` 的修改也写入，可以调用 `MappedByteBuffer#force` 来保证。
 
-map：使用 mmap 技术直接映射内核内存，返回 MappedByteBuffer。
+`map`：使用 `mmap` 技术直接映射内核内存，返回 `MappedByteBuffer`。
 
-* READ_ONLY：以只读的方式映射，如果发生修改，则抛出ReadOnlyBufferException
-* READ_WRITE：读写方式
-* PRIVATE：对这个MappedByteBuffer的修改不写入文件，且其他程序是不可见的。
+* `READ_ONLY`：以只读的方式映射，如果发生修改，则抛出`ReadOnlyBufferException`
+* `READ_WRITE`：读写方式
+* `PRIVATE`：对这个`MappedByteBuffer`的修改不写入文件，且其他程序是不可见的。
 
-一旦经过map映射后，将于用于映射的FileChannel没有联系，即使Channel关闭，也对MappedByteBuffer没有影响。
+一旦经过map映射后，将于用于映射的`FileChannel`没有联系，即使Channel关闭，也对`MappedByteBuffer`没有影响。
 
 ```java
 public class MappedByteBufferTest {
@@ -203,7 +201,7 @@ public class MappedByteBufferTest {
 }
 ```
 
-transferTo/transferFrom：底层调用 sendfile系统调用(windows 不支持) 或者使用 mmap技术写入，实现零拷贝。
+`transferTo/transferFrom`：底层调用 `sendfile`系统调用(windows 不支持) 或者使用 `mmap`技术写入，实现零拷贝。
 
 ```java
 public class FileChannel {
@@ -234,9 +232,7 @@ public class FileChannelTest {
 }
 ```
 
-lock/tryLock：
-
-被JVM持有，进程级别，不可用于多线程安全控制同步工具。如果统一进程内，线程1获取了文件锁FileLock（共享或者独占），线程2再来请求获取该文件的文件锁，则会抛出OverlappingFileLockException 。
+`lock/tryLock`： 被JVM持有，进程级别，不可用于多线程安全控制同步工具。如果统一进程内，线程1获取了文件锁FileLock（共享或者独占），线程2再来请求获取该文件的文件锁，则会抛出`OverlappingFileLockException`。
 
 * 一个程序获取到FileLock后，是否会阻止另一个程序访问相同文件具重叠内容的部分取决于操作系统的实现，具有不确定性。FileLock的实现依赖于底层操作系统实现的本地文件锁设施。
 
@@ -244,40 +240,40 @@ lock/tryLock：
 
 ### SocketChannel & ServerSocketChannel & DatagramChannel
 
-SocketOption：配置 Socket 连接，定义在 StandardSocketOptions 中。
+`SocketOption`：配置 Socket 连接，定义在 `StandardSocketOptions` 中。
 
-SocketChannel、ServerSocketChannel 参数：
+`SocketChannel`、`ServerSocketChannel` 参数：
 
-* TCP_NODELAY: 默认开启（false），禁用Nagle算法，当我们只要发送1字节的数据，却需要40字节的TCP/IP头部时，浪费会非常大，Nagle算法是通过合并短段并提高网络效率。
-* SO_RCVBUF: 接收缓冲区，不建议我们手动进行设置，因为操作系统会根据当前占用，进行自动的调整。
-* SO_KEEPALIVE：推荐为true，在连接空闲时操作系统定期探测连接的另一端，一般时空闲2小时后，发送第一个探测分组，如果没收到回应每隔75秒发送一个探测分组，最多重复发送9次。
-* SO_REUSEADDR: 推荐为true，连接被关闭后，处于TIME_WAIT状态时，端口是否被重用，TIME_WAIT 将持续 2MSL ，总共 4 min。
-* ALLOCATOR: 使用 PooledByteBufAllocator.DEFAULT
-* WRITE_BUFFER_WATER_MARK: 默认64k，可设置为 1M 到 6M。
+* `TCP_NODELAY`: 默认开启（false），禁用Nagle算法，当我们只要发送1字节的数据，却需要40字节的TCP/IP头部时，浪费会非常大，Nagle算法是通过合并短段并提高网络效率。
+* `SO_RCVBUF`: 接收缓冲区，不建议我们手动进行设置，因为操作系统会根据当前占用，进行自动的调整。
+* `SO_KEEPALIVE`：推荐为true，在连接空闲时操作系统定期探测连接的另一端，一般时空闲2小时后，发送第一个探测分组，如果没收到回应每隔75秒发送一个探测分组，最多重复发送9次。
+* `SO_REUSEADDR`: 推荐为true，连接被关闭后，处于TIME_WAIT状态时，端口是否被重用，TIME_WAIT 将持续 2MSL ，总共 4 min。
+* `ALLOCATOR`: 使用 `PooledByteBufAllocator.DEFAULT`
+* `WRITE_BUFFER_WATER_MARK`: 默认64k，可设置为 1M 到 6M。
 
-ServerSocketChannel 参数：
+`ServerSocketChannel` 参数：
 
 * SO_BACKLOG: 握手队列长度
 
-SocketChannel 参数：
+`SocketChannel` 参数：
 
-* CONNECT_TIMEOUT_MILLIS：客户端建立连接时，如果超过指定的时间仍未连接，则抛出timeout异常。
-* SO_SNDBUF: 发送缓冲区，不建议我们手动进行设置，因为操作系统会根据当前占用，进行自动的调整。
-* RCVBUF_ALLOCATOR: 该参数使用默认值
+* `CONNECT_TIMEOUT_MILLIS`：客户端建立连接时，如果超过指定的时间仍未连接，则抛出timeout异常。
+* `SO_SNDBUF`: 发送缓冲区，不建议我们手动进行设置，因为操作系统会根据当前占用，进行自动的调整。
+* `RCVBUF_ALLOCATOR`: 该参数使用默认值
 
 Nagle算法的规则：
 
-* 如果包长度达到MSS(Maximum Segment Size 1460字节)，则允许发送
+* 如果包长度达到`MSS`(Maximum Segment Size 1460字节)，则允许发送
 * 如果该包含有FIN，则允许发送
-* 设置了TCP_NODELAY选项，则允许发送
-* 未设置TCP_CORK选项时，若所有发出去的小数据包（包长度小于MSS）均被确认，则允许发送；
+* 设置了`TCP_NODELAY`选项，则允许发送
+* 未设置`TCP_CORK`选项时，若所有发出去的小数据包（包长度小于MSS）均被确认，则允许发送；
 * 上述条件都未满足，但发生了超时（一般为200ms），则立即发送
 
 ## Buffer
 
-Buffer 本质是一块可以写入数据可以读取数据的内存，ByteBuffer、CharBuffer、IntBuffer 等都是它的子类，表示不同类型的数组。
+Buffer 本质是一块可以写入数据可以读取数据的内存，`ByteBuffer`、`CharBuffer`、`IntBuffer` 等都是它的子类，表示不同类型的数组。
 
-属性：mark <= position <= limit <= capacity
+属性：`mark <= position <= limit <= capacity`
 
 ```java
 /**
@@ -393,7 +389,7 @@ public abstract byte get();
 
 ### MappedByteBuffer & DirectByteBuffer & HeapByteBuffer
 
-内核数据 流入 堆内：内核内存(内核空间) -> JVM堆外内存(用户空间) -> JVM 堆内内存(用户空间)
+内核数据 流入 堆内：`内核内存(内核空间) -> JVM堆外内存(用户空间) -> JVM 堆内内存(用户空间)`
 
 ![240](assets/240.png)
 
@@ -405,22 +401,14 @@ public abstract byte get();
 
 区别：
 
-* HeapByteBuffer 基于数组实现，内存分配在堆内。
-* DirectByteBuffer 通过 Unsafe#allocateMemory + Unsafe#setMemory 分配堆外内存，引用对象在堆内，在 GC 时会回收掉不可达的
-  DirectByteBuffer ，并回收堆外内存，但由于 DirectByteBuffer 存在时间一般较长，所以大部分都会晋升到老年代，那么只能等到
-  Major GC 时才能回收，可通过 -XX:MaxDirectMemorySize 限制大小。
-* MappedByteBuffer 是 DirectByteBuffer 的父类，DirectByteBuffer有两种类型，一直是由DirectByteBuffer实现，一种由
-  MappedByteBuffer 实现，都是分配在堆外，不同的是 MappedByteBuffer
-  实现的堆外内存使用mmap技术映射了内核内存，这时内核内存和用户堆外内存共享，操作堆外内存等于直接操作内核内存，避免了数据的复制，FileChannel#transferTo
-  就是使用的这种内存。
-* MappedByteBuffer 由 FileChannel#map 创建，DirectByteBuffer & HeapByteBuffer 通过 ByteBuffer 创建。
+* `HeapByteBuffer` 基于数组实现，内存分配在堆内。
+* `DirectByteBuffer` 通过 `Unsafe#allocateMemory` + `Unsafe#setMemory` 分配堆外内存，引用对象在堆内，在 GC 时会回收掉不可达的`DirectByteBuffer` ，并回收堆外内存，但由于 `DirectByteBuffer` 存在时间一般较长，所以大部分都会晋升到老年代，那么只能等到 Major GC 时才能回收，可通过 `-XX:MaxDirectMemorySize` 限制大小。
+* `MappedByteBuffer` 是 `DirectByteBuffer` 的父类，`DirectByteBuffer`有两种类型，一直是由`DirectByteBuffer`实现，一种由`MappedByteBuffer` 实现，都是分配在堆外，不同的是 `MappedByteBuffer`实现的堆外内存使用`mmap`技术映射了内核内存，这时内核内存和用户堆外内存共享，操作堆外内存等于直接操作内核内存，避免了数据的复制，`FileChannel#transferTo`就是使用的这种内存。
+* `MappedByteBuffer` 由 `FileChannel#map` 创建，`DirectByteBuffer & HeapByteBuffer` 通过 ByteBuffer 创建。
 
-FileChannel、SocketChannel等在通过 IOUtil 进行 非DirectBuffer IO读写操作时，底层会使用一个临时的 IOVecWrapper
-来和系统进行真正的IO交互，IOVecWrapper 本质上也是一个 堆外直接内存，使用完后这个临时的 IOVecWrapper 会被缓存到ThreadLocal，当直接使用
-IOUtil 操作非DirectBuffer 的线程数较多或者 IO 操作的数据量较大时，会导致临时的DirectByteBuffer 占用大量堆外内存造成内存泄露。可通过
--Djdk.nio.maxCachedBufferSize 限制单个线程直接内存缓存，超过这个限制 不会被缓存到 ThreadLocal。
+`FileChannel`、`SocketChannel`等在通过 `IOUtil` 进行 非`DirectBuffer` IO读写操作时，底层会使用一个临时的 `IOVecWrapper`来和系统进行真正的IO交互，IOVecWrapper 本质上也是一个 堆外直接内存，使用完后这个临时的 `IOVecWrapper` 会被缓存到`ThreadLocal`，当直接使用 IOUtil 操作非DirectBuffer 的线程数较多或者 IO 操作的数据量较大时，会导致临时的`DirectByteBuffer` 占用大量堆外内存造成内存泄露。可通过`-Djdk.nio.maxCachedBufferSize` 限制单个线程直接内存缓存，超过这个限制 不会被缓存到 `ThreadLocal`。
 
-MappedByteBuffer 释放：高版本jdk Cleaner 已经迁移到 jdk.internal.ref.Cleaner
+`MappedByteBuffer` 释放：高版本jdk Cleaner 已经迁移到 `jdk.internal.ref.Cleaner`
 
 ```java
 public class MappedByteBufferUtil {
@@ -485,7 +473,7 @@ public class MappedByteBufferUtil {
 
 ### 分析堆外内存
 
-1. 启动时添加 -XX:NativeMemoryTracking=detail
+1. 启动时添加 `-XX:NativeMemoryTracking=detail`
    参数，会有性能损耗，生产环境不宜使用，`-XX:+UnlockDiagnosticVMOptions -XX:+PrintNMTStatistics` 在 NMT 启用的情况下，在
    JVM 退出时输出最后的内存使用数据。
 2. 使用 `jcmd <pid> VM.native_memory detail scale=MB` 打印JVM内存占用。
@@ -495,29 +483,24 @@ public class MappedByteBufferUtil {
 
    ![241](assets/241.png)
 
-   其中 reserved 向操作系统申请的内存， committed 已经使用的内存， mmap，malloc 是两种不同的内存申请分配方式，arena 是通过
-   malloc 方式分配的内存但是代码执行完并不释放，放入 arena chunk 中之后还会继续使用。
+   其中 `reserved` 向操作系统申请的内存， `committed` 已经使用的内存， `mmap`，`malloc` 是两种不同的内存申请分配方式，`arena` 是通过`malloc` 方式分配的内存但是代码执行完并不释放，放入 arena chunk 中之后还会继续使用。
 
-    * Java Heap：堆空间
-    * Class：保存类的元数据，其实就是 metaspace，包含两部分： 一是 metadata，被-XX:MaxMetaspaceSize限制最大大小，另外是 class
-      space，被-XX:CompressedClassSpaceSize限制最大大小。
-    * Thread：线程栈占用，每个线程栈占用大小受-Xss限制。
-    * Code：JIT 的代码缓存，为了在不同平台运行JVM字节码，需要将其转换成机器指令。程序运行时，JIT编译器负责这个编译工作，并将编译后的指令存在
-      Code Cache 区域。
-    * GC：gc算法使用的空间。
-    * Compiler：编译器自身操作使用。
-    * Internal：命令行解析，JVMTI 使用的内存。
-    * Other：尚未归类的。
-    * Symbol ：常量池、符号表引用占用，常量池占用的大小，字符串常量池受-XX:StringTableSize个数限制。
-    * Native Memory Tracking：NMT内存采集本身占用的内存大小。
-    * Arena Chunk：所有通过 arena 方式分配的内存。
-      并未统计 Direct Buffer 、MMap Buffer 内存。
-3. 对应直接内存可通过 Jprofile 查看 MBeans 的 java.nio.BufferPool 监控，单位是字节，也可使用 JVisualVM 安装
-   VisualVM-BufferMonitor 监控
+    * `Java Heap`：堆空间
+    * `Class`：保存类的元数据，其实就是 metaspace，包含两部分： 一是 metadata，被`-XX:MaxMetaspaceSize`限制最大大小，另外是 class space，被`-XX:CompressedClassSpaceSize`限制最大大小。
+    * `Thread`：线程栈占用，每个线程栈占用大小受-Xss限制。
+    * `Code`：JIT 的代码缓存，为了在不同平台运行JVM字节码，需要将其转换成机器指令。程序运行时，JIT编译器负责这个编译工作，并将编译后的指令存在 Code Cache 区域。
+    * `GC`：gc算法使用的空间。
+    * `Compiler`：编译器自身操作使用。
+    * `Internal`：命令行解析，`JVMTI` 使用的内存。
+    * `Other`：尚未归类的。
+    * `Symbol` ：常量池、符号表引用占用，常量池占用的大小，字符串常量池受`-XX:StringTableSize`个数限制。
+    * `Native Memory Tracking`：NMT内存采集本身占用的内存大小。
+    * `Arena Chunk`：所有通过 arena 方式分配的内存。 并未统计 `Direct Buffer` 、`MMap Buffer` 内存。
+3. 对应直接内存可通过 Jprofile 查看 MBeans 的 `java.nio.BufferPool` 监控，单位是字节，也可使用 JVisualVM 安装`VisualVM-BufferMonitor` 监控
 
 ## Selector
 
-负责检测一个或多个 Channel ，阻塞在 select() 方法上，注册的事件出现。
+负责检测一个或多个 Channel ，阻塞在 `select()` 方法上，注册的事件出现。
 
 创建：
 
@@ -538,7 +521,7 @@ public class ConfigureBlockingTest {
 }
 ```
 
-响应事件：select() 会阻塞方法，直到有事件就绪时才返回，就绪事件会添加到 selectedKeys() 方法，注意处理完就绪事件需要 remove 。
+响应事件：`select()` 会阻塞方法，直到有事件就绪时才返回，就绪事件会添加到 `selectedKeys()` 方法，注意处理完就绪事件需要 remove 。
 
 ```java
 public class SelectorTest {

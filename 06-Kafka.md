@@ -857,7 +857,7 @@ kafka 的跨数据中心复制工具(MirrorMaker)会无限制重试 `retries = M
 
 #### 生产环境监控
 
-Kafka启动时添加 JMX_PORT 参数，开启 JMX 监控。对于生产者需要监控 error-rate 和 retry-rate,若这两个指标上升，说明系统出现了问题。对于消费者重要的指标的是 consumer-lag ,该指标表明消费者的处理速度与最近提交到分区里的偏移量之间还有多少差距。
+Kafka启动时添加 `JMX_PORT` 参数，开启 JMX 监控。对于生产者需要监控 `error-rate` 和 `retry-rate`,若这两个指标上升，说明系统出现了问题。对于消费者重要的指标的是 `consumer-lag` ,该指标表明消费者的处理速度与最近提交到分区里的偏移量之间还有多少差距。
 
 非同步分区：`kafka.server:type=ReplicaManager,name=UnderReplicatedPartitions`。如果多个broker的非同步分区数量一直保持不变，说明某个broker已经离线。如果数量时波动的，说明集群出现了性能问题，如果所有的非同步分区都属于一个broker，那么可能是这个broker出现的问题。集群负载不均衡可以通过各broker流入流出流量来判断，加入进行首选首领副本选举后，指标出现很大偏差，说明流量出现了不均衡。另外 CPU的使用、网络输入输出吞吐量、磁盘平均等待时间、磁盘使用百分比 大量消耗也会出现分区不同步。
 

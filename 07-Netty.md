@@ -47,20 +47,18 @@
 
 # JAVA NIO
 
-传统IO基于字节流和字符流操作，NIO 基于 Channel 和 Buffer 操作，数据总是从 Channel 读取到 Buffer 中，或者从 Buffer 写入到
-Channel 中。
+传统IO基于字节流和字符流操作，NIO 基于 Channel 和 Buffer 操作，数据总是从 Channel 读取到 Buffer 中，或者从 Buffer 写入到 Channel 中。
 
 ## Channel
 
-Channel 是 IO操作 的载体，全双工的，即可以读取也可以写入，流的读写只能是单向的，例如 InputStream 、 OutputStream 。
+Channel 是 IO操作 的载体，全双工的，即可以读取也可以写入，流的读写只能是单向的，例如 `InputStream` 、 `OutputStream` 。
 
 主要分为两类：
 
-* FileChannel
-* SocketChannel、ServerSocketChannel、DatagramChannel
+* `FileChannel`
+* `SocketChannel`、`ServerSocketChannel`、`DatagramChannel`
 
-都继承于 SeekableByteChannel（负责在任意位置进行读写），GatheringByteChannel
-（负责顺序将多个缓存区写入Channel，即一个缓冲区数组），ScatteringByteChannel （负责从Channel 读取数据依次填满多个缓存区，即一个缓冲区数组），例如
+都继承于 `SeekableByteChannel`（负责在任意位置进行读写），`GatheringByteChannel` （负责顺序将多个缓存区写入Channel，即一个缓冲区数组），`ScatteringByteChannel` （负责从Channel 读取数据依次填满多个缓存区，即一个缓冲区数组），例如
 
 ```java
 public class SeekableByteChannelTest {

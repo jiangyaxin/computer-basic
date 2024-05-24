@@ -766,19 +766,24 @@ public final void beginRead() {
 
 #### bind
 
-ServerSocketChannel 注册完才会触发绑定端口。
+`ServerSocketChannel` 注册完才会触发绑定端口。
 
-ServerSocketChannel 的 Pipeline 为 ：
+`ServerSocketChannel` 的 `Pipeline` 为 ：
+```text
 HeadContext
 -> ServerBootstrap.ServerBootstrapAcceptor
 -> TailContext
+```
 
-SocketChannel 的 Pipeline 为：
+`SocketChannel` 的 `Pipeline` 为：
+```text
 HeadContext
 -> 自定义ChannelHandler
 -> TailContext
+```
 
 流程：
+```text
 AbstractChannel#doBind
 -> pipeline.fireChannelActive()
 -> HeadContext#channelActive
@@ -787,6 +792,7 @@ AbstractChannel#doBind
 -> AbstractChannel.AbstractUnsafe#beginRead()
 -> AbstractChannel#doBeginRead()
 -> AbstractNioChannel覆盖doBeginRead方法注册 ACCEPT 事件。
+```
 
 ```java
 public final void bind(final SocketAddress localAddress, final ChannelPromise promise) {
@@ -832,9 +838,9 @@ public final void bind(final SocketAddress localAddress, final ChannelPromise pr
 
 #### AbstractNioChannel
 
-维护 SelectableChannel 的真正引用，将原生的 channel注册进 Selector中 ，并且可以操作 Channel 感兴趣的 SelectionKey 。
+维护 `SelectableChannel` 的真正引用，将原生的 `channel`注册进 `Selector`中 ，并且可以操作 `Channel` 感兴趣的 `SelectionKey` 。
 
-1. 将 SelectableChannel 注册到 EventLoop 中的 Selector。
+1. 将 `SelectableChannel` 注册到 `EventLoop` 中的 `Selector`。
 
 调用顺序:
 Channel使用Unsafe

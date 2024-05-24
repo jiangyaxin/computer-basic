@@ -442,13 +442,10 @@ public class MappedByteBufferUtil {
 
 ### 分析堆外内存
 
-1. 启动时添加 `-XX:NativeMemoryTracking=detail`
-   参数，会有性能损耗，生产环境不宜使用，`-XX:+UnlockDiagnosticVMOptions -XX:+PrintNMTStatistics` 在 NMT 启用的情况下，在
-   JVM 退出时输出最后的内存使用数据。
+1. 启动时添加 `-XX:NativeMemoryTracking=detail`参数，会有性能损耗，生产环境不宜使用，`-XX:+UnlockDiagnosticVMOptions -XX:+PrintNMTStatistics` 在 NMT 启用的情况下，在 JVM 退出时输出最后的内存使用数据。
 2. 使用 `jcmd <pid> VM.native_memory detail scale=MB` 打印JVM内存占用。
 
-    * 使用 `jcmd <pid> VM.native_memory baseline` 设置基准值，再使用 `jcmd <pid> VM.native_memory scale=MB detail.diff`
-      查看增长值。
+    * 使用 `jcmd <pid> VM.native_memory baseline` 设置基准值，再使用 `jcmd <pid> VM.native_memory scale=MB detail.diff`查看增长值。
 
    ![241](assets/241.png)
 
@@ -477,7 +474,7 @@ public class MappedByteBufferUtil {
 Selector selector = Selector.open();
 ```
 
-注册：Channel必须处于非阻塞模式下。这意味着不能将FileChannel与Selector一起使用，因为FileChannel不能切换到非阻塞模式。
+注册：`Channel`必须处于非阻塞模式下。这意味着不能将`FileChannel`与`Selector`一起使用，因为`FileChannel`不能切换到非阻塞模式。
 
 ```java
 public class ConfigureBlockingTest {
@@ -490,7 +487,7 @@ public class ConfigureBlockingTest {
 }
 ```
 
-响应事件：`select()` 会阻塞方法，直到有事件就绪时才返回，就绪事件会添加到 `selectedKeys()` 方法，注意处理完就绪事件需要 remove 。
+响应事件：`select()` 会阻塞方法，直到有事件就绪时才返回，就绪事件会添加到 `selectedKeys()` 方法，注意处理完就绪事件需要 `remove` 。
 
 ```java
 public class SelectorTest {
@@ -569,75 +566,38 @@ Netty是 一个异步事件驱动的网络应用程序框架，用于快速开�
 1. 基于 NIO 的高性能的多线程 Reactor 模型。
 2. 事件驱动模型，减少空轮询的资源浪费。
 3. 内存池减少对象的创建和销毁。
-4. 使用 DirectBuffer 减少数据间的拷贝。
-5. 支持 Protobuf 等高性能序列化协议。
+4. 使用 `DirectBuffer` 减少数据间的拷贝。
+5. 支持 `Protobuf` 等高性能序列化协议。
 6. 无锁化的串行设计，IO线程内部进行串行操作，避免多线程竞争导致的性能下降。
-
-## SocketChannel & ServerSocketChannel & DatagramChannel
-
-`SocketOption`：配置 Socket 连接，定义在 `StandardSocketOptions` 中。
-
-`SocketChannel`、`ServerSocketChannel` 参数：
-
-* `TCP_NODELAY`: 默认开启（false），禁用Nagle算法，当我们只要发送1字节的数据，却需要40字节的TCP/IP头部时，浪费会非常大，Nagle算法是通过合并短段并提高网络效率。
-* `SO_RCVBUF`: 接收缓冲区，不建议我们手动进行设置，因为操作系统会根据当前占用，进行自动的调整。
-* `SO_KEEPALIVE`：推荐为true，在连接空闲时操作系统定期探测连接的另一端，一般时空闲2小时后，发送第一个探测分组，如果没收到回应每隔75秒发送一个探测分组，最多重复发送9次。
-* `SO_REUSEADDR`: 推荐为true，连接被关闭后，处于TIME_WAIT状态时，端口是否被重用，TIME_WAIT 将持续 2MSL ，总共 4 min。
-* `ALLOCATOR`: 使用 `PooledByteBufAllocator.DEFAULT`
-* `WRITE_BUFFER_WATER_MARK`: 默认64k，可设置为 1M 到 6M。
-
-`ServerSocketChannel` 参数：
-
-* SO_BACKLOG: 握手队列长度
-
-`SocketChannel` 参数：
-
-* `CONNECT_TIMEOUT_MILLIS`：客户端建立连接时，如果超过指定的时间仍未连接，则抛出timeout异常。
-* `SO_SNDBUF`: 发送缓冲区，不建议我们手动进行设置，因为操作系统会根据当前占用，进行自动的调整。
-* `RCVBUF_ALLOCATOR`: 该参数使用默认值
-
-Nagle算法的规则：
-
-* 如果包长度达到`MSS`(Maximum Segment Size 1460字节)，则允许发送
-* 如果该包含有FIN，则允许发送
-* 设置了`TCP_NODELAY`选项，则允许发送
-* 未设置`TCP_CORK`选项时，若所有发出去的小数据包（包长度小于MSS）均被确认，则允许发送；
-* 上述条件都未满足，但发生了超时（一般为200ms），则立即发送
 
 ## 核心组件
 
 ### Channel
 
-Channel 是 Netty 抽象的网络IO读写的接口，不是 JDK NIO 的
-Channel，采用Facade模式进行统一封装，为SocketChannel和ServerSocketChannel提供统一的视图，采用聚合而非包含的方式将相关的功能类聚合，由Channel统一负责分配和调度，功能实现灵活。
+`Channel` 是 Netty 抽象的网络IO读写的接口，不是 JDK NIO 的`Channel`,采用`Facade`模式进行统一封装，为`SocketChannel`和`ServerSocketChannel`提供统一的视图，采用聚合而非包含的方式将相关的功能类聚合，由Channel统一负责分配和调度，功能实现灵活。
 
 为什么新开发 Channel ？
 
 * JDK的SocketChannel和ServerSocketChannel没有提供统一的操作接口，使用起来不方便。
 * JDK的SocketChannel和ServerSocketChannel是SPI类接口，由具体的虚拟机厂家来提供适应不同的操作系统，不方便扩展。
-*
+* Netty的channel需要能跟Netty整体框架融合在一起，比如IO模型、基于ChannelPipeline的定制模型，以及基于元数据描述配置化的TCP参数等，JDK的SocketChannel和ServerSocketChannel都没有提供。
 
-Netty的channel需要能跟Netty整体框架融合在一起，比如IO模型、基于ChannelPipie的定制模型，以及基于元数据描述配置化的TCP参数等，JDK的SocketChannel和ServerSocketChannel都没有提供。
+Channel 继承 `ChannelOutboundInvoker` 、 `AttributeMap` 、`Comparable`，其中 `ChannelOutboundInvoker` 负责 网络的连接断开、读写等操作，AttributeMap 提供 Channel 上传输数据的能力。另外Chanel 自己提供一些 聚合 框架其他部分的功能，例如 获取该Channel的EventLoop、获取ByteBuf分配器ByteBufAllocator、获取Pipeline 等。
 
-Channel 继承 ChannelOutboundInvoker 、 AttributeMap 、Comparable，其中 ChannelOutboundInvoker 负责
-网络的连接断开、读写等操作，AttributeMap 提供 Channel 上传输数据的能力。另外Chanel 自己提供一些 聚合 框架其他部分的功能，例如
-获取该Channel的EventLoop、获取ByteBuf分配器ByteBufAllocator、获取Pipeline 等。
-
-Channel 所有的IO操作都是异步的，使用 ChannelFuture 占位。
+Channel 所有的IO操作都是异步的，使用 `ChannelFuture` 占位。
 
 Server端启动主流程：
 
-* ServerSocketChannel 注册到 BossEventLoop
-* ServerSocketChannel 绑定端口（并注册ACCPET事件）
-* 调用 AbstractNioMessageChannel.NioMessageUnsafe#read() （由BossEventLoop select 获取到ACCPET事件后调用）
-* 从ServerSocketChannel获取SocketChannel并创建NioSocketChannel（read()方法调用NioServerSocketChannel#doReadMessages ）
-* pipeline.fireChannelRead(NioSocketChannel Pipeline)
-* ServerBootstrap.ServerBootstrapAcceptor#channelRead() 将 ChannelInitializer 添加到 NioSocketChannel Pipeline
-* 将NioSocketChannel 注册到 WorkEventLoop，触发 ChannelInitializer#initChannel 添加
-  自定义ChannelHandler，并移除ChannelInitializer
-* WorkEventLoop select 获取到 READ 事件 调用 AbstractNioByteChannel.NioByteUnsafe#read()
-* 使用NioSocketChannel#doReadBytes 循环读取数据，并触发 pipeline.fireChannelRead(byteBuf)，
-* 读取完成后调用 pipeline.fireChannelReadComplete()
+* `ServerSocketChannel` 注册到 `BossEventLoop`
+* `ServerSocketChannel` 绑定端口（并注册ACCPET事件）
+* 调用 `AbstractNioMessageChannel.NioMessageUnsafe#read()` （由BossEventLoop `select` 获取到ACCPET事件后调用）
+* 从`ServerSocketChannel`获取`SocketChannel`并创建`NioSocketChannel`(`read()`方法调用`NioServerSocketChannel#doReadMessages`)
+* `pipeline.fireChannelRead(NioSocketChannel Pipeline)`
+* `ServerBootstrap.ServerBootstrapAcceptor#channelRead()` 将 `ChannelInitializer` 添加到 NioSocketChannel Pipeline
+* 将`NioSocketChannel` 注册到 WorkEventLoop，触发 `ChannelInitializer#initChannel` 添加 自定义`ChannelHandler`，并移除`ChannelInitializer`
+* WorkEventLoop select 获取到 `READ` 事件 调用 `AbstractNioByteChannel.NioByteUnsafe#read()`
+* 使用`NioSocketChannel#doReadBytes` 循环读取数据，并触发 `pipeline.fireChannelRead(byteBuf)`，
+* 读取完成后调用 `pipeline.fireChannelReadComplete()`
 
 #### AbstractChannel
 
@@ -1461,6 +1421,35 @@ IP黑白名单：RuleBasedIpFilter
 通过 ChannelOption 配置，常用的有 SO_BACKLOG、SO_KEEPALIVE、TCP_NODELAY 。
 
 ServerBootStrap中option()设置 SeverSocketChannel,childOption() 设置 SocketChannel。
+
+`SocketOption`：配置 Socket 连接，定义在 `StandardSocketOptions` 中。
+
+`SocketChannel`、`ServerSocketChannel` 参数：
+
+* `TCP_NODELAY`: 默认开启（false），禁用Nagle算法，当我们只要发送1字节的数据，却需要40字节的TCP/IP头部时，浪费会非常大，Nagle算法是通过合并短段并提高网络效率。
+* `SO_RCVBUF`: 接收缓冲区，不建议我们手动进行设置，因为操作系统会根据当前占用，进行自动的调整。
+* `SO_KEEPALIVE`：推荐为true，在连接空闲时操作系统定期探测连接的另一端，一般时空闲2小时后，发送第一个探测分组，如果没收到回应每隔75秒发送一个探测分组，最多重复发送9次。
+* `SO_REUSEADDR`: 推荐为true，连接被关闭后，处于TIME_WAIT状态时，端口是否被重用，TIME_WAIT 将持续 2MSL ，总共 4 min。
+* `ALLOCATOR`: 使用 `PooledByteBufAllocator.DEFAULT`
+* `WRITE_BUFFER_WATER_MARK`: 默认64k，可设置为 1M 到 6M。
+
+`ServerSocketChannel` 参数：
+
+* SO_BACKLOG: 握手队列长度
+
+`SocketChannel` 参数：
+
+* `CONNECT_TIMEOUT_MILLIS`：客户端建立连接时，如果超过指定的时间仍未连接，则抛出timeout异常。
+* `SO_SNDBUF`: 发送缓冲区，不建议我们手动进行设置，因为操作系统会根据当前占用，进行自动的调整。
+* `RCVBUF_ALLOCATOR`: 该参数使用默认值
+
+Nagle算法的规则：
+
+* 如果包长度达到`MSS`(Maximum Segment Size 1460字节)，则允许发送
+* 如果该包含有FIN，则允许发送
+* 设置了`TCP_NODELAY`选项，则允许发送
+* 未设置`TCP_CORK`选项时，若所有发出去的小数据包（包长度小于MSS）均被确认，则允许发送；
+* 上述条件都未满足，但发生了超时（一般为200ms），则立即发送
 
 ### ByteBuf
 

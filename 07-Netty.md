@@ -238,37 +238,6 @@ public class FileChannelTest {
 
 ![239](assets/239.png)
 
-### SocketChannel & ServerSocketChannel & DatagramChannel
-
-`SocketOption`：配置 Socket 连接，定义在 `StandardSocketOptions` 中。
-
-`SocketChannel`、`ServerSocketChannel` 参数：
-
-* `TCP_NODELAY`: 默认开启（false），禁用Nagle算法，当我们只要发送1字节的数据，却需要40字节的TCP/IP头部时，浪费会非常大，Nagle算法是通过合并短段并提高网络效率。
-* `SO_RCVBUF`: 接收缓冲区，不建议我们手动进行设置，因为操作系统会根据当前占用，进行自动的调整。
-* `SO_KEEPALIVE`：推荐为true，在连接空闲时操作系统定期探测连接的另一端，一般时空闲2小时后，发送第一个探测分组，如果没收到回应每隔75秒发送一个探测分组，最多重复发送9次。
-* `SO_REUSEADDR`: 推荐为true，连接被关闭后，处于TIME_WAIT状态时，端口是否被重用，TIME_WAIT 将持续 2MSL ，总共 4 min。
-* `ALLOCATOR`: 使用 `PooledByteBufAllocator.DEFAULT`
-* `WRITE_BUFFER_WATER_MARK`: 默认64k，可设置为 1M 到 6M。
-
-`ServerSocketChannel` 参数：
-
-* SO_BACKLOG: 握手队列长度
-
-`SocketChannel` 参数：
-
-* `CONNECT_TIMEOUT_MILLIS`：客户端建立连接时，如果超过指定的时间仍未连接，则抛出timeout异常。
-* `SO_SNDBUF`: 发送缓冲区，不建议我们手动进行设置，因为操作系统会根据当前占用，进行自动的调整。
-* `RCVBUF_ALLOCATOR`: 该参数使用默认值
-
-Nagle算法的规则：
-
-* 如果包长度达到`MSS`(Maximum Segment Size 1460字节)，则允许发送
-* 如果该包含有FIN，则允许发送
-* 设置了`TCP_NODELAY`选项，则允许发送
-* 未设置`TCP_CORK`选项时，若所有发出去的小数据包（包长度小于MSS）均被确认，则允许发送；
-* 上述条件都未满足，但发生了超时（一般为200ms），则立即发送
-
 ## Buffer
 
 Buffer 本质是一块可以写入数据可以读取数据的内存，`ByteBuffer`、`CharBuffer`、`IntBuffer` 等都是它的子类，表示不同类型的数组。
@@ -603,6 +572,37 @@ Netty是 一个异步事件驱动的网络应用程序框架，用于快速开�
 4. 使用 DirectBuffer 减少数据间的拷贝。
 5. 支持 Protobuf 等高性能序列化协议。
 6. 无锁化的串行设计，IO线程内部进行串行操作，避免多线程竞争导致的性能下降。
+
+## SocketChannel & ServerSocketChannel & DatagramChannel
+
+`SocketOption`：配置 Socket 连接，定义在 `StandardSocketOptions` 中。
+
+`SocketChannel`、`ServerSocketChannel` 参数：
+
+* `TCP_NODELAY`: 默认开启（false），禁用Nagle算法，当我们只要发送1字节的数据，却需要40字节的TCP/IP头部时，浪费会非常大，Nagle算法是通过合并短段并提高网络效率。
+* `SO_RCVBUF`: 接收缓冲区，不建议我们手动进行设置，因为操作系统会根据当前占用，进行自动的调整。
+* `SO_KEEPALIVE`：推荐为true，在连接空闲时操作系统定期探测连接的另一端，一般时空闲2小时后，发送第一个探测分组，如果没收到回应每隔75秒发送一个探测分组，最多重复发送9次。
+* `SO_REUSEADDR`: 推荐为true，连接被关闭后，处于TIME_WAIT状态时，端口是否被重用，TIME_WAIT 将持续 2MSL ，总共 4 min。
+* `ALLOCATOR`: 使用 `PooledByteBufAllocator.DEFAULT`
+* `WRITE_BUFFER_WATER_MARK`: 默认64k，可设置为 1M 到 6M。
+
+`ServerSocketChannel` 参数：
+
+* SO_BACKLOG: 握手队列长度
+
+`SocketChannel` 参数：
+
+* `CONNECT_TIMEOUT_MILLIS`：客户端建立连接时，如果超过指定的时间仍未连接，则抛出timeout异常。
+* `SO_SNDBUF`: 发送缓冲区，不建议我们手动进行设置，因为操作系统会根据当前占用，进行自动的调整。
+* `RCVBUF_ALLOCATOR`: 该参数使用默认值
+
+Nagle算法的规则：
+
+* 如果包长度达到`MSS`(Maximum Segment Size 1460字节)，则允许发送
+* 如果该包含有FIN，则允许发送
+* 设置了`TCP_NODELAY`选项，则允许发送
+* 未设置`TCP_CORK`选项时，若所有发出去的小数据包（包长度小于MSS）均被确认，则允许发送；
+* 上述条件都未满足，但发生了超时（一般为200ms），则立即发送
 
 ## 核心组件
 

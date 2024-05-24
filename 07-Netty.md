@@ -843,11 +843,14 @@ public final void bind(final SocketAddress localAddress, final ChannelPromise pr
 1. 将 `SelectableChannel` 注册到 `EventLoop` 中的 `Selector`。
 
 调用顺序:
-Channel使用Unsafe
+
+```text
+Channel使用Unsafe(指的是Netty的Unsafe抽象，例如AbstractUnsafe)
 -> 调用 AbstractChannel.AbstractUnsafe#register
 -> 调用 AbstractChannel.AbstractUnsafe#register0
 -> 调用 AbstractChannel#doRegister
 -> AbstractNioChannel覆盖doRegister方法
+```
 
 ```java
 
@@ -874,12 +877,14 @@ protected void doRegister() throws Exception {
 }
 ```
 
-2. 向 Selector 注册 readInterestOp。
+2. 向 `Selector` 注册 `readInterestOp`。
 
 流程：
+```text
 AbstractChannel.AbstractUnsafe#beginRead()
 -> AbstractChannel#doBeginRead()
 -> 由覆盖AbstractNioChannel#doBeginRead()
+```
 
 ```java
 
@@ -901,7 +906,7 @@ protected void doBeginRead() throws Exception {
 
 #### AbstractNioMessageChannel
 
-负责 ServerSocketChannel#read() 的 ACCPET 事件。
+负责 `ServerSocketChannel#read()` 的 `ACCPET` 事件。
 
 ```java
 
@@ -968,7 +973,7 @@ public void read() {
 
 #### AbstractNioByteChannel
 
-负责 SocketChannel#read() 的 READ 事件。
+负责 `SocketChannel#read()` 的 `READ` 事件。
 
 ```java
 
@@ -1045,48 +1050,42 @@ public final void read() {
 
 ### EventLoop & EventLoopGroup
 
-* 一个 EventLoopGroup 包含一个或多个 EventLoop ，即 EventLoopGroup : EventLoop = 1 : n 。
-* 一个 EventLoop 在它的生命周期内，只能与一个 Thread 绑定，即 EventLoop : Thread = 1 : 1 。
-* 所有由 EventLoop 处理的 I/O 事件都将在它专有的 Thread 上被处理，从而保证线程安全，即 Thread : EventLoop = 1 : 1。
-* 一个 Channel 在它的生命周期内只能注册到一个 EventLoop 上，即 Channel : EventLoop = n : 1 。
-* 一个 EventLoop 可被分配至一个或多个 Channel ，即 EventLoop : Channel = 1 : n 。
+* 一个 EventLoopGroup 包含一个或多个 EventLoop ，即 `EventLoopGroup : EventLoop = 1 : n` 。
+* 一个 EventLoop 在它的生命周期内，只能与一个 Thread 绑定，即 `EventLoop : Thread = 1 : 1` 。
+* 所有由 EventLoop 处理的 I/O 事件都将在它专有的 Thread 上被处理，从而保证线程安全，即 `Thread : EventLoop = 1 : 1`。
+* 一个 Channel 在它的生命周期内只能注册到一个 EventLoop 上，即 `Channel : EventLoop = n : 1` 。
+* 一个 EventLoop 可被分配至一个或多个 Channel ，即 `EventLoop : Channel = 1 : n` 。
 
 ![250](assets/250.png)
 ![251](assets/251.png)
 
 几个概念:
 
-* EventExecutor：主要负责任务的提交、线程的管理，任务分为 普通任务、调度任务、定时任务，调用 execute(Runnable task)
-  方法时会启动线程，循环调用 EventLoop#run 和 任务。
-* EventLoop：继承 EventExecutor ，主要负责实现 Channel 的注册，以及select操作，处理IO请求。
-* EventExecutorGroup：负责管理多个EventExecutor，当任务提交时，使用 DefaultEventExecutorChooserFactory
-  选择一个EventExecutor，然后调用 EventExecutor 的提交方法。
-* NioEventLoopGroup：负责管理多个EventLoop：继承，当注册时，使用 DefaultEventExecutorChooserFactory 选择一个EventLoop，然后调用
-  EventExecutor 的组成方法。
+* `EventExecutor`：主要负责任务的提交、线程的管理，任务分为 普通任务、调度任务、定时任务，调用 `execute(Runnable task)`方法时会启动线程，循环调用 `EventLoop#run` 和 任务。
+* `EventLoop`：继承 `EventExecutor` ，主要负责实现 `Channel` 的注册，以及`select`操作，处理IO请求。
+* `EventExecutorGroup`：负责管理多个`EventExecutor`，当任务提交时，使用 `DefaultEventExecutorChooserFactory`选择一个`EventExecutor`，然后调用 `EventExecutor` 的提交方法。
+* `NioEventLoopGroup`：负责管理多个`EventLoop`：继承，当注册时，使用 `DefaultEventExecutorChooserFactory` 选择一个`EventLoop`，然后调用`EventExecutor` 的组成方法。
 
 EventLoop 有2类工作：
 
 1. 处理由自己实现的 IO 读写。
-2. 处理 EventExecutor 的实现的任务,任务又分为两类：
+2. 处理 `EventExecutor` 的实现的任务,任务又分为两类：
 
-* 系统任务：通过 execute(Runnable task) 提交，当 IO 线程 和 用户线程同时操作网络资源时，通过 inEventLoop
-  判断，将用户线程的操作转换成Task放入队列，然后由IO线程从队列中取出执行，从而实现局部无锁化，减少并发的锁竞争。
-* 定时任务：通过 schedule(Runnable command,long delay,TimeUnit unit) 提交。
+* 系统任务：通过 `execute(Runnable task)` 提交，当 IO 线程 和 用户线程同时操作网络资源时，通过 inEventLoop 判断，将用户线程的操作转换成Task放入队列，然后由IO线程从队列中取出执行，从而实现局部无锁化，减少并发的锁竞争。
+* 定时任务：通过 `schedule(Runnable command,long delay,TimeUnit unit)` 提交。
 
 IO任务 和 普通任务根据 ioRatio 进行分配执行时间，默认 50%。
 
-SelectedKey 的优化：通过反射 SelectorImpl 将 Set<SelectionKey> selectedKeys 转换成
-SelectedSelectionKeySet，SelectedSelectionKeySet 使用 数组 存储 SelectionKey ，相比 Set<SelectionKey> 底层使用 HashMap
-存储读写性能更高。
+`SelectedKey` 的优化：通过反射 `SelectorImpl` 将 `Set<SelectionKey> selectedKeys` 转换成
+`SelectedSelectionKeySet`，`SelectedSelectionKeySet` 使用 数组 存储 `SelectionKey` ，相比 `Set<SelectionKey>` 底层使用 HashMap 存储读写性能更高。
 
-select() bug 规避：在一个周期内使用 selectCnt 对空轮询进行计数，如果达到阀值，判断 JDK 发生 Selector CPU 100% bug，然后从重建
-Selector 。
+`select()` bug 规避：在一个周期内使用 `selectCnt` 对空轮询进行计数，如果达到阀值，判断 JDK 发生 Selector CPU 100% bug，然后从重建`Selector` 。
 
 使用：
 
-* 使用 BossEventLoopGroup 和 WorkEventLoopGroup ，BossEventLoopGroup数量大小通常设置为 1。
-* 尽量不在 ChannelHandler 中启动用户线程，属于 NIO 线程。
-* 解码放在解码Handler 中进行，不要切换到用户线程中完成消息解码。
+* 使用 `BossEventLoopGroup` 和 `WorkEventLoopGroup` ，`BossEventLoopGroup`数量大小通常设置为 1。
+* 尽量不在 `ChannelHandler` 中启动用户线程，属于 NIO 线程。
+* 解码放在解码`Handler` 中进行，不要切换到用户线程中完成消息解码。
 * NIO 线程不能阻塞，任务应该派发到业务线程中执行。
 
 #### Reactor 线程模型
@@ -1112,12 +1111,10 @@ ACCEPT 事件使用一个线程池处理， READ 、WRITE 事件
 
 ### ChannelFuture & Promise
 
-* ChannelFuture：未来节点、异步操作的占位符，相对于原生Future 扩展 获取异常、监听回调、阻塞等待等功能，常用的实现有
-  FailedChannelFuture、SucceededChannelFuture、FailedFuture、SucceededFuture。
-* Promise：一个特殊的 Futrue ，可以修改 它的状态，常用于传入I/O业务代码中，用于I/O结束后设置成功（或失败）状态，并回调方法，常用的实现有
-  DefaultChannelPromise、DefaultPromise,底层使用 AtomicReferenceFieldUpdater + volatile 更新 result。
+* `ChannelFuture`：未来节点、异步操作的占位符，相对于原生Future 扩展 获取异常、监听回调、阻塞等待等功能，常用的实现有`FailedChannelFuture`、`SucceededChannelFuture`、`FailedFuture`、`SucceededFuture`。
+* `Promise`：一个特殊的 Futrue ，可以修改 它的状态，常用于传入I/O业务代码中，用于I/O结束后设置成功（或失败）状态，并回调方法，常用的实现有`DefaultChannelPromise`、`DefaultPromise`,底层使用 `AtomicReferenceFieldUpdater` + `volatile` 更新 result。
 
-ChannelFuture 的状态：
+`ChannelFuture` 的状态：
 
 ```java
 /**
@@ -1212,7 +1209,7 @@ Future<V> removeListener(GenericFutureListener<? extends Future<? super V>> list
 Future<V> removeListeners(GenericFutureListener<? extends Future<? super V>>... listeners);
 ```
 
-5. 阻塞等待结果返回：sync方法阻塞等待结果且如果执行失败后向外抛出导致失败的异常，await方法仅阻塞等待结果返回，不向外抛出异常。
+5. 阻塞等待结果返回：`sync`方法阻塞等待结果且如果执行失败后向外抛出导致失败的异常，`await`方法仅阻塞等待结果返回，不向外抛出异常。
 
 ```java
 // 阻塞等待，且如果失败抛出异常
@@ -1275,13 +1272,11 @@ public ChannelFuture bind() {
 
 ![255](assets/255.png)
 
-* ChannelPipeline：通过链表实现过滤器模式，负责管理链表节点，接受IO事件的触发，并在管道上传播，每个 Channel 都有自己独立的
-  Pipeline，默认的实现类为 DefaultChannelPipeline 。
-* ChannelHandlerContext：ChannelPipeline 的 链表节点，包含 ChannelHandler 及相关上下文信息，负责将 IO 事件传递给下一个节点，常用的实现类为
-  DefaultChannelHandlerContext、HeadContext、TailContext。
-* ChannelHandler：处理出站入站的处理器。
-* ServerSocketChannel 的 Pipeline 为 HeadContext -> ServerBootstrap.ServerBootstrapAcceptor -> TailContext
-* SocketChannel 的 Pipeline 为 HeadContext -> 自定义ChannelHandler -> TailContext
+* `ChannelPipeline`：通过链表实现过滤器模式，负责管理链表节点，接受IO事件的触发，并在管道上传播，每个 Channel 都有自己独立的`Pipeline`，默认的实现类为 `DefaultChannelPipeline` 。
+* `ChannelHandlerContext`：`ChannelPipeline` 的 链表节点，包含 `ChannelHandler` 及相关上下文信息，负责将 IO 事件传递给下一个节点，常用的实现类为`DefaultChannelHandlerContext`、`HeadContext`、`TailContext`。
+* `ChannelHandler`：处理出站入站的处理器。
+* `ServerSocketChannel` 的 `Pipeline` 为 `HeadContext -> ServerBootstrap.ServerBootstrapAcceptor -> TailContext`
+* `SocketChannel` 的 `Pipeline` 为 `HeadContext -> 自定义ChannelHandler -> TailContext`
 
 ```text
                                               I/O Request
@@ -1324,72 +1319,67 @@ public ChannelFuture bind() {
 +-------------------------------------------------------------------+
 ```
 
-* 入站（read）从 HeadContext -> TailContext。
-* 出站（write）从 TailContext -> HeadContext。
-* ChannelPipeline#addLast是直接将 Chandler 添加到 HeadContext 后面。
+* 入站（read）从 `HeadContext -> TailContext`。
+* 出站（write）从 `TailContext -> HeadContext`。
+* `ChannelPipeline#addLast`是直接将 `Chandler` 添加到 `HeadContext` 后面。
 
-ChannelHandler 的生命周期：
+`ChannelHandler` 的生命周期：
 
-* handlerAdded：当把 ChannelHandler 添加到 ChannelPipeline 中时调用此方法
-* handlerRemoved：当把 ChannelHandler 从 ChannelPipeline 中移除的时候会调用此方法
-* exceptionCaught：当 ChannelHandler 在处理数据的过程中发生异常时会调用此方法，当发生异常，ChannelHandlerContext 不会再向下传播。
+* `handlerAdded`：当把 ChannelHandler 添加到 ChannelPipeline 中时调用此方法
+* `handlerRemoved`：当把 ChannelHandler 从 ChannelPipeline 中移除的时候会调用此方法
+* `exceptionCaught`：当 ChannelHandler 在处理数据的过程中发生异常时会调用此方法，当发生异常，ChannelHandlerContext 不会再向下传播。
 
 ChannelInboundHandler：处理入站操作。
 
-* ChannelRegistered：当Channel被注册到EventLoop且能够处理IO事件时会调用此方法
-* ChannelUnregistered：当Channel从EventLoop注销且无法处理任何IO事件时会调用此方法
-* ChannelActive：当Channel已经连接到远程节点(或者已绑定本地address)且处于活动状态时会调用此方法
-* ChannelInactive：当Channel与远程节点断开，不再处于活动状态时调用此方法
-* ChannelReadComplete：当Channel的某一个读操作完成时调用此方法
-* ChannelRead：当Channel有数据可读时调用此方法
+* `ChannelRegistered`：当Channel被注册到EventLoop且能够处理IO事件时会调用此方法
+* `ChannelUnregistered`：当Channel从EventLoop注销且无法处理任何IO事件时会调用此方法
+* `ChannelActive`：当Channel已经连接到远程节点(或者已绑定本地address)且处于活动状态时会调用此方法
+* `ChannelInactive`：当Channel与远程节点断开，不再处于活动状态时调用此方法
+* `ChannelReadComplete`：当Channel的某一个读操作完成时调用此方法
+* `ChannelRead`：当Channel有数据可读时调用此方法
 *
 
-ChannelWritabilityChanged：当Channel的可写状态发生改变时调用此方法，可以调用Channel的isWritable方法检测Channel的可写性，还可以通过ChannelConfig来配置write操作相关的属性。例如
-对方 Socket 接收很慢，ChannelOutboundBuffer 就会积累很多的数据，一旦超过默认的高水位阈值，Channel的可写状态将会改变，同时调用该方法。
+`ChannelWritabilityChanged`：当Channel的可写状态发生改变时调用此方法，可以调用Channel的isWritable方法检测Channel的可写性，还可以通过ChannelConfig来配置write操作相关的属性。例如 对方 Socket 接收很慢，`ChannelOutboundBuffer` 就会积累很多的数据，一旦超过默认的高水位阈值，Channel的可写状态将会改变，同时调用该方法。
 
-* userEventTriggered：当ChannelInboundHandler的fireUserEventTriggered方法被调用时才调用此方法。
+* `userEventTriggered`：当`ChannelInboundHandler`的`fireUserEventTriggered`方法被调用时才调用此方法。
 
-ChannelOutboundHandler：处理出站操作。
+`ChannelOutboundHandler`：处理出站操作。
 
-* bind：当Channel绑定到本地address时会调用此方法
-* connect：当Channel连接到远程节点时会调用此方法
-* disconnect：当Channel和远程节点断开时会调用此方法
-* close：当关闭Channel时会调用此方法
-* deregister：当Channel从它的EventLoop注销时会调用此方法
-* read：当从Channel读取数据时会调用此方法
-* flush：当Channel将数据冲刷到远程节点时调用此方法
-* write：当通过Channel将数据写入到远程节点时调用此方法
+* `bind`：当Channel绑定到本地address时会调用此方法
+* `connect`：当Channel连接到远程节点时会调用此方法
+* `disconnect`：当Channel和远程节点断开时会调用此方法
+* `close`：当关闭Channel时会调用此方法
+* `deregister`：当Channel从它的EventLoop注销时会调用此方法
+* `read`：当从Channel读取数据时会调用此方法
+* `flush`：当Channel将数据冲刷到远程节点时调用此方法
+* `write`：当通过Channel将数据写入到远程节点时调用此方法
 
-通常我们实现 ChannelHandler 时，会选择继承 ChannelInboundHandlerAdapter 、 ChannelOutboundHandlerAdapter
-、ChannelDuplexHandler，或者更为推荐的 SimpleChannelInboundHandler 。
+通常我们实现 `ChannelHandler` 时，会选择继承 `ChannelInboundHandlerAdapter` 、 `ChannelOutboundHandlerAdapter`、`ChannelDuplexHandler`，或者更为推荐的 `SimpleChannelInboundHandler` 。
 
-如果 ChannelHandler 是线程安全的，可以使用 @Sharable 注解标识，这样可以让多个ChannelPipeline 使用同一个ChannelHandler。
+如果 `ChannelHandler` 是线程安全的，可以使用 `@Sharable` 注解标识，这样可以让多个ChannelPipeline 使用同一个ChannelHandler。
 
-ChannelHandler 一定不能阻塞。
+`ChannelHandler` 一定不能阻塞。
 
 #### ChannelInitializer
 
-一个特殊的 ChannelInboundHandlerAdapter ，在 SocketChannel 创建时被触发 channelRegistered ，由它来添加自定义的
-ChannelHandler ，并再添加完将自己移除。
+一个特殊的 `ChannelInboundHandlerAdapter` ，在 `SocketChannel` 创建时被触发 `channelRegistered` ，由它来添加自定义的`ChannelHandler` ，并再添加完将自己移除。
 
 #### Decoder & Encoder
 
-1. 解码器可继承 ByteToMessageDecoder、ReplayingDecoder、MessageToMessageDecoder
-2. 编码器可继承 MessageToByteEncoder、MessageToMessageEncoder
-3. 混合型编解码器可继承 ByteToMessageCodec、MessageToMessageCodec、CombinedChannelDuplexHandler 。
+1. 解码器可继承 `ByteToMessageDecoder`、`ReplayingDecoder`、`MessageToMessageDecoder`
+2. 编码器可继承 `MessageToByteEncoder`、`MessageToMessageEncoder`
+3. 混合型编解码器可继承 `ByteToMessageCodec`、`MessageToMessageCodec`、`CombinedChannelDuplexHandler` 。
 
-ByteToMessageDecoder有几个重点：
+`ByteToMessageDecoder`有几个重点：
 
-* decode(ctx, in, out) 中 in 不用担心释放，只需使用 skipByte 即可，父类通过 MERGE_CUMULATOR 将 in 剩余未读字节 和
-  新从socket读取字节 复制到一个新 ByteBuf ，并释放 in。
-* ByteBuf.readBytes(int) 等一些返回 ByteBuf 的方法如果没有添加到 out list 需要主动释放，可以使用 ByteBuf.readSlice(int)
-  来避免这种问题，或者使用 getXX ，但要注意 index 位置，防止 超出边界值。
-* 不得使用 @Sharable 注解。
+* `decode(ctx, in, out)` 中 in 不用担心释放，只需使用 skipByte 即可，父类通过 MERGE_CUMULATOR 将 in 剩余未读字节 和 新从socket读取字节 复制到一个新 ByteBuf ，并释放 in。
+* `ByteBuf.readBytes(int)` 等一些返回 ByteBuf 的方法如果没有添加到 out list 需要主动释放，可以使用 `ByteBuf.readSlice(int)`来避免这种问题，或者使用 getXX ，但要注意 index 位置，防止 超出边界值。
+* 不得使用 `@Sharable` 注解。
 * out 会在 channelRead 最后回收。
 
-ReplayingDecoder：遇到半包时通过抛出 ReplayingDecoder.REPLAY 异常，进入结束解码，等待下一次读取数据。
+`ReplayingDecoder`：遇到半包时通过抛出 `ReplayingDecoder.REPLAY` 异常，进入结束解码，等待下一次读取数据。
 
-常用的 ByteToMessageDecoder：
+常用的 `ByteToMessageDecoder`：
 
 * FixedLengthFrameDecoder：定长帧解码器。
 * DelimiterBasedFrameDecoder：分割符解码器。

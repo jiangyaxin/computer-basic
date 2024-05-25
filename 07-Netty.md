@@ -1069,7 +1069,7 @@ public final void read() {
 EventLoop 有2类工作：
 
 1. 处理由自己实现的 IO 读写。
-2. 处理 `EventExecutor` 的实现的任务,任务又分为两类：
+2. 处理 `EventExecutor` 的提交的任务,任务又分为两类：
 
 * 系统任务：通过 `execute(Runnable task)` 提交，当 IO 线程 和 用户线程同时操作网络资源时，通过 inEventLoop 判断，将用户线程的操作转换成Task放入队列，然后由IO线程从队列中取出执行，从而实现局部无锁化，减少并发的锁竞争。
 * 定时任务：通过 `schedule(Runnable command,long delay,TimeUnit unit)` 提交。
@@ -1084,9 +1084,8 @@ IO任务 和 普通任务根据 ioRatio 进行分配执行时间，默认 50%。
 使用：
 
 * 使用 `BossEventLoopGroup` 和 `WorkEventLoopGroup` ，`BossEventLoopGroup`数量大小通常设置为 1。
-* 尽量不在 `ChannelHandler` 中启动用户线程，属于 NIO 线程。
-* 解码放在解码`Handler` 中进行，不要切换到用户线程中完成消息解码。
-* NIO 线程不能阻塞，任务应该派发到业务线程中执行。
+* 解码放在解码器中进行，使用`DirectBytebuf`，减少内存复制，可以在解码器中使用`retain`增加引用，在后续的`ChannelHandler`使用`release`减少引用回收，注意手动创建的`bytebuf`需要在`ChannelHandler#unregister`中释放。
+* EventLoop 线程不能阻塞，任务应该派发到业务线程中执行。
 
 #### Reactor 线程模型
 

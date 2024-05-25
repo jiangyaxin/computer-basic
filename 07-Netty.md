@@ -1064,7 +1064,7 @@ public final void read() {
 * `EventExecutor`：主要负责任务的提交、线程的管理，任务分为 普通任务、调度任务、定时任务，调用 `execute(Runnable task)`方法时会启动线程，循环调用 `EventLoop#run` 和 任务。
 * `EventLoop`：继承 `EventExecutor` ，主要负责实现 `Channel` 的注册，以及`select`操作，处理IO请求。
 * `EventExecutorGroup`：负责管理多个`EventExecutor`，当任务提交时，使用 `DefaultEventExecutorChooserFactory`选择一个`EventExecutor`，然后调用 `EventExecutor` 的提交方法。
-* `NioEventLoopGroup`：负责管理多个`EventLoop`：继承，当注册时，使用 `DefaultEventExecutorChooserFactory` 选择一个`EventLoop`，然后调用`EventExecutor` 的组成方法。
+* `NioEventLoopGroup`：负责管理多个`EventLoop`：继承，当注册时，使用 `DefaultEventExecutorChooserFactory` 选择一个`EventLoop`，然后调用`EventLoop` 的注册方法。
 
 EventLoop 有2类工作：
 

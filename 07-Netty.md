@@ -1355,7 +1355,7 @@ ChannelInboundHandler：处理入站操作。
 
 通常我们实现 `ChannelHandler` 时，会选择继承 `ChannelInboundHandlerAdapter` 、 `ChannelOutboundHandlerAdapter`、`ChannelDuplexHandler`，或者更为推荐的 `SimpleChannelInboundHandler` 。
 
-如果 `ChannelHandler` 是线程安全的，可以使用 `@Sharable` 注解标识，这样可以让多个ChannelPipeline 使用同一个ChannelHandler。
+如果 `ChannelHandler` 是线程安全的，可以使用 `@Sharable` 注解标识，这样可以让多个`ChannelPipeline` 使用同一个`ChannelHandler`。
 
 `ChannelHandler` 一定不能阻塞。
 
@@ -1371,7 +1371,7 @@ ChannelInboundHandler：处理入站操作。
 
 `ByteToMessageDecoder`有几个重点：
 
-* `decode(ctx, in, out)` 中 in 不用担心释放，只需使用 skipByte 即可，父类通过 MERGE_CUMULATOR 将 in 剩余未读字节 和 新从socket读取字节 复制到一个新 ByteBuf ，并释放 in。
+* `decode(ctx, in, out)` 中 in 不用担心释放，只需使用 skipByte 即可，父类通过 `MERGE_CUMULATOR` 将 in 剩余未读字节 和 新从socket读取字节 复制到一个新 ByteBuf ，并释放 in。
 * `ByteBuf.readBytes(int)` 等一些返回 ByteBuf 的方法如果没有添加到 out list 需要主动释放，可以使用 `ByteBuf.readSlice(int)`来避免这种问题，或者使用 getXX ，但要注意 index 位置，防止 超出边界值。
 * 不得使用 `@Sharable` 注解。
 * out 会在 channelRead 最后回收。
@@ -1380,56 +1380,61 @@ ChannelInboundHandler：处理入站操作。
 
 常用的 `ByteToMessageDecoder`：
 
-* FixedLengthFrameDecoder：定长帧解码器。
-* DelimiterBasedFrameDecoder：分割符解码器。
-* LineBasedFrameDecoder：换行符解码器，`\r\n`、`\n`都视为换行符。
-* LengthFieldBasedFrameDecoder：
-    * maxFrameLength：最大帧长度，如果超过，此次数据会被丢弃。
-    * lengthFieldOffset：长度域偏移。如果数据开始的几个字节可能不是表示数据长度，所以需要后移几个字节才是长度域。
-    * lengthFieldLength：长度域字节数。用几个字节来表示数据长度。
-    * lengthAdjustment：长度域后实际长度 - 长度域长度，因为长度域长度可能包含 head 长度，需要 减去
-    * initialBytesToStrip：将本帧跳过几个字节，添加到 out。
+* `FixedLengthFrameDecoder`：定长帧解码器。
+* `DelimiterBasedFrameDecoder`：分割符解码器。
+* `LineBasedFrameDecoder`：换行符解码器，`\r\n`、`\n`都视为换行符。
+* `LengthFieldBasedFrameDecoder`：
+    * `maxFrameLength`：最大帧长度，如果超过，此次数据会被丢弃。
+    * `lengthFieldOffset`：长度域偏移。如果数据开始的几个字节可能不是表示数据长度，所以需要后移几个字节才是长度域。
+    * `lengthFieldLength`：长度域字节数。用几个字节来表示数据长度。
+    * `lengthAdjustment`：长度域后实际长度 - 长度域长度，因为长度域长度可能包含 head 长度，需要 减去
+    * `initialBytesToStrip`：将本帧跳过几个字节，添加到 out。
 
 常用 MessageToByteEncoder：
 
-* LengthFieldPrepender：
-    * byteOrder：表示Length字段本身占用的字节数使用的是大端还是小端编码
-    * lengthFieldLength：表示Length字段本身占用的字节数,只可以指定 1, 2, 3, 4, 或 8。
-    * lengthAdjustment：表示Length字段调整值。
-    * lengthIncludesLengthFieldLength：表示Length字段本身占用的字节数是否包含在Length字段表示的值中。
+* `LengthFieldPrepender`：
+    * `byteOrder`：表示Length字段本身占用的字节数使用的是大端还是小端编码
+    * `lengthFieldLength`：表示Length字段本身占用的字节数,只可以指定 1, 2, 3, 4, 或 8。
+    * `lengthAdjustment`：表示Length字段调整值。
+    * `lengthIncludesLengthFieldLength`：表示Length字段本身占用的字节数是否包含在Length字段表示的值中。
 
-Http常用编解码器：HttpServerCodec、HttpClientCodec、HttpObjectAggregator、HttpContentCompressor、HttpContentDecompressor、SslHandler
+Http常用编解码器：`HttpServerCodec`、`HttpClientCodec`、`HttpObjectAggregator`、`HttpContentCompressor`、`HttpContentDecompressor`、`SslHandler`
 
-Websocket常用编解码器：HttpServerCodec、HttpObjectAggregator、WebSocketServerProtocolHandler、TextFrameHandler、BinaryFrameHandler、ContinuationFrameHandler
+Websocket常用编解码器：`HttpServerCodec`、`HttpObjectAggregator`、`WebSocketServerProtocolHandler`、`TextFrameHandler`、`BinaryFrameHandler`、`ContinuationFrameHandler`
 
 空闲和超时：
 
-* IdleStateHandler （空闲时间太长，触发 IdleStateEvent，通过 userEventTriggered 接收）
-* ReadTimeoutHandler （抛出 ReadTimeoutException，通过 exceptionCaught 接收）
-* WriteTimeoutHandler （抛出 WriteTimeouException，通过 exceptionCaught 接收 ）
+* `IdleStateHandler` （空闲时间太长，触发 `IdleStateEvent`，通过 `userEventTriggered` 接收）
+* `ReadTimeoutHandler` （抛出 `ReadTimeoutException`，通过 `exceptionCaught` 接收）
+* `WriteTimeoutHandler` （抛出 `WriteTimeoutException`，通过 `exceptionCaught` 接收 ）
 
-IP黑白名单：RuleBasedIpFilter
+IP黑白名单：`RuleBasedIpFilter`
 
-码流日志打印：LoggingHandler
+码流日志打印：`LoggingHandler`
+
+流量整形：Netty内置了三种流量整形功能。
+* 单个链路的流量整形:`ChannelTrafficShapingHandler`，可以对某个链路的消息发送和读取速度进行控制。
+* 全局流量整形:`GlobalTrafficShapingHandler`，针对某个进程所有链路的消息发送和读取速度的总和进行控制。
+* 全局和单个链路综合型流量整形:`GlobalChannelTrafficShapingHandler`，同时对全局和单个链路的消息发送和读取速度进行控制。
+
+`GlobalTrafficShapingHandler` 和 `GlobalChannelTrafficShapingHandler` 需要全局使用一个实例。
 
 ### ServerBootStrap & BootStrap
 
-负责服务器和客户端的创建，ServerBootStrap 负责将一个进程绑定到某个指定的端口，BootStrap 负责将一个进程连接到另一个指定主机的正在运行的进程。
+负责服务器和客户端的创建，`ServerBootStrap` 负责将一个进程绑定到某个指定的端口，`BootStrap` 负责将一个进程连接到另一个指定主机的正在运行的进程。
 
 #### Option
 
-通过 ChannelOption 配置，常用的有 SO_BACKLOG、SO_KEEPALIVE、TCP_NODELAY 。
+`ServerBootStrap`中`option()`设置 `SeverSocketChannel`,`childOption()` 设置 `SocketChannel`。
 
-ServerBootStrap中option()设置 SeverSocketChannel,childOption() 设置 SocketChannel。
-
-`SocketOption`：配置 Socket 连接，定义在 `StandardSocketOptions` 中。
+`SocketOption`：配置 `Socket` 连接，定义在 `StandardSocketOptions` 中。
 
 `SocketChannel`、`ServerSocketChannel` 参数：
 
 * `TCP_NODELAY`: 默认开启（false），禁用Nagle算法，当我们只要发送1字节的数据，却需要40字节的TCP/IP头部时，浪费会非常大，Nagle算法是通过合并短段并提高网络效率。
 * `SO_RCVBUF`: 接收缓冲区，不建议我们手动进行设置，因为操作系统会根据当前占用，进行自动的调整。
 * `SO_KEEPALIVE`：推荐为true，在连接空闲时操作系统定期探测连接的另一端，一般时空闲2小时后，发送第一个探测分组，如果没收到回应每隔75秒发送一个探测分组，最多重复发送9次。
-* `SO_REUSEADDR`: 推荐为true，连接被关闭后，处于TIME_WAIT状态时，端口是否被重用，TIME_WAIT 将持续 2MSL ，总共 4 min。
+* `SO_REUSEADDR`: 推荐为true，连接被关闭后，处于TIME_WAIT状态时，端口是否被重用，`TIME_WAIT` 将持续 `2MSL` ，总共 4 min。
 * `ALLOCATOR`: 使用 `PooledByteBufAllocator.DEFAULT`
 * `WRITE_BUFFER_WATER_MARK`: 默认64k，可设置为 1M 到 6M。
 
@@ -1463,9 +1468,9 @@ Nagle算法的规则：
 
 类型：
 
-1. 内存类型：堆内存和直接内存，例如 PooledHeapByteBuf、PooledDirectByteBuf。
-2. 分配模式：分为池化与非池化，例如 PooledHeapByteBuf、UnpooledHeapByteBuf。
-3. 操作类型：分为Unsafe与非Unsafe，例如 PooledHeapByteBuf、PooledUnsafeHeapByteBuf。
+1. 内存类型：堆内存和直接内存，例如 `PooledHeapByteBuf`、`PooledDirectByteBuf`。
+2. 分配模式：分为池化与非池化，例如 `PooledHeapByteBuf`、`UnpooledHeapByteBuf`。
+3. 操作类型：分为Unsafe与非Unsafe，例如 `PooledHeapByteBuf`、`PooledUnsafeHeapByteBuf`。
 
 常用方法：
 
@@ -1579,19 +1584,18 @@ private int maxCapacity;
 
 ![256](assets/256.png)
 
-* 每读取一个字节，readerIndex递增1；直到readerIndex等于writerIndex，表示ByteBuf已经不可读；
-* 每写入一个字节，writerIndex递增1；直到writerIndex等于capacity，表示ByteBuf已经不可写；
-* 当writerIndex等于capacity表示底层字节数组需要扩容，且最大扩容不能超过max capacity，capacity() 由子类去实现。
+* 每读取一个字节，`readerIndex`递增1；直到`readerIndex`等于`writerIndex`，表示ByteBuf已经不可读；
+* 每写入一个字节，`writerIndex`递增1；直到`writerIndex`等于`capacity`，表示ByteBuf已经不可写；
+* 当`writerIndex`等于`capacity`表示底层字节数组需要扩容，且最大扩容不能超过max capacity，`capacity() `由子类去实现。
 
 ##### 内存泄漏探测
 
-* 启动时添加 -Dio.netty.leakDetectionLevel=ADVANCED 开启采样，每次产生一个堆外内存检查一次。
-* SIMPLE:默认的内存检测级别，以一个时间间隔，默认是每创建113个直接内存（堆外内存）时检测一次。
+* 启动时添加 `-Dio.netty.leakDetectionLevel=ADVANCED` 开启采样，每次产生一个堆外内存检查一次。
+* `SIMPLE`:默认的内存检测级别，以一个时间间隔，默认是每创建113个直接内存（堆外内存）时检测一次。
 
 #### AbstractReferenceCountedByteBuf
 
-通过 volatile + CAS 修改 refCnt,refCnt 初始化为 2，采用位运算， retain() 左移一位 ,release() 右移一位，当调用 release() 等于
-1 时，开始释放对象，在实际实现中不是采用是否等于1来判断，而是使用 refCnt & 1 判断奇偶数来判断，偶数表示引用还存在，奇数表示对象被释放。
+通过 `volatile` + `CAS` 修改 `refCnt`,`refCnt` 初始化为 2，采用位运算， `retain()` 左移一位 ,`release()` 右移一位，当调用 `release()` 等于 1 时，开始释放对象，在实际实现中不是采用是否等于1来判断，而是使用 `refCnt & 1` 判断奇偶数来判断，偶数表示引用还存在，奇数表示对象被释放。
 
 #### UnpooledHeapByteBuf & UnpooledUnsafeHeapByteBuf
 
@@ -1605,10 +1609,9 @@ byte[] array;
 private ByteBuffer tmpNioBuf;
 ```
 
-扩容时使用 System.copyarray() 复制到新数组。
+扩容时使用 `System.copyarray()` 复制到新数组。
 
-UnpooledHeapByteBuf 使用字节数组的索引即array[index]访问，UnpooledUnsafeHeapByteBuf 使用 baseAddress +
-Index的得到字节的地址，然后从该地址取得字节，以提高性能。
+`UnpooledHeapByteBuf` 使用字节数组的索引即array[index]访问，`UnpooledUnsafeHeapByteBuf` 使用 `baseAddress + Index`的得到字节的地址，然后从该地址取得字节，以提高性能。
 
 #### UnpooledDirectByteBuf & UnpooledUnsafeDirectByteBuf
 
@@ -1622,9 +1625,9 @@ private int capacity;
 private boolean doNotFree;
 ```
 
-扩容时创建一个新的 ByteBuffer ，使用 ByteBuffer#put 将 原ByteBuffer 复制过去，再将 原ByteBuffer 释放内存。
+扩容时创建一个新的 `ByteBuffer` ，使用 `ByteBuffer#put` 将 原ByteBuffer 复制过去，再将 原ByteBuffer 释放内存。
 
-UnpooledDirectByteBuf 使用 DirectByteBuffer API 访问，UnpooledUnsafeHeapByteBuf 使用 memoryAddress + Index 地址访问，速度更快。
+`UnpooledDirectByteBuf` 使用 DirectByteBuffer API 访问，`UnpooledUnsafeHeapByteBuf` 使用 `memoryAddress + Index` 地址访问，速度更快。
 
 #### PooledByteBuf
 
@@ -1647,16 +1650,14 @@ private ByteBufAllocator allocator;
 ```
 
 * 先将内存分为多个Chunk，16MB
-* 按使用率将 Chunk 归类为多个 PoolChunkList，PoolChunkList有 QINIT 、 Q0 、 Q25 、 Q50 、Q75 、Q100 6种，代表不同的使用率,使用链表组织数据结构：
+* 按使用率将 Chunk 归类为多个 `PoolChunkList`，`PoolChunkList`有 QINIT 、 Q0 、 Q25 、 Q50 、Q75 、Q100 6种，代表不同的使用率,使用链表组织数据结构：
 
   ![257](assets/257.png)
-* 一个Chunk分为切分为 2048 块 Page ,8KB，储存在
-  PriorityQueue数组（runsAvail），其中PriorityQueue存放的是handle，handle可以理解为一个句柄，维护一个内存块的信息，内存标识符。
-* runsAvail数组默认长度为40，每个位置index上放的handle代表了存在一个可用内存块，并且可分配大小
-  大于等于当前的pageSize，小于下一页的pageSize。
+* 一个Chunk分为切分为 2048 块 Page ,8KB，储存在`PriorityQueue`数组（`runsAvail`），其中`PriorityQueue`存放的是handle，handle可以理解为一个句柄，维护一个内存块的信息，内存标识符。
+* runsAvail数组默认长度为40，每个位置index上放的handle代表了存在一个可用内存块，并且可分配大小 大于等于当前的pageSize，小于下一页的pageSize。
 * 分配时分为 Small内存块 、Normal内存块 分开分配。
-* Small内存块使用 PoolSubpage 。
-* Normal内存块 直接从 PriorityQueue 中划分 page。
+* `Small`内存块使用 `PoolSubpage` 。
+* `Normal`内存块 直接从 `PriorityQueue` 中划分 page。
 
 #### CompositeByteBuf
 
@@ -1664,11 +1665,11 @@ private ByteBufAllocator allocator;
 
 #### ByteBufHolder
 
-提供一个包含 ByteBuf 的抽象，默认实现为 DefaultByteBufHolder ，一般继承该类，用于除了储存 ByteBuf 外，还储存其他值。
+提供一个包含 ByteBuf 的抽象，默认实现为 `DefaultByteBufHolder` ，一般继承该类，用于除了储存 ByteBuf 外，还储存其他值。
 
 #### ByteBufAllocator
 
-有两种实现 PooledByteBufAllocator 和 UnpooledByteBufAllocator , 默认使用 PooledByteBufAllocator。
+有两种实现 `PooledByteBufAllocator` 和 `UnpooledByteBufAllocator` , 默认使用 `PooledByteBufAllocator`。
 
 常用api:
 
@@ -1683,18 +1684,18 @@ private ByteBufAllocator allocator;
 
 #### ByteBufUtil & HeapByteBufUtil & UnsafeByteBufUtil
 
-* ByteBufUtil.hexDump 常用来打印 16 进制字符串。
-* HeapByteBufUtil 将byte[]数组转换成 基本数据类型。
-* UnsafeByteBufUtil 直接读取内存转换成 基本数据类型。
+* `ByteBufUtil.hexDump` 常用来打印 16 进制字符串。
+* `HeapByteBufUtil` 将byte[]数组转换成 基本数据类型。
+* `UnsafeByteBufUtil` 直接读取内存转换成 基本数据类型。
 
 #### Unpooled
 
-使用 UnpooledByteBufAllocator 分配
+使用 `UnpooledByteBufAllocator` 分配
 
-* buffer()：创建堆缓存区。
-* directBuffer()：创建直接缓存区。
-* wrappedBuffer()：和入参使用相同的 byte[],不需要复制。
-* copiedBuffer()：深拷贝一个 ByteBuf，会复制一个新的 byte[]。
+* `buffer()`：创建堆缓存区。
+* `directBuffer()`：创建直接缓存区。
+* `wrappedBuffer()`：和入参使用相同的 byte[],不需要复制。
+* `copiedBuffer()`：深拷贝一个 ByteBuf，会复制一个新的 byte[]。
 
 ### FileRegion
 
@@ -1727,8 +1728,7 @@ public class FileRegionTest {
 
 * 心跳：客户端间隔时间T发送心跳，统计心跳未响应次数，当次数达到阀值断开链路，间隔一段时间发起重连。服务端空闲时间T后，统计次数加1，只要接收到消息即清零，达到阀值关闭链路。
 * 重连：重连由客户端发起，需要间隔一段时间，并打印重连日志。
-* 重复登录保护：服务端接收客户端握手请求消息后，对IP进行校验，在缓存的地址表中查看是否已经登录，如果已经登录则拒绝重复登录，并且通过
-  服务端心跳检测筛除无效连接，清空该连接的缓存信息，防止重复登录保护机制拒绝。
+* 重复登录保护：服务端接收客户端握手请求消息后，对IP进行校验，在缓存的地址表中查看是否已经登录，如果已经登录则拒绝重复登录，并且通过 服务端心跳检测筛除无效连接，清空该连接的缓存信息，防止重复登录保护机制拒绝。
 * 消息缓存重发，在链路恢复前，缓存在消息队列中的消息不能丢失。
 
 4. 安全性设计：使用认证机制。
@@ -1803,15 +1803,6 @@ TCP 分片的依据是 在三次握手的时候，在两端主机之间被计算
 2. 在包尾使用固定的分隔符分割，例如 换行符。
 3. 将消息分为头部和消息体，头部中保存整个消息的长度，只有读取到足够长度的消息之后才算是读到了一个完整的消息。
 
-## 流量整形
-
-Netty内置了三种流量整形功能。
-(1)单个链路的流量整形:ChannelTrafficShapingHandler，可以对某个链路的消息发送和读取速度进行控制。
-(2)全局流量整形:GlobalTrafficShapingHandler，针对某个进程所有链路的消息发送和读取速度的总和进行控制。
-(3)全局和单个链路综合型流量整形:GlobalChannelTrafficShapingHandler，同时对全局和单个链路的消息发送和读取速度进行控制。
-
-GlobalTrafficShapingHandler 和 GlobalChannelTrafficShapingHandler 需要全局使用一个实例。
-
 ## 内核参数调优
 
 ### 文件限制
@@ -1861,27 +1852,25 @@ net.ipv4.tcp_syn_retries = 2
 
 1. 操作系统零拷贝：
 
-* mmap/write：三次数据复制（其中只有一次 CPU COPY）以及4次上下文切换(因为需要两个系统调用)，mmap 就是将不同的虚拟地址映射到同一个物理地址上。
+* `mmap/write`：三次数据复制（其中只有一次 CPU COPY）以及4次上下文切换(因为需要两个系统调用)，mmap 就是将不同的虚拟地址映射到同一个物理地址上。
 
   ![244](assets/244.png)
 * sendfile：三次数据复制（其中只有一次 CPU COPY）以及2次上下文切换。
 
   ![243](assets/243.png)
-* 带有 scatter/gather 的 sendfile：只有两次数据复制（都是 DMA COPY）及 2 次上下文切换，直接将 Read Buffer 的内存地址、偏移量记录到相应的
-  Socket Buffer 中，本质是上就是使用相同的虚拟地址
+* 带有 `scatter/gather` 的 `sendfile`：只有两次数据复制（都是 DMA COPY）及 2 次上下文切换，直接将 Read Buffer 的内存地址、偏移量记录到相应的 Socket Buffer 中，本质是上就是使用相同的虚拟地址
 
   ![246](assets/246.png)
 
 2. java 零拷贝：
 
-* FileChannel#transferTo：优先使用 sendfile ，如果操作系统不支持再使用 MappedByteBuffer 。
-* MappedByteBuffer：使用 mmap 技术映射到堆外内存。
-* DirectByteBuffer：使用堆外内存，减少堆内外的数据拷贝。
+* `FileChannel#transferTo`：优先使用 `sendfile` ，如果操作系统不支持再使用 `MappedByteBuffer` 。
+* `MappedByteBuffer`：使用 mmap 技术映射到堆外内存。
+* `DirectByteBuffer`：使用堆外内存，减少堆内外的数据拷贝。
 
 3. Netty 零拷贝：
 
-* Netty 提供了CompositeByteBuf 类, 它可以将多个 ByteBuf 合并为一个逻辑上的 ByteBuf, 避免合并多个ByteBuf 时各个 ByteBuf
-  之间的拷贝。
+* Netty 提供了`CompositeByteBuf` 类, 它可以将多个 ByteBuf 合并为一个逻辑上的 ByteBuf, 避免合并多个ByteBuf 时各个 ByteBuf 之间的拷贝。
 * 通过 wrap 操作, 我们可以将 byte[] 数组、ByteBuf、ByteBuffer等包装成一个 Netty ByteBuf 对象, 避免通过write api 产生的拷贝操作。
 * ByteBuf支持slice操作, 因此可以将 ByteBuf 分解为多个共享同一个存储区域的 ByteBuf, 避免内存的拷贝。
-* 通过 FileRegion 包装的FileChannel.tranferTo 实现文件传输。
+* 通过 FileRegion 包装的`FileChannel.tranferTo` 实现文件传输。

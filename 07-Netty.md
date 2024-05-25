@@ -1649,23 +1649,23 @@ ByteBuffer tmpNioBuf;
 private ByteBufAllocator allocator;
 ```
 
-* 先将内存分为多个Chunk，16MB
-* 按使用率将 Chunk 归类为多个 `PoolChunkList`，`PoolChunkList`有 QINIT 、 Q0 、 Q25 、 Q50 、Q75 、Q100 6种，代表不同的使用率,使用链表组织数据结构：
+* 先将内存分为多个`Chunk`，16MB
+* 按使用率将 `Chunk` 归类为多个 `PoolChunkList`，`PoolChunkList`有 `QINIT` 、 `Q0` 、 `Q25` 、 `Q50` 、`Q75` 、`Q100` 6种，代表不同的使用率,使用链表组织数据结构：
 
   ![257](assets/257.png)
-* 一个Chunk分为切分为 2048 块 Page ,8KB，储存在`PriorityQueue`数组（`runsAvail`），其中`PriorityQueue`存放的是handle，handle可以理解为一个句柄，维护一个内存块的信息，内存标识符。
-* runsAvail数组默认长度为40，每个位置index上放的handle代表了存在一个可用内存块，并且可分配大小 大于等于当前的pageSize，小于下一页的pageSize。
-* 分配时分为 Small内存块 、Normal内存块 分开分配。
+* 一个`Chunk`分为切分为 2048 块 Page ,8KB，储存在`PriorityQueue`数组（`runsAvail`），其中`PriorityQueue`存放的是handle，handle可以理解为一个句柄，维护一个内存块的信息，内存标识符。
+* `runsAvail`数组默认长度为40，每个位置index上放的handle代表了存在一个可用内存块，并且可分配大小 大于等于当前的pageSize，小于下一页的pageSize。
+* 分配时分为 `Small`内存块 、`Normal`内存块 分开分配。
 * `Small`内存块使用 `PoolSubpage` 。
 * `Normal`内存块 直接从 `PriorityQueue` 中划分 page。
 
 #### CompositeByteBuf
 
-将多个ByteBuf 组成一个逻辑ByteBuf，底层共享存储，实现多个ByteBuf合并成一个ByteBuf时不用拷贝。
+将多个`ByteBuf` 组成一个逻辑`ByteBuf`，底层共享存储，实现多个`ByteBuf`合并成一个`ByteBuf`时不用拷贝。
 
 #### ByteBufHolder
 
-提供一个包含 ByteBuf 的抽象，默认实现为 `DefaultByteBufHolder` ，一般继承该类，用于除了储存 ByteBuf 外，还储存其他值。
+提供一个包含 `ByteBuf` 的抽象，默认实现为 `DefaultByteBufHolder` ，一般继承该类，用于除了储存 `ByteBuf` 外，还储存其他值。
 
 #### ByteBufAllocator
 
@@ -1694,8 +1694,8 @@ private ByteBufAllocator allocator;
 
 * `buffer()`：创建堆缓存区。
 * `directBuffer()`：创建直接缓存区。
-* `wrappedBuffer()`：和入参使用相同的 byte[],不需要复制。
-* `copiedBuffer()`：深拷贝一个 ByteBuf，会复制一个新的 byte[]。
+* `wrappedBuffer()`：和入参使用相同的 `byte[]`,不需要复制。
+* `copiedBuffer()`：深拷贝一个 `ByteBuf`，会复制一个新的 `byte[]`。
 
 ### FileRegion
 
@@ -1852,10 +1852,10 @@ net.ipv4.tcp_syn_retries = 2
 
 1. 操作系统零拷贝：
 
-* `mmap/write`：三次数据复制（其中只有一次 CPU COPY）以及4次上下文切换(因为需要两个系统调用)，mmap 就是将不同的虚拟地址映射到同一个物理地址上。
+* `mmap/write`：三次数据复制（其中只有一次 CPU COPY）以及4次上下文切换(因为需要两个系统调用)，`mmap` 就是将不同的虚拟地址映射到同一个物理地址上。
 
   ![244](assets/244.png)
-* sendfile：三次数据复制（其中只有一次 CPU COPY）以及2次上下文切换。
+* `sendfile`：三次数据复制（其中只有一次 CPU COPY）以及2次上下文切换。
 
   ![243](assets/243.png)
 * 带有 `scatter/gather` 的 `sendfile`：只有两次数据复制（都是 DMA COPY）及 2 次上下文切换，直接将 Read Buffer 的内存地址、偏移量记录到相应的 Socket Buffer 中，本质是上就是使用相同的虚拟地址
@@ -1865,12 +1865,12 @@ net.ipv4.tcp_syn_retries = 2
 2. java 零拷贝：
 
 * `FileChannel#transferTo`：优先使用 `sendfile` ，如果操作系统不支持再使用 `MappedByteBuffer` 。
-* `MappedByteBuffer`：使用 mmap 技术映射到堆外内存。
+* `MappedByteBuffer`：使用 `mmap` 技术映射到堆外内存。
 * `DirectByteBuffer`：使用堆外内存，减少堆内外的数据拷贝。
 
 3. Netty 零拷贝：
 
-* Netty 提供了`CompositeByteBuf` 类, 它可以将多个 ByteBuf 合并为一个逻辑上的 ByteBuf, 避免合并多个ByteBuf 时各个 ByteBuf 之间的拷贝。
-* 通过 wrap 操作, 我们可以将 byte[] 数组、ByteBuf、ByteBuffer等包装成一个 Netty ByteBuf 对象, 避免通过write api 产生的拷贝操作。
-* ByteBuf支持slice操作, 因此可以将 ByteBuf 分解为多个共享同一个存储区域的 ByteBuf, 避免内存的拷贝。
-* 通过 FileRegion 包装的`FileChannel.tranferTo` 实现文件传输。
+* Netty 提供了`CompositeByteBuf` 类, 它可以将多个 `ByteBuf` 合并为一个逻辑上的 `ByteBuf`, 避免合并多个`ByteBuf` 时各个 `ByteBuf` 之间的拷贝。
+* 通过 `wrap` 操作, 我们可以将 `byte[]` 数组、`ByteBuf`、`ByteBuffer`等包装成一个 Netty ByteBuf 对象, 避免通过write api 产生的拷贝操作。
+* `ByteBuf`支持`slice`操作, 因此可以将 `ByteBuf` 分解为多个共享同一个存储区域的 `ByteBuf`, 避免内存的拷贝。
+* 通过 `FileRegion` 包装的`FileChannel.tranferTo` 实现文件传输。

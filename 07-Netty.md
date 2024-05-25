@@ -1649,11 +1649,11 @@ ByteBuffer tmpNioBuf;
 private ByteBufAllocator allocator;
 ```
 
-* 先将内存分为多个`Chunk`，16MB
+* 先将内存分为多个`Chunk`(**16MB**)
 * 按使用率将 `Chunk` 归类为多个 `PoolChunkList`，`PoolChunkList`有 `QINIT` 、 `Q0` 、 `Q25` 、 `Q50` 、`Q75` 、`Q100` 6种，代表不同的使用率,使用链表组织数据结构：
 
   ![257](assets/257.png)
-* 一个`Chunk`分为切分为 2048 块 Page ,8KB，储存在`PriorityQueue`数组（`runsAvail`），其中`PriorityQueue`存放的是`handle`，`handle`可以理解为一个句柄，维护一个内存块的信息，内存标识符。
+* 一个`Chunk`分为切分为 2048 块 `Page`(**8KB**)，储存在`PriorityQueue`数组（`runsAvail`），其中`PriorityQueue`存放的是`handle`，`handle`可以理解为一个句柄，维护一个内存块的信息，内存标识符。
 * `runsAvail`数组默认长度为40，每个位置`index`上放的`handle`代表了存在一个可用内存块，并且可分配大小 大于等于当前的`pageSize`，小于下一页的`pageSize`。
 * 分配时分为 `Small`内存块 、`Normal`内存块 分开分配。
 * `Small`内存块使用 `PoolSubpage` 。

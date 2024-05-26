@@ -214,21 +214,68 @@ message.max.bytes
 
 生产者由两个线程协调运行，分别是主线程和Sender线程(发送线程)，主线程由 KafkaProducer 创建消息，然后可能通过拦截器、序列化器、分区器，再缓存到消息累加器(RecordAccumulator)，发送线程负责从RecordAccumulator中获取消息并将其发送到kafka中。
 
-RecordAccumulator 缓存的大小可以通过生产者客户端参数`buffer.memory`配置，默认**33554432B**，即**32MB**，当生产者发送消息的速度超过发送到服务器的速度，会导致生产者空间不足，这时要么阻塞，要么抛出异常，取决于`max.block.ms`,默认 **60000**，即**60秒**。
+`RecordAccumulator` 缓存的大小可以通过生产者客户端参数`buffer.memory`配置，默认**33554432B**，即**32MB**，当生产者发送消息的速度超过发送到服务器的速度，会导致生产者空间不足，这时要么阻塞，要么抛出异常，取决于`max.block.ms`,默认 **60000**，即**60秒**。
 
-主线程发送的消息会被追加到 RecordAccumulator 的某个双端队列(Deque)中,在其内部为每个分区都维护了一个双端队列，即 `Deque<ProducerBatch>`,消息写入缓存时，追加到尾部，Sender读取时从头部读取。一个 ProducerBatch 包含多个 ProducerRecord。
+主线程发送的消息会被追加到 `RecordAccumulator` 的某个双端队列(Deque)中,在其内部为每个分区都维护了一个双端队列，即 `Deque<ProducerBatch>`,消息写入缓存时，追加到尾部，Sender读取时从头部读取。一个 `ProducerBatch` 包含多个 `ProducerRecord`。
 
-消息在网络以字节传输，在发送之前需要创建一块内存区域来保存对应的消息，kafka 中使用 java.io.ByteBuffer来进行消息内存的创建和释放，另外 RecordAccumulator 中还有一个BufferPool ，用来实现 ByteBuffer 的复用，BufferPool 只针对特定大小 ByteBuffer 进行管理，该值有 `batch.size` 来指定，默认**16384B**，即**16KB**。
+消息在网络以字节传输，在发送之前需要创建一块内存区域来保存对应的消息，kafka 中使用 `java.io.ByteBuffer`来进行消息内存的创建和释放，另外 `RecordAccumulator` 中还有一个BufferPool ，用来实现 `ByteBuffer` 的复用，`BufferPool` 只针对特定大小 `ByteBuffer` 进行管理，该值有 `batch.size` 来指定，默认**16384B**，即**16KB**。
 
-当一条消息流入 RecordAccumulator 时，会先寻找与消息分区对应的双端队列，再从队列尾部获取一个ProducerBatch，查看 ProducerBatch 是否还可以写入ProducerRecord，如果不可以则需新建一个ProducerBatch，新建时会对消息大小进行评估，如果消息大小小于 `batch.size` 则以该值创建 ProducerBatch ，若大于则以评估值创建，但该段内存不会被复用。
+当一条消息流入 `RecordAccumulator` 时，会先寻找与消息分区对应的双端队列，再从队列尾部获取一个`ProducerBatch`，查看 `ProducerBatch` 是否还可以写入`ProducerRecord`，如果不可以则需新建一个`ProducerBatch`，新建时会对消息大小进行评估，如果消息大小小于 `batch.size` 则以该值创建 `ProducerBatch` ，若大于则以评估值创建，但该段内存不会被复用。
 
 Sender 获取消息后会将 `<分区,Deque<ProducerBatch>>`转换为 `<Node,List<ProducerBatch>>`,再进行封装为 `<Node,Request>`,对于生产者主线程关注的是向哪个分区发送消息，Sender线程关注的是向哪个 broker 发送消息，Request 对应的是相应的协议数据。
 
-Sender 在发送之前还会保存到 InFlightRequest 中，其中保存的是已经发出去但还没收到响应的请求，其数据结构为 `Map<NodeId,Deque<Request>`，该值可以通过 `max.in.flight.requests.per.connection` 来控制，默认为5，即每个连接最多只能缓存5个未响应的请求。
+Sender 在发送之前还会保存到 `InFlightRequest` 中，其中保存的是已经发出去但还没收到响应的请求，其数据结构为 `Map<NodeId,Deque<Request>`，该值可以通过 `max.in.flight.requests.per.connection` 来控制，默认为5，即每个连接最多只能缓存5个未响应的请求。
 
-通过 InFlightRequest 可以判断 Node 的负载情况，找到最小的leastLoadedNode,当需要更新元数据时会挑选出 leastLoadedNode 来获取元数据。
+通过 `InFlightRequest` 可以判断 Node 的负载情况，找到最小的`leastLoadedNode`,当需要更新元数据时会挑选出 `leastLoadedNode` 来获取元数据。
 
 发送消息时，如果客户端没有能够使用的元数据或超过 `metadata.max.age.ms`（默认**300000** 即**5分钟**）时间没有更新元数据则会引起元数据的更新。
+
+### BufferPool
+
+```java
+
+public class BufferPool {
+
+    // 最大缓存空间，对应 buffer.memory 的配置
+    private final long totalMemory;
+    // 一个 bytebuffer 的大小，对应 batch.size 的配置
+    private final int poolableSize;
+
+    // 空闲的ByteBuffer
+    private final Deque<ByteBuffer> free;
+    // 未池化的大小，totalMemory = nonPooledAvailableMemory + free * poolableSize
+    private long nonPooledAvailableMemory;
+
+   /**
+    * | ------------ | --------------------------------- |
+    * |              |                                   |
+    * |              |                                   |
+    * |              |     nonPooledAvailableMemory      |
+    * |              |                                   |
+    * |              |                                   |
+    * |              | --------------------------------- | ------ |  
+    * |  totalMemory |     ByteBuffer(poolableSize)      |        | 
+    * |              | --------------------------------- |        | 
+    * |              |     ByteBuffer(poolableSize)      |        | 
+    * |              | --------------------------------- |  free  | 
+    * |              |     ByteBuffer(poolableSize)      |        | 
+    * |              | --------------------------------- |        | 
+    * |              |     ByteBuffer(poolableSize)      |        | 
+    * |              | --------------------------------- | ------ |
+    * |              |                                   |
+    * |              |           used                    |
+    * |              |                                   |
+    * | ------------ | --------------------------------- | 
+    */
+}
+```
+
+* 申请内存时，`申请的大小 <= poolableSize` 都按照 `poolableSize` 处理，直接分配一个 `poolableSize` 大小的 `ByteBuffer`
+* `申请的大小 > poolableSize`,判断 `free * poolableSize + nonPooledAvailableMemory < 申请的大小`，加入等待队列等待，
+* 如果 `申请的大小 > poolableSize` 并且 `free * poolableSize + nonPooledAvailableMemory > 申请的大小` ，释放部分 `free` 空间，加入到 `nonPooledAvailableMemory`,直到 `申请的大小 < nonPooledAvailableMemory`,然后直接从 `nonPooledAvailableMemory` 创建一次性的 `ByteBuffer`。
+* 整个过程使用`ReentrantLock`加锁，应尽量减少从`nonPooledAvailableMemory`空间分配，减小竞争，减少直接从 堆空间分配内存。
+
+所以**`batch.size` 设置尤为重要，至少达到 80% 从 `free` 直接获取 `bytebuffer`**。
 
 ### 生产者配置
 

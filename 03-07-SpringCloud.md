@@ -1669,7 +1669,7 @@ JDK 扩展机制：通过插拔的方式加载，例如 `java.sql.Driver` 接口
 
 dubbo 自定义扩展点：
 
-1. 接口使用 @SPI 注解。
+1. 接口使用 `@SPI` 注解。
 2. 可以在 `resources/META-INF/dubbo`、`resources/META-INF/dubbo/internal`、`resources/META-INF/services` 创建`xxxx.xxxx.xxxx.Driver` 接口全路径文件。
 3. 文件内容使用 key=value 形式，value 为 实现类全路径。
 4. 使用 `ExtensionLoader<Driver> extensionLoader = ExtensionLoader.getExtensionLoader(Driver.class);`、`extensionLoader.getExtension("key")`获取

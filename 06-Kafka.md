@@ -254,16 +254,16 @@ public class BufferPool {
     * |              |                                   |
     * |              |                                   |
     * |              | --------------------------------- | ------ |  
-    * |  totalMemory |     ByteBuffer(poolableSize)      |        | 
-    * |              | --------------------------------- |        | 
     * |              |     ByteBuffer(poolableSize)      |        | 
+    * |              | --------------------------------- |        | 
+    * |  totalMemory |     ByteBuffer(poolableSize)      |        | 
     * |              | --------------------------------- |  free  | 
     * |              |     ByteBuffer(poolableSize)      |        | 
     * |              | --------------------------------- |        | 
     * |              |     ByteBuffer(poolableSize)      |        | 
     * |              | --------------------------------- | ------ |
     * |              |                                   |
-    * |              |           used                    |
+    * |              |               used                |
     * |              |                                   |
     * | ------------ | --------------------------------- | 
     */

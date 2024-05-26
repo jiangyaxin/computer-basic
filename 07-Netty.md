@@ -1631,13 +1631,29 @@ private boolean doNotFree;
 
 #### PooledByteBufAllocator
 
+使用 `jemalloc4` 算法实现：
+
 * `PooledByteBufAllocator`由多个`PoolArena`构成，分为`heapArenas`和`directArenas`,默认数量为 `CPU核数 * 2`,每个线程会绑定一个`PoolArena`到`ThreadLocal`。
 * 分配内存时会交给`PoolArena`负责,一个`PoolArena`包含一个`PoolSubpage<T>[]`和多个`PoolChunkList<T>`,`PoolChunkList<T>`按使用率分为 `QINIT` 、 `Q0` 、 `Q25` 、 `Q50` 、`Q75` 、`Q100` 6种。
+* `PoolArena` 分配内存时会先根据用户申请的内存大小在 `SizeClasses` 查表得到确定的 `index`。
+* 通过判断 `index` 大小就可以知道采用什么策略。当 `index<=38`（即`size<=28KB`）时，采用 `Small` 级别分配策略。对于 `38<index<75`（即`28KB<size<=16MB`）采用 `Normal` 级别分配策略。对于 `index` 的其他值，则对应 Huge 级别。
+* 对于 `Small` 和 `Normal` 级别会优先从本地缓存`ThreadLocal`分配。
+* 对于 `Normal` 级别 的内存特点是`pageSize`的整数倍，由 `PoolChunk` 负责，`PoolChunk` 一次会申请 `16MB` 大小内存，然后根据需要将其拆分为1个或多个`Run`,一个`Run`包含多个`pageSize`，最多包含2048个`pageSize`，即`16MB`，`Run`有40种规格，对应 `SizeClasses` 的 `pageIdx2SizeTab`,`PoolChunk` 使用 `LongPriorityQueue[] runsAvail` 储存空闲`Run`,`runsAvail`的长度为40,对应`Run`的40种规格。
+* 
 
 
 ##### SizeClasses
 
-`SizeClasses` 用于记录 `标准化的size` 与 `数组idx` 的关系，总共有 76 种规格的size
+`SizeClasses` 用于记录 `标准化的size` 与 `数组idx` 的关系，总共有 76 种规格的size，存储即是下面的表格。
+* `sizeIdx2sizeTab`: 储存`index`到`size`的关系
+* `pageIdx2SizeTab`:储存`isMultiPageSize=1`和`size`的关系
+* `sizeIdxTab`: 储存`size`到`index`的关系，主要是对小数据类型的对应的idx的查找进行缓存
+
+下表字段的含义：
+* `index`: 数组idx，该idx对应多大size查下表所得，例如 储存小于1页(8KB)的`PoolSubpage<T>[] smallSubpagePools`中，`smallSubpagePools[1]`储存的是 全是`32B`的大小的链表的头节点。
+* `log2Group`: 对应size的对应的组，用于计算对应的size。
+* `isMultiPageSize`: size是否是`pagesize`(默认值:8192)的倍数。 `isMultiPageSize=1` 的行会单独整理成一张表，总共有40行。
+* `isSubPage`: 是否一个`subPage`类型
 
 | index | log2Group | isMultiPageSize | isSubPage | size     | pageIdxAndPages | size2idxTab |
 |-------|-----------|-----------------|-----------|----------|-----------------|-------------|
@@ -1718,7 +1734,6 @@ private boolean doNotFree;
 | 74    | 23        | 1               | 0         | 14680064 | 38(1792->2047)  | 无           |
 | 75    | 23        | 1               | 0         | 16777216 | 39(2048)        | 无           |
 
-* `sizeIdx2sizeTab`: 
 
 属性：
 

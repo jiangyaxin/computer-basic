@@ -275,7 +275,7 @@ public class BufferPool {
 * 如果 `申请的大小 > poolableSize` 并且 `free * poolableSize + nonPooledAvailableMemory > 申请的大小` ，释放部分 `free` 空间，加入到 `nonPooledAvailableMemory`,直到 `申请的大小 < nonPooledAvailableMemory`,然后直接从 `nonPooledAvailableMemory` 创建一次性的 `ByteBuffer`。
 * 整个过程使用`ReentrantLock`加锁，应尽量减少从`nonPooledAvailableMemory`空间分配，减小竞争，减少直接从 堆空间分配内存。
 
-**所以 `batch.size` 设置尤为重要，至少达到 80% 从 `free` 直接获取 `bytebuffer`**。
+**所以 `batch.size` 设置尤为重要，至少需要达到 80% 从 `free` 直接获取 `bytebuffer`**。
 
 ### 生产者配置
 

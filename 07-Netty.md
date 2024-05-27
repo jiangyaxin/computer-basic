@@ -16,34 +16,35 @@
 
 1. 阻塞式 IO 模型：默认情况下，所有文件操作都是阻塞的，应用进程从发起 IO 系统调用，至内核返回，这整个期间是处于阻塞状态的，可能数据包被正确复制到应用进程缓存区成功返回，也可能发生错误返回。
 
-    ![233](assets/233.png)
+   ![233](assets/233.png)
 
 2. 非阻塞式 IO 模型：应用进程可以将 Socket 设置为非阻塞，在发起 IO 系统调用后，如果缓冲区没有数据，就直接返回 EWOULDBLOCK 错误标识，否则返回成功标识，应用进程需要轮询调用 recvfrom 系统调用。
 
-    ![234](assets/234.png)
+   ![234](assets/234.png)
 
 3. IO 多路复用模型：Linux 提供 `select/poll` 系统调用，进程通过将多个socket 的多个 fd 传递给 `select/poll` 调用，调用`select/poll` 的进程会阻塞等待 `select/poll` 顺序扫描 fd 是否就绪，当就绪时，立即返回回调函数，再调用 recvfrom 系统调用完成数据读取。出于效率的考量，单进程打开的fd 受到限制，默认 1024 。另外 linux 还提供 epoll 系统调用使用事件驱动代替顺序扫描，性能更高。
 
-    epoll 优势：
+   epoll 优势：
     * 支持一个进程打开的 socket描述符 不受限制。
     * IO效率不会随fd 数目增加而线性下降。
     * epoll 使用 mmap 加速内核和用户空间的消息传递：内核需要把 fd 消息通知到用户空间。
- 
-    ![235](assets/235.png)
+
+   ![235](assets/235.png)
 
 4. 信号驱动 IO 模型： 可以为 Socket 开启信号驱动 IO 功能，应用进程需向内核注册一个信号处理程序（通过`sigaction`系统调用），该操作并立即返回。当内核中有数据准备好，会发送一个信号给应用进程，应用进程便可以在信号处理程序中发起 IO 系统调用，来完成数据读取。主要用于UDP套接字，TCP信号产生过于频繁，并且信号没有告诉发送了什么事情。
 
-    ![236](assets/236.png)
+   ![236](assets/236.png)
 
 5. 异步 IO 模型：应用进程发起 IO 系统调用后，会立即返回。当内核中数据完全准备后，并且也复制到了用户空间，会产生一个信号来通知应用进程。
 
-    ![237](assets/237.png)
+   ![237](assets/237.png)
 
 应用进程对内核发起 IO 系统调用后，内核会经过两个阶段来完成数据的传输：
-  * 第一阶段：等待数据。即应用进程发起 IO 系统调用后，会一直等待数据；当有数据传入服务器，会将数据放入内核空间，此时数据准备好。
-  * 第二阶段：将数据从内核空间复制到用户空间，并返回给应用程序成功标识。
 
-    ![238](assets/238.png)
+* 第一阶段：等待数据。即应用进程发起 IO 系统调用后，会一直等待数据；当有数据传入服务器，会将数据放入内核空间，此时数据准备好。
+* 第二阶段：将数据从内核空间复制到用户空间，并返回给应用程序成功标识。
+
+  ![238](assets/238.png)
 
 # JAVA NIO
 
@@ -646,8 +647,8 @@ AbstractChannel#doRegister()
 -> pipeline.fireChannelRegistered();
 ```
 
-
 `SocketChannel`注册流程：
+
 ```text
 AbstractChannel#doRegister()
 -> pipeline.invokeHandlerAddedIfNeeded()（即ChannelHandler#handlerAdded）
@@ -769,6 +770,7 @@ public final void beginRead() {
 `ServerSocketChannel` 注册完才会触发绑定端口。
 
 `ServerSocketChannel` 的 `Pipeline` 为 ：
+
 ```text
 HeadContext
 -> ServerBootstrap.ServerBootstrapAcceptor
@@ -776,6 +778,7 @@ HeadContext
 ```
 
 `SocketChannel` 的 `Pipeline` 为：
+
 ```text
 HeadContext
 -> 自定义ChannelHandler
@@ -783,6 +786,7 @@ HeadContext
 ```
 
 流程：
+
 ```text
 AbstractChannel#doBind
 -> pipeline.fireChannelActive()
@@ -880,6 +884,7 @@ protected void doRegister() throws Exception {
 2. 向 `Selector` 注册 `readInterestOp`。
 
 流程：
+
 ```text
 AbstractChannel.AbstractUnsafe#beginRead()
 -> AbstractChannel#doBeginRead()
@@ -1328,7 +1333,7 @@ public ChannelFuture bind() {
 * `handlerRemoved`：当把 ChannelHandler 从 ChannelPipeline 中移除的时候会调用此方法
 * `exceptionCaught`：当 ChannelHandler 在处理数据的过程中发生异常时会调用此方法，当发生异常，ChannelHandlerContext 不会再向下传播。
 
-ChannelInboundHandler：处理入站操作。
+`ChannelInboundHandler`：处理入站操作。
 
 * `ChannelRegistered`：当Channel被注册到EventLoop且能够处理IO事件时会调用此方法
 * `ChannelUnregistered`：当Channel从EventLoop注销且无法处理任何IO事件时会调用此方法
@@ -1371,10 +1376,10 @@ ChannelInboundHandler：处理入站操作。
 
 `ByteToMessageDecoder`有几个重点：
 
-* `decode(ctx, in, out)` 中 in 不用担心释放，只需使用 skipByte 即可，父类通过 `MERGE_CUMULATOR` 将 in 剩余未读字节 和 新从socket读取字节 复制到一个新 ByteBuf ，并释放 in。
+* `decode(ctx, in, out)` 中 in 不用担心释放，只需使用 `skipByte` 即可，父类通过 `MERGE_CUMULATOR` 将 in 剩余未读字节 和 新从socket读取字节 复制到一个新 ByteBuf ，并释放 in。
 * `ByteBuf.readBytes(int)` 等一些返回 ByteBuf 的方法如果没有添加到 out list 需要主动释放，可以使用 `ByteBuf.readSlice(int)`来避免这种问题，或者使用 getXX ，但要注意 index 位置，防止 超出边界值。
 * 不得使用 `@Sharable` 注解。
-* out 会在 channelRead 最后回收。
+* `out` 会在 `channelRead` 最后回收。
 
 `ReplayingDecoder`：遇到半包时通过抛出 `ReplayingDecoder.REPLAY` 异常，进入结束解码，等待下一次读取数据。
 
@@ -1400,7 +1405,7 @@ ChannelInboundHandler：处理入站操作。
 
 Http常用编解码器：`HttpServerCodec`、`HttpClientCodec`、`HttpObjectAggregator`、`HttpContentCompressor`、`HttpContentDecompressor`、`SslHandler`
 
-Websocket常用编解码器：`HttpServerCodec`、`HttpObjectAggregator`、`WebSocketServerProtocolHandler`、`TextFrameHandler`、`BinaryFrameHandler`、`ContinuationFrameHandler`
+`Websocket`常用编解码器：`HttpServerCodec`、`HttpObjectAggregator`、`WebSocketServerProtocolHandler`、`TextFrameHandler`、`BinaryFrameHandler`、`ContinuationFrameHandler`
 
 空闲和超时：
 
@@ -1413,6 +1418,7 @@ IP黑白名单：`RuleBasedIpFilter`
 码流日志打印：`LoggingHandler`
 
 流量整形：Netty内置了三种流量整形功能。
+
 * 单个链路的流量整形:`ChannelTrafficShapingHandler`，可以对某个链路的消息发送和读取速度进行控制。
 * 全局流量整形:`GlobalTrafficShapingHandler`，针对某个进程所有链路的消息发送和读取速度的总和进行控制。
 * 全局和单个链路综合型流量整形:`GlobalChannelTrafficShapingHandler`，同时对全局和单个链路的消息发送和读取速度进行控制。
@@ -1440,7 +1446,7 @@ IP黑白名单：`RuleBasedIpFilter`
 
 `ServerSocketChannel` 参数：
 
-* SO_BACKLOG: 握手队列长度
+* `SO_BACKLOG`: 握手队列长度
 
 `SocketChannel` 参数：
 
@@ -1513,8 +1519,8 @@ Nagle算法的规则：
 | writeZero(int length)                                     | 填充 length 长度 0x00                                                            |
 | writeCharSequence(CharSequence sequence, Charset charset) | 写入 CharSequence ，writeIndex 增加长度跟编码有关，UTF-8 位 长度的2倍                          |
 
-3. 随机读取：getXXXX，和 readXXXX 方法相似，readIndex 不变
-4. 随机写入：setXXXX，和 writeXXXX 方法相似，writeIndex 不变
+3. 随机读取：`getXXXX`，和 `readXXXX` 方法相似，`readIndex` 不变
+4. 随机写入：`setXXXX`，和 `writeXXXX` 方法相似，`writeIndex` 不变
 5. 可读字节：
 
 | 操作              | 说明                              |
@@ -1633,23 +1639,33 @@ private boolean doNotFree;
 
 使用 `jemalloc4` 算法实现：
 
+![447.png](assets/447.png)
+
+内存分配：
 * `PooledByteBufAllocator`由多个`PoolArena`构成，分为`heapArenas`和`directArenas`,默认数量为 `CPU核数 * 2`,每个线程会绑定一个`PoolArena`到`ThreadLocal`。
 * 分配内存时会交给`PoolArena`负责,一个`PoolArena`包含一个`PoolSubpage<T>[]`和多个`PoolChunkList<T>`,`PoolChunkList<T>`按使用率分为 `QINIT` 、 `Q0` 、 `Q25` 、 `Q50` 、`Q75` 、`Q100` 6种。
 * `PoolArena` 分配内存时会先根据用户申请的内存大小在 `SizeClasses` 查表得到确定的 `index`。
 * 通过判断 `index` 大小就可以知道采用什么策略。当 `index<=38`（即`size<=28KB`）时，采用 `Small` 级别分配策略。对于 `38<index<75`（即`28KB<size<=16MB`）采用 `Normal` 级别分配策略。对于 `index` 的其他值，则对应 Huge 级别。
 * 对于 `Small` 和 `Normal` 级别会优先从本地缓存`ThreadLocal`分配。
 * 对于 `Normal` 级别 的内存特点是`pageSize`的整数倍，由 `PoolChunk` 负责，`PoolChunk` 一次会申请 `16MB` 大小内存，然后根据需要将其拆分为1个或多个`Run`,一个`Run`包含多个`pageSize`，最多包含2048个`pageSize`，即`16MB`，`Run`有40种规格，对应 `SizeClasses` 的 `pageIdx2SizeTab`,`PoolChunk` 使用 `LongPriorityQueue[] runsAvail` 储存空闲`Run`,`runsAvail`的长度为40,对应`Run`的40种规格。
-* 
+* 对于 `Small` 级别，会使用 `SizeClasses` 标准化后的`size` 与 `pageSize` 求**最小公倍数**,然后从`Normal` 级别中获取一个大小为 **最小公倍数**的`Run`，这个`Run`就是`PoolSubpage`,`PoolSubpage`会均匀拆分为多个相同`标准化size`，并使用`long[] bitmap`记录`标准化size`的使用情况。
 
+内存回收：
+* 对于 `Small` 级别，先从 `PoolArena` 的`PoolSubpage<T>[]`池中，找出对应的`PoolSubpage`，然后执行`PoolSubpage`的回收，当`PoolSubpage`的属性`numAvail == maxNumElems`时，表示`PoolSubpage`没有子元素被使用，可被回收，否则不回收。
+* 对应可被回收的`PoolSubpage`,先从`PoolSubpage<T>[]`移除，由于`PoolSubpage`也是一个特殊的`Run`，后续直接`Run`的回收逻辑。
+* 在回收某一个`Run`之前，先尝试向前搜索并合并相邻的空闲的`Run`，得到一个全新的 `handle`，然后再向后搜索并合并相邻的空闲的`Run`，得到一个全新的`handle`。
+* 然后再把`Run`写回`LongPriorityQueue[] runsAvail`待用。
 
 ##### SizeClasses
 
 `SizeClasses` 用于记录 `标准化的size` 与 `数组idx` 的关系，总共有 76 种规格的size，存储即是下面的表格。
+
 * `sizeIdx2sizeTab`: 储存`index`到`size`的关系
 * `pageIdx2SizeTab`:储存`isMultiPageSize=1`和`size`的关系
 * `sizeIdxTab`: 储存`size`到`index`的关系，主要是对小数据类型的对应的idx的查找进行缓存
 
 下表字段的含义：
+
 * `index`: 数组idx，该idx对应多大size查下表所得，例如 储存小于1页(8KB)的`PoolSubpage<T>[] smallSubpagePools`中，`smallSubpagePools[1]`储存的是 全是`32B`的大小的链表的头节点。
 * `log2Group`: 对应size的对应的组，用于计算对应的size。
 * `isMultiPageSize`: size是否是`pagesize`(默认值:8192)的倍数。 `isMultiPageSize=1` 的行会单独整理成一张表，总共有40行。
@@ -1733,35 +1749,6 @@ private boolean doNotFree;
 | 73    | 23        | 1               | 0         | 12582912 | 37(1536->1791)  | 无           |
 | 74    | 23        | 1               | 0         | 14680064 | 38(1792->2047)  | 无           |
 | 75    | 23        | 1               | 0         | 16777216 | 39(2048)        | 无           |
-
-
-属性：
-
-```java
-private final Handle<PooledByteBuf<T>> recyclerHandle;
-// 初始化所属的块
-protected PoolChunk<T> chunk;
-protected long handle;
-// 内存类型
-protected T memory;
-protected int offset;
-protected int length;
-int maxLength;
-// 线程本地缓存，当同一线程释放 PooledByteBuf ，会先添加到本地缓存，并不会真正释放
-PoolThreadCache cache;
-ByteBuffer tmpNioBuf;
-private ByteBufAllocator allocator;
-```
-
-* 先将内存分为多个`Chunk`(**16MB**)
-* 按使用率将 `Chunk` 归类为多个 `PoolChunkList`，`PoolChunkList`有 `QINIT` 、 `Q0` 、 `Q25` 、 `Q50` 、`Q75` 、`Q100` 6种，代表不同的使用率,使用链表组织数据结构：
-
-  ![257](assets/257.png)
-* 一个`Chunk`分为切分为 2048 块 `Page`(**8KB**)，储存在`PriorityQueue`数组（`runsAvail`），其中`PriorityQueue`存放的是`handle`，`handle`可以理解为一个句柄，维护一个内存块的信息，内存标识符。
-* `runsAvail`数组默认长度为40，每个位置`index`上放的`handle`代表了存在一个可用内存块，并且可分配大小 大于等于当前的`pageSize`，小于下一页的`pageSize`。
-* 分配时分为 `Small`内存块 、`Normal`内存块 分开分配。
-* `Small`内存块使用 `PoolSubpage` 。
-* `Normal`内存块 直接从 `PriorityQueue` 中划分 page。
 
 #### CompositeByteBuf
 

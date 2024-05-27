@@ -1894,6 +1894,185 @@ TCP 分片的依据是 在三次握手的时候，在两端主机之间被计算
 2. 在包尾使用固定的分隔符分割，例如 换行符。
 3. 将消息分为头部和消息体，头部中保存整个消息的长度，只有读取到足够长度的消息之后才算是读到了一个完整的消息。
 
+## CRC
+
+* 发送：使用源数据对CRC码做模 2 除法(即异或)，得到的余数就是校验码，然后将校验码拼在源数据后面，即`源数据+校验码`
+* 接收：使用 `源数据+校验码` 对CRC码做模 2 除法(即异或)，得到的余数为0，则校验成功，数据一致。
+
+CRC码使用**生成多项式**来表达，例如`P(X) = X^4 + X^3 + 1`,CRC码的总位数等于最高位的幂次加1，即 `4+1=5`,并且多项式只列出二进制值为 1 的位，所以 `P(X) = X^4 + X^3 + 1 = X^4 + X^3 + 0X^2 + 0X^1 + 1`，取多项式的常量得到CRC码为`11001`,由于CRC码是5位，所以余数一定是4位，所以当在做模二除法之前先在源数据后补上4个0
+
+常用的CRC16版本：
+
+| 校验方式              | 	多项式                                       | 	初始值    | 	前/后 | 	异或值    |
+|-------------------|--------------------------------------------|---------|------|---------|
+| CRC16_CCITT       | 	x16+x12+x5+1（0x1021）                      | 	0x0000 | 	低/高 | 	0x0000 |
+| CRC16_CCITT_FALSE | 	x16+x12+x5+1（0x1021）                      | 	0xFFFF | 	高/低 | 	0x0000 |
+| CRC16_XMODEM      | 	x16+x12+x5+1（0x1021）                      | 	0x0000 | 	高/低 | 	0x0000 |
+| CRC16_X25         | 	x16+x12+x5+1（0x1021）                      | 	0xFFFF | 	低/高 | 	0xFFFF |
+| CRC16_MODBUS      | 	x16+x15+x2+1（0x8005）                      | 	0xFFFF | 	低/高 | 	0x0000 |
+| CRC16_IBM         | 	x16+x15+x2+1（0x8005）                      | 	0x0000 | 	低/高 | 	0x0000 |
+| CRC16_MAXIM       | 	x16+x15+x2+1（0x8005）                      | 	0x0000 | 	低/高 | 	0xFFFF |
+| CRC16_USB         | 	x16+x15+x2+1（0x8005）                      | 	0xFFFF | 	低/高 | 	0xFFFF |
+| CRC16_DNP         | 	x16+x13+x12+x11+x10+x8+x6+x5+x2+1（0x3D65） | 	0x0000 | 	低/高 | 	0xFFFF |
+
+```java
+public class CRC16 {
+    
+    public static int CRC16_CCITT(byte[] buffer) {
+        int wCRCin = 0x0000;
+        int wCPoly = 0x8408;
+        for (byte b : buffer) {
+            wCRCin ^= ((int) b & 0x00ff);
+            for (int j = 0; j < 8; j++) {
+                if ((wCRCin & 0x0001) != 0) {
+                    wCRCin >>= 1;
+                    wCRCin ^= wCPoly;
+                } else {
+                    wCRCin >>= 1;
+                }
+            }
+        }
+        return wCRCin ^= 0x0000;
+
+    }
+    
+    public static int CRC16_CCITT_FALSE(byte[] buffer) {
+        int wCRCin = 0xffff;
+        int wCPoly = 0x1021;
+        for (byte b : buffer) {
+            for (int i = 0; i < 8; i++) {
+                boolean bit = ((b >> (7 - i) & 1) == 1);
+                boolean c15 = ((wCRCin >> 15 & 1) == 1);
+                wCRCin <<= 1;
+                if (c15 ^ bit)
+                    wCRCin ^= wCPoly;
+            }
+        }
+        wCRCin &= 0xffff;
+        return wCRCin ^= 0x0000;
+    }
+    
+    public static int CRC16_XMODEM(byte[] buffer) {
+        int wCRCin = 0x0000;
+        int wCPoly = 0x1021;
+        for (byte b : buffer) {
+            for (int i = 0; i < 8; i++) {
+                boolean bit = ((b >> (7 - i) & 1) == 1);
+                boolean c15 = ((wCRCin >> 15 & 1) == 1);
+                wCRCin <<= 1;
+                if (c15 ^ bit)
+                    wCRCin ^= wCPoly;
+            }
+        }
+        wCRCin &= 0xffff;
+        return wCRCin ^= 0x0000;
+    }
+
+    
+    public static int CRC16_X25(byte[] buffer) {
+        int wCRCin = 0xffff;
+        int wCPoly = 0x8408;
+        for (byte b : buffer) {
+            wCRCin ^= ((int) b & 0x00ff);
+            for (int j = 0; j < 8; j++) {
+                if ((wCRCin & 0x0001) != 0) {
+                    wCRCin >>= 1;
+                    wCRCin ^= wCPoly;
+                } else {
+                    wCRCin >>= 1;
+                }
+            }
+        }
+        return wCRCin ^= 0xffff;
+    }
+    
+    public static int CRC16_MODBUS(byte[] buffer) {
+        int wCRCin = 0xffff;
+        int POLYNOMIAL = 0xa001;
+        for (byte b : buffer) {
+            wCRCin ^= ((int) b & 0x00ff);
+            for (int j = 0; j < 8; j++) {
+                if ((wCRCin & 0x0001) != 0) {
+                    wCRCin >>= 1;
+                    wCRCin ^= POLYNOMIAL;
+                } else {
+                    wCRCin >>= 1;
+                }
+            }
+        }
+        return wCRCin ^= 0x0000;
+    }
+    
+    public static int CRC16_IBM(byte[] buffer) {
+        int wCRCin = 0x0000;
+        int wCPoly = 0xa001;
+        for (byte b : buffer) {
+            wCRCin ^= ((int) b & 0x00ff);
+            for (int j = 0; j < 8; j++) {
+                if ((wCRCin & 0x0001) != 0) {
+                    wCRCin >>= 1;
+                    wCRCin ^= wCPoly;
+                } else {
+                    wCRCin >>= 1;
+                }
+            }
+        }
+        return wCRCin ^= 0x0000;
+    }
+    
+    public static int CRC16_MAXIM(byte[] buffer) {
+        int wCRCin = 0x0000;
+        int wCPoly = 0xa001;
+        for (byte b : buffer) {
+            wCRCin ^= ((int) b & 0x00ff);
+            for (int j = 0; j < 8; j++) {
+                if ((wCRCin & 0x0001) != 0) {
+                    wCRCin >>= 1;
+                    wCRCin ^= wCPoly;
+                } else {
+                    wCRCin >>= 1;
+                }
+            }
+        }
+        return wCRCin ^= 0xffff;
+    }
+    
+    public static int CRC16_USB(byte[] buffer) {
+        int wCRCin = 0xFFFF;
+        int wCPoly = 0xa001;
+        for (byte b : buffer) {
+            wCRCin ^= ((int) b & 0x00ff);
+            for (int j = 0; j < 8; j++) {
+                if ((wCRCin & 0x0001) != 0) {
+                    wCRCin >>= 1;
+                    wCRCin ^= wCPoly;
+                } else {
+                    wCRCin >>= 1;
+                }
+            }
+        }
+        return wCRCin ^= 0xffff;
+    }
+    
+    public static int CRC16_DNP(byte[] buffer) {
+        int wCRCin = 0x0000;
+        int wCPoly = 0xA6BC;
+        for (byte b : buffer) {
+            wCRCin ^= ((int) b & 0x00ff);
+            for (int j = 0; j < 8; j++) {
+                if ((wCRCin & 0x0001) != 0) {
+                    wCRCin >>= 1;
+                    wCRCin ^= wCPoly;
+                } else {
+                    wCRCin >>= 1;
+                }
+            }
+        }
+        return wCRCin ^= 0xffff;
+    }
+}
+```
+
 ## 内核参数调优
 
 ### 文件限制

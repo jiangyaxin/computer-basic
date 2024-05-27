@@ -1652,7 +1652,7 @@ private boolean doNotFree;
 
 内存回收：
 * 对于 `Small` 级别，先从 `PoolArena` 的`PoolSubpage<T>[]`池中，找出对应的`PoolSubpage`，然后执行`PoolSubpage`的回收，当`PoolSubpage`的属性`numAvail == maxNumElems`时，表示`PoolSubpage`没有子元素被使用，可被回收，否则不回收。
-* 对应可被回收的`PoolSubpage`,先从`PoolSubpage<T>[]`移除，由于`PoolSubpage`也是一个特殊的`Run`，后续直接`Run`的回收逻辑。
+* 对应可被回收的`PoolSubpage`,先从`PoolSubpage<T>[]`移除，由于`PoolSubpage`也是一个特殊的`Run`，后续直接按`Run`的回收逻辑回收。
 * 在回收某一个`Run`之前，先尝试向前搜索并合并相邻的空闲的`Run`，得到一个全新的 `handle`，然后再向后搜索并合并相邻的空闲的`Run`，得到一个全新的`handle`。
 * 然后再把`Run`写回`LongPriorityQueue[] runsAvail`待用。
 
@@ -1661,7 +1661,7 @@ private boolean doNotFree;
 `SizeClasses` 用于记录 `标准化的size` 与 `数组idx` 的关系，总共有 76 种规格的size，存储即是下面的表格。
 
 * `sizeIdx2sizeTab`: 储存`index`到`size`的关系
-* `pageIdx2SizeTab`:储存`isMultiPageSize=1`和`size`的关系
+* `pageIdx2SizeTab`:储存`isMultiPageSize=1`和`size`的关系，表示是否是`pageSize`的倍数
 * `sizeIdxTab`: 储存`size`到`index`的关系，主要是对小数据类型的对应的idx的查找进行缓存
 
 下表字段的含义：
@@ -1898,9 +1898,9 @@ TCP 分片的依据是 在三次握手的时候，在两端主机之间被计算
 
 ### 文件限制
 
-系统级：当前系统可打开的最大数量，通过 `cat /proc/sys/fs/file-max` 查看
-用户级：指定用户可打开的最大数量，通过 `cat /etc/security/limits.conf` 查看
-进程级：单个进程可打开的最大数量，通过 `cat /proc/sys/fs/nr_open` 查看
+* 系统级：当前系统可打开的最大数量，通过 `cat /proc/sys/fs/file-max` 查看
+* 用户级：指定用户可打开的最大数量，通过 `cat /etc/security/limits.conf` 查看
+* 进程级：单个进程可打开的最大数量，通过 `cat /proc/sys/fs/nr_open` 查看
 
 ### 网络端口限制
 

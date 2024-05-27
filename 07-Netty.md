@@ -1825,7 +1825,7 @@ public class FileRegionTest {
 4. 安全性设计：使用认证机制。
 5. 扩展性设计：
 
-![258](assets/258.png)
+![258](assets/258.jpg)
 
 协议示例：
 

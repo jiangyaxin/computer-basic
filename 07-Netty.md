@@ -1519,8 +1519,8 @@ Nagle算法的规则：
 | writeZero(int length)                                     | 填充 length 长度 0x00                                                            |
 | writeCharSequence(CharSequence sequence, Charset charset) | 写入 CharSequence ，writeIndex 增加长度跟编码有关，UTF-8 位 长度的2倍                          |
 
-3. 随机读取：`getXXXX`，和 `readXXXX` 方法相似，`readIndex` 不变
-4. 随机写入：`setXXXX`，和 `writeXXXX` 方法相似，`writeIndex` 不变
+3. 随机读取：`getXXXX`，和 `readXXXX` 方法相似，`readIndex` 不变，**特别注意：`getXXXX(int index)` 这里的index是针对起始位置0的偏移量，使用时应该`getXXXX(readerIndex + 某字段偏移量)`**
+4. 随机写入：`setXXXX`，和 `writeXXXX` 方法相似，`writeIndex` 不变，**特别注意：`setXXXX(int index)` 这里的index是针对起始位置0的偏移量，使用时应该`setXXXX(writerIndex + 某字段偏移量)`**
 5. 可读字节：
 
 | 操作              | 说明                              |

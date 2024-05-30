@@ -163,7 +163,7 @@ Linux 中所有的文件都是有根目录(`/`)衍生形成目录树。
 
 1. `umount` 卸载U盘。
 2. `mkfs.vfat -I /dev/sdb` 格式化U盘为FAT格式。
-3. `dd if=*/*.iso   of=/dev/sdb  bs=4M `。
+3. `dd if=/iso存放路径/XXX.iso of=/dev/sdb  bs=4M `。
 4. `sync`同步缓存中的数据至U盘。
 
 ### 文件系统及程序限制

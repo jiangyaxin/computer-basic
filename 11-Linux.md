@@ -393,7 +393,7 @@ LVM可以建立快照，分为快照区和系统区，修改过的数据会被�
 | 创建新文件             | `touch`       |                                                                                                                                                                                                                        |
 | 脚本文件查找，根据PATH路径查找 | `which`       |                                                                                                                                                                                                                        |
 | 查找部分路径文件          | `whereis`     | `-l` 列出查询的目录<br> `-b` 查找二进制文件                                                                                                                                                                                          |
-| 根据数据库查找           | `locate`      | `-i` 忽略大小写<br> -r 根据正则表达式查找 <br> 可以通过 `updatedb` 来更新数据库 <br> 可以模糊查询                                                                                                                                                    |
+| 根据数据库查找           | `locate`      | `-i` 忽略大小写<br> `-r` 根据正则表达式查找 <br> 可以通过 `updatedb` 来更新数据库 <br> 可以模糊查询                                                                                                                                                  |
 | 查找硬盘              | `find`        | `-name` 查找文件名称，可用 * 默模糊查询<br> `-type` 查找文件类型，例如 `f`,`b`,`c`,`l`,`s`,`p` <br> `-exec ls -l {} \;` 执行额外操作，`-exec` 开始 `\;` 结束 `{}` 为 find 结果<br>例如：查找出来展示`find . -type f -exec ls -l {} \;`                               |
 
 # 用户与权限
@@ -499,8 +499,8 @@ USER        PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND
 
 * `P` ：以 CPU 的使用资源排序显示。
 * `M` ：以 Memory 的使用资源排序显示。
-* `` ：以 PID 来排序喔。
-* `TN` ：由该 Process 使用的 CPU 时间累积 （TIME+） 排序。
+* `N` ：以 PID 来排序喔。
+* `T` ：由该 Process 使用的 CPU 时间累积 （TIME+） 排序。
 
 ```bash
 top - 00:53:59 up  6:07,  3 users,  load average: 0.00, 0.01, 0.05

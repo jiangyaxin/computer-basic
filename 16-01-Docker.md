@@ -146,15 +146,15 @@ docker 会在 `iptable` 规则表中添加 `POSTROUTING`规则`iptables -t nat -
 
 外网访问容器：
 
-docker 会在 `iptable` 规则表中添加 `PREROUTING`规则`iptables -t nat -I PREROUTING -i eth0 -p tcp -m tcp --dport 7001 -j DNAT --to-destination 172.20.0.7:7001`，表示所有从`eth0`进入目的端口为7001的数据包都发送到 `172.20.0.7:7001` 去处理。
+docker 会在 `iptable` 规则表中添加 `PREROUTING`规则`iptables -t nat -I PREROUTING -i eth0 -p tcp -m tcp --dport 7001 -j DNAT --to-destination 172.20.0.7:7001`，表示所有从`eth0`进入目的端口为`7001`的数据包都发送到 `172.20.0.7:7001` 去处理。
 
 多主机网络共享：
 
 `overlay`方式：
 
-1. 在 host1 创建一个 `overlay` 类型网络，`docker network create -d verlay <network-name>`
-2. 在 host1 创建连接到 `overlay` 网络的容器，`docker run -d --network <network-name> <image-id>`,这时docker 会创建`docker_gwbridge` 的网络，为所有连接到 `overlay` 网络的容器提供访问外网能力。
-3. 在 host2 创建连接到 `overlay` 网络的容器，可通过 host1 中容器名 访问 host1 中连接到 overlay网络的容器。
+1. 在 `host1` 创建一个 `overlay` 类型网络，`docker network create -d verlay <network-name>`
+2. 在 `host1` 创建连接到 `overlay` 网络的容器，`docker run -d --network <network-name> <image-id>`,这时docker 会创建`docker_gwbridge` 的网络，为所有连接到 `overlay` 网络的容器提供访问外网能力。
+3. 在 `host2` 创建连接到 `overlay` 网络的容器，可通过 `host1` 中容器名 访问 `host1` 中连接到 `overlay`网络的容器。
 
 不同名称的overlay网络互相隔离，可以通过`docker network connect <network-name> bbox3`来加入网络。
 

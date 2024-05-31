@@ -950,11 +950,11 @@ systemctl status atd
 
 ## 执行
 
-crond 会读取 `/etc/crontab`，`/var/spool/cron/*`，`/etc/cron.d/*` 三个位置，`/etc/cron.d` 目录中内容和 `/etc/crontab` 一样，`/var/spool/cron/` 不建议手动编辑，使用 crontab 命令添加。
+`crond` 会读取 `/etc/crontab`，`/var/spool/cron/*`，`/etc/cron.d/*` 三个位置，`/etc/cron.d` 目录中内容和 `/etc/crontab` 一样，`/var/spool/cron/` 不建议手动编辑，使用 `crontab` 命令添加。
 
 除此之外， `/etc/cron.d/0hourly` 会触发 `/etc/cron.hourly` 目录中文件的执行，执行间隔为 每小时0-5分钟随机一个时间。`/etc/cron.hourly/0anacron` 会触发 `/etc/cron.daily/`, `/etc/cron.weekly/`, `/etc/cron.monthly/` 三个目录中文件的执行。
 
-1. `crontab` 命令会将要运行的以文本文件的方式写入 `/var/spool/cron/` 目录内（例如：`/var/spool/cron/[用户名]`），等待 crond 调度。
+1. `crontab` 命令会将要运行的以文本文件的方式写入 `/var/spool/cron/` 目录内（例如：`/var/spool/cron/[用户名]`），等待 `crond` 调度。
 2. 使用 `/etc/cron.allow` 和 `/etc/cron.deny` 来控制权限。
 3. 运行日志打印在 `/var/log/cron`。
 
@@ -1001,9 +1001,9 @@ START_HOURS_RANGE=3-22    # 延迟多少个小时内应该要执行的任务时�
 
 ![165](assets/165.png)
 
-* `daemon`：主要是系统的服务所产生的信息，例如 systemd 。
-* `auth`：认证/授权有关的机制，例如 login, ssh, su 等需要帐号/密码。
-* `cron`： cron/at 等产生讯息记录的地方。
+* `daemon`：主要是系统的服务所产生的信息，例如 `systemd` 。
+* `auth`：认证/授权有关的机制，例如 `login`, `ssh`, `su` 等需要帐号/密码。
+* `cron`： `cron`/`at` 等产生讯息记录的地方。
 
 ## logrotate 服务
 
@@ -1065,8 +1065,8 @@ windows和Linux换行符：
 
 ## vi
 
-* 命令模式：删除、复制、粘贴、上下左右移动、翻页、`[n]G` 移动到第几行、gg移动到第一行、G移动到最后一行、`[n]dd` 删除向下几行、`[n]yy` 向下复制几行、`p` 粘贴到下一行。
-* 编辑模式：`i`、`a` 光标位置插入，O 向上插入一行
+* 命令模式：删除、复制、粘贴、上下左右移动、翻页、`[n]G` 移动到第几行、`gg`移动到第一行、`G`移动到最后一行、`[n]dd` 删除向下几行、`[n]yy` 向下复制几行、`p` 粘贴到下一行。
+* 编辑模式：`i`、`a` 光标位置插入，`O` 向上插入一行
 * 命令行模式：`:[n1],[n2] w [filename]` 将n1到n2保存到文件、`:r [filename]` 读取另一个文件追加在后面。
 
 ## vim
@@ -1075,12 +1075,12 @@ windows和Linux换行符：
 
 vim缓存: `.swp` 后缀
 
-* （O）pen Read-Only：打开此文件成为只读文件。
-* （E）dit anyway：用正常的方式打开你要编辑的那个文件， 并不会载入暂存盘的内容。
-* （R）ecover：载入暂存盘的内容，用在你要救回之前未储存的工作。 需要手动自行删除那个暂存盘。
-* （D）elete it：打开文件前会先将这个暂存盘删除。
-* （Q）uit：离开。
-* （A）bort：和 Q 一样。
+* (O)pen Read-Only：打开此文件成为只读文件。
+* (E)dit anyway：用正常的方式打开你要编辑的那个文件， 并不会载入暂存盘的内容。
+* (R)ecover：载入暂存盘的内容，用在你要救回之前未储存的工作。 需要手动自行删除那个暂存盘。
+* (D)elete it：打开文件前会先将这个暂存盘删除。
+* (Q)uit：离开。
+* (A)bort：和 Q 一样。
 
 局部区域选择：
 
@@ -1097,7 +1097,7 @@ vim缓存: `.swp` 后缀
 * `:N`上个文件。
 * `:files`打开文件
 
-字符串替换：`:{作用范围}s/{目标}/{替换}/{替换标志}` 例如 `:%s/foo/bar/g` 在全局范围(%)查找 foo 并替换为 bar，所有出现都会被替换(g) 。
+字符串替换：`:{作用范围}s/{目标}/{替换}/{替换标志}` 例如 `:%s/foo/bar/g` 在全局范围(`%`)查找 foo 并替换为 bar，所有出现都会被替换(`g`) 。
 文件夹查找替换:
 
 ```shell

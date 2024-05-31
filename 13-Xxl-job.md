@@ -194,7 +194,7 @@
 循环执行任务调度，单次调度流程如下：
 
 1. 开启事务并使用 MySQL **X锁**查询 `xxl_job_lock` 表中`schedule_lock`，防止调度中心集群时对同一任务重复调度。
-2. 从 xxl_job_info 获取 `triggerNextTime < 当前时间+5s(预读时间)` 的所有任务。
+2. 从 `xxl_job_info` 获取 `triggerNextTime < 当前时间+5s(预读时间)` 的所有任务。
    ![image.png](./assets/2001.png)
 3. 循环执行任务，任务主要分为3种类型：
    1. 错过触发时间但还未触发的任务：`triggerNextTime < 当前时间-5s`，存在两种处理策略：放弃触发、立即触发，处理完成之后更新 `triggerNextTime`，该值为大于当前时间的下一次执行时间，更新后的 `triggerNextTime` 可能存在 3 种情况：
@@ -223,13 +223,13 @@
 * `fastTriggerPool`：默认的执行线程池。
 * `slowTriggerPool`：慢任务执行线程池，当一个任务在一分钟内 10次 远程调用时间超过 500ms,在这一分钟内则会被认为是慢任务，如果这一分钟内继续触发，则会使用该线程池执行。
 
-远程调用路由策略，ExecutorRouter 子类：
+远程调用路由策略，`ExecutorRouter` 子类：
 
 * `第一个`：总是使用执行器组中第一个地址。
 * `最后一个`：总是使用执行器组中最后一个地址。
 * `轮询`：每天同一个job首次执行 或 同一天同一个job执行次数超过 1000000 时随机选出执行器组中一个地址，然后后续同一任务执行依次选取 地址，例如存在地址 A、B、C，当随机选举地址为 B，那么下一次选取的地址为C，再下次为A。
 * `随机`：从执行器组中随机选取第一个地址。
-* `一致性HASH`：首选获取 hash(jobId),hash(addresses)，然后取大于 hash(jobId) 的最小 hash(addresses)，若不存在取最小 hash(addresses)，保证分组下机器分配JOB平均且每个JOB固定调度其中一台机器。
+* `一致性HASH`：首选获取 `hash(jobId)`,`hash(addresses)`，然后取`大于 hash(jobId)` 的`最小 hash(addresses)`，若不存在取`最小 hash(addresses)`，保证分组下机器分配JOB平均且每个JOB固定调度其中一台机器。
 * `最不经常使用`：每天同一个job首次执行 或 同一天同一个job同一地址执行次数超过 1000000 时，随机设置执行器组每个地址的执行次数，然后每次从中选出执行次数最少的地址。
 * `最近最久未使用`：用 LinkedHashMap 的 AccessOrder 属性使元素按访问顺序排序，越早访问的key排在越前面，所以迭代时访问的第一个key就是最久未使用的。
 * `故障转移`：顺序使用 /beat 接口轮询每个地址，使用第一个可以访问的地址。

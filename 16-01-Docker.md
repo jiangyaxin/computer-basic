@@ -654,14 +654,11 @@ services:
 现在，每个容器都可以查找主机名 web 或 db，并获取相应容器的 IP 地址。例如，web 应用的代码可以使用 URL postgres://db:5432
 连接数据库并使用它。
 
-- 重要的是要注意 HOST_PORT 和 CONTAINER_PORT 之间的区别。前者是指的是宿主机的端口，后者指的是容器中的端口。
-- 容器网络中的服务间使用的是 CONTAINER_PORT 通信。
-- HOST_PORT 定义了是为了容器网络外被调用的。所以，前面才使用的是 postgres://db:5432 而不是 postgres://db:
-  8001。因为他们属于同一个容器网络中。
+- 重要的是要注意 `HOST_PORT` 和 `CONTAINER_PORT` 之间的区别。前者是指的是宿主机的端口，后者指的是容器中的端口。
+- 容器网络中的服务间使用的是 `CONTAINER_PORT` 通信。
+- `HOST_PORT` 定义了是为了容器网络外被调用的。所以，前面才使用的是 `postgres://db:5432` 而不是 `postgres://db:8001`。因为他们属于同一个容器网络中。
 
-另外值得注意的是：**services 下级的服务中 networks
-指定的网络不是指要创建的网络，而是这个服务要加入的网络，如果网络不存在会出现`ERROR: Service "mongodb" uses an undefined network "mogo_net"`
-**,不过可以通过 top-level 的 networks 定义一下网络，运行时，会自动创建网络，例如：
+另外值得注意的是：**services 下级的服务中 networks 指定的网络不是指要创建的网络，而是这个服务要加入的网络，如果网络不存在会出现`ERROR: Service "mongodb" uses an undefined network "mogo_net"`**,不过可以通过 top-level 的 networks 定义一下网络，运行时，会自动创建网络，例如：
 
 ```yaml
 version: "2"
@@ -720,8 +717,7 @@ services:
     image: postgres
 ```
 
-启动时会先启动db和redis，最后才启动web。在使用docker-compose up
-web启动web时，也会启动db和redis，因为在web服务中指定了依赖关系。在停止时也在web之前先停止db和redis。
+启动时会先启动db和redis，最后才启动web。在使用`docker-compose up` web启动web时，也会启动db和redis，因为在web服务中指定了依赖关系。在停止时也在web之前先停止db和redis。
 
 #### dns
 
@@ -808,16 +804,16 @@ restart: always
 
 重启策略：
 
-- no：在任何情况下都不会重启容器。默认的重启策略。
-- always：在容器退出时总是重启容器。
-- on-failure：在容器以非0状态码退出时才会重启。
-- unless-stopped：在容器退出时总是重启容器，但是不考虑在Docker守护进程启动时就已经停止了的容器。
+- `no`：在任何情况下都不会重启容器。默认的重启策略。
+- `always`：在容器退出时总是重启容器。
+- `on-failure`：在容器以非0状态码退出时才会重启。
+- `unless-stopped`：在容器退出时总是重启容器，但是不考虑在Docker守护进程启动时就已经停止了的容器。
 
 #### volumes
 
 指定所挂载的主机路径或数据卷名称。但是如果想要在多个服务之间重用数据卷，需要在顶层volumes配置项中定义一个数据卷名称。
 
-通用的 `[SOURCE:]TARGET[:MODE]` 格式，SOURCE可以是主机路径或数据卷名称，TARGET为挂载数据卷的容器路径，MODE可以为ro只读模式或rw读写模式（默认）。
+通用的 `[SOURCE:]TARGET[:MODE]` 格式，`SOURCE`可以是主机路径或数据卷名称，`TARGET`为挂载数据卷的容器路径，`MODE`可以为`ro`只读模式或`rw`读写模式（默认）。
 
 ```yaml
 volumes:

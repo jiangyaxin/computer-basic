@@ -797,7 +797,7 @@ Unit 部分：
 * `After`：如果 `network.target` 或 `sshd-keygen.service` 需要启动，那么 `sshd.service` 应该在它们之后启动。
 * `Before`：定义 `sshd` 应该在哪些服务之前启动。
 
-注意：`After` 和 `Before` 字段只涉及启动顺序，不涉及依赖关系，及时 `After` 的服务不启动，该服务也可以启动。
+   注意：`After` 和 `Before` 字段只涉及启动顺序，不涉及依赖关系，及时 `After` 的服务不启动，该服务也可以启动。
 
 * `Wants`：表示"弱依赖"关系，目的是希望创建让使用者比较好操作的环境，即如果`sshd-keygen.service`启动失败或停止运行，不影响 `sshd.service` 继续执行
 * `Requires`：表示"强依赖"关系，即 `unit` 需要在哪个 `daemon` 启动后才能够启动，如果前置服务没有启动，那么此 `unit` 就不会被启动。
@@ -828,12 +828,12 @@ Install 部分：
 条件：
 
 * 系统的 `timer.target` 一定要启动
-* 要有个 `sname.service` 的服务存在 （sname 是你自己指定的名称）
+* 要有个 `sname.service` 的服务存在 （`sname` 是你自己指定的名称）
 * 要有个 `sname.timer`的时间启动服务存在
 
 配置：
 
-1. 在 `/etc/systemd/system` 目录下创建服务 `xxx.timer`，xxx 和服务名相同。
+1. 在 `/etc/systemd/system` 目录下创建服务 `xxx.timer`，`xxx` 和服务名相同。
 
 ```properties
 [Unit]
@@ -890,11 +890,11 @@ Timer 部分：
 
 ## 执行一次的任务
 
-`at` ：负责处理仅执行一次就结束调度，执行 at 时， 需要 atd 服务。
+`at` ：负责处理仅执行一次就结束调度，执行 `at` 时， 需要 `atd` 服务。
 
 ## 使用
 
-1. 启动atd服务。
+1. 启动`atd`服务。
 
 ```bash
 # 重新启动 atd 这个服务
@@ -905,7 +905,7 @@ systemctl enable atd
 systemctl status atd
 ```
 
-2. 使用at命令添加任务。
+2. 使用`at`命令添加任务。
 
 语法：`at [TIME]`
 
@@ -924,14 +924,14 @@ systemctl status atd
 
 ## 执行
 
-1. at 命令会将要运行的以文本文件的方式写入 `/var/spool/at/` 目录内，等待 atd 调度。
+1. `at` 命令会将要运行的以文本文件的方式写入 `/var/spool/at/` 目录内，等待 `atd` 调度。
 2. 查询  `/etc/at.allow` 文件，只有写在这个文件中的用户才能使用 at，没有写在该文件不能执行（即使没有写在 `/etc/at.deny`）。
 3. 如果  `/etc/at.allow` 不存在，则寻找 `/etc/at.deny`，写在  `/etc/at.deny` 中的不能使用 at，没有写在其中的key执行。
-4. 如果都不存在，只有root可以执行at。
+4. 如果都不存在，只有root可以执行`at`。
 
 ## 定期循环的任务
 
-`crontab` ：定期循环的任务，执行 crontab 时， 需要 crond 服务。
+`crontab` ：定期循环的任务，执行 `crontab` 时， 需要 `crond` 服务。
 
 ## 使用
 

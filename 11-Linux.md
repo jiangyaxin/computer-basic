@@ -764,7 +764,7 @@ atd.service - Job spooling tools
 * `graphical.target`：图形界面，包含 `multi-user.target` 项目。
 * `multi-user.target`：命令行模式。
 * `rescue.target`：在无法使用 root 登陆的情况下，systemd 在开机时会多加一个额外的暂时系统，与你原本的系统无关。可以使用 root 的权限来维护系统。
-* `emergency.target`：紧急处理系统的错误，需要使用 root 登陆，在无法使用 rescue.target 时，可以尝试使用这种模式。
+* `emergency.target`：紧急处理系统的错误，需要使用 root 登陆，在无法使用 `rescue.target` 时，可以尝试使用这种模式。
 * `shutdown.target`：关机的流程。
 * `getty.target`：设置需要几个 tty 之类的。
 

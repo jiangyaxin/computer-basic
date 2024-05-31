@@ -795,33 +795,33 @@ WantedBy=multi-user.target
 Unit 部分：
 
 * `After`：如果 `network.target` 或 `sshd-keygen.service` 需要启动，那么 `sshd.service` 应该在它们之后启动。
-* `Before`：定义 sshd 应该在哪些服务之前启动。
+* `Before`：定义 `sshd` 应该在哪些服务之前启动。
 
-注意：After 和 Before 字段只涉及启动顺序，不涉及依赖关系，及时 After 的服务不启动，该服务也可以启动。
+注意：`After` 和 `Before` 字段只涉及启动顺序，不涉及依赖关系，及时 `After` 的服务不启动，该服务也可以启动。
 
 * `Wants`：表示"弱依赖"关系，目的是希望创建让使用者比较好操作的环境，即如果`sshd-keygen.service`启动失败或停止运行，不影响 `sshd.service` 继续执行
-* `Requires`：表示"强依赖"关系，即 unit 需要在哪个 daemon 启动后才能够启动，如果前置服务没有启动，那么此 unit 就不会被启动。
+* `Requires`：表示"强依赖"关系，即 `unit` 需要在哪个 `daemon` 启动后才能够启动，如果前置服务没有启动，那么此 `unit` 就不会被启动。
 * `Conflicts`：冲突的服务，如果后面的服务启动，该unit不启动，如果该unit启动，后面的服务就不启动。
 
 Service 部分：
 
 * `Type`：
     * `simple` ： 默认值，由 `ExecStart` 接的指令串来启动，启动后常驻于内存中。
-    * `forking`：由 `ExecStart` 启动的程序通过 spawns 延伸出其他子程序来作为此 daemon 的主要服务。原生的父程序在启动结束后就会终止运行。
+    * `forking`：由 `ExecStart` 启动的程序通过 `spawns` 延伸出其他子程序来作为此 `daemon` 的主要服务。原生的父程序在启动结束后就会终止运行。
     * `oneshot`：与 simple 类似，不过这个程序在工作完毕后就结束了，不会常驻在内存中。
 * `EnvironmentFile`：指定启动脚本的环境配置文件。
 * `ExecStartPre`
-* `ExecStart`：实际执行此 daemon 的指令或脚本程序。
+* `ExecStart`：实际执行此 `daemon` 的指令或脚本程序。
 * `ExecStartPost`
 * `ExecStop`： `systemctl stop` 的执行有关。
 * `ExecReload`：`systemctl reload` 有关。
-* `Restart`：设置 `Restart=1` 时，则当此 daemon 服务终止后，会再次的启动此服务。
-* `RestartSec`：与 Restart 相关，多久时间重启，默认 100ms。
+* `Restart`：设置 `Restart=1` 时，则当此 `daemon` 服务终止后，会再次的启动此服务。
+* `RestartSec`：与 `Restart` 相关，多久时间重启，默认 100ms。
 * `TimeoutSec`：等多久强制结束。
 
 Install 部分：
 
-* `WantedBy`： unit 要挂载哪个 target 下面
+* `WantedBy`： `unit` 要挂载哪个 `target` 下面
 
 #### 对自定义服务设置定时
 

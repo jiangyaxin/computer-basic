@@ -452,7 +452,7 @@ LVM可以建立快照，分为快照区和系统区，修改过的数据会被�
 
 # 进程管理
 
-后台执行：在命令最后使用 `&` ，或者使用 `ctrl + z` 将前台任务丢到后台去暂停，`jobs -r` 查看后台任务，可使用 -l 查看pid，让后台暂停的任务继续执行 `bg %[jobs -r 查看的任务编号]`
+后台执行：在命令最后使用 `&` ，或者使用 `ctrl + z` 将前台任务丢到后台去暂停，`jobs -r` 查看后台任务，可使用 `-l` 查看pid，让后台暂停的任务继续执行 `bg %[jobs -r 查看的任务编号]`
 
 前台执行：`fg %[jobs -r 查看的任务编号]`
 
@@ -492,7 +492,7 @@ USER        PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND
 * `RSS`：常驻内存，用于表示进程使用了多少内存（RAM中的物理内存），RSS不包含已经被换出的内存。RSS包含了它所链接的动态库并且被加载到物理内存中的内存。RSS还包含栈内存和堆内存。
 * `VSZ`：虚拟内存大小，它包含了进程所能访问的所有内存，包含了被换出的内存，被分配但是还没有被使用的内存，以及动态库中的内存。
 
-3. 动态查看进程状态：top
+3. 动态查看进程状态：`top`
 
 按键命令：
 
@@ -577,15 +577,15 @@ SELinux 的 角色：
 * 主体 （Subject）：进程。
 * 目标 （Object）：文件系统。
 * 政策 （Policy）：规则：
-    1. targeted：针对网络服务限制较多，针对本机限制较少，是默认的策略。
-    2. minimum：由 target 自定义，仅针对选择的程序来保护。
-    3. mls：完整的 SELinux 限制，限制方面较为严格。建议使用默认的 targeted 政策即可。
+    1. `targeted`：针对网络服务限制较多，针对本机限制较少，是默认的策略。
+    2. `minimum`：由 target 自定义，仅针对选择的程序来保护。
+    3. `mls`：完整的 SELinux 限制，限制方面较为严格。建议使用默认的 `targeted` 政策即可。
 * 安全文本 （security context）：放置在inode中，相当于 rwx ，存在于主体进程和目标文件中，主体能不能存取目标，除了策略放行外，还需要主体与目标的安全性本文必须一致才能够顺利存取。
 
 模式：
 
-* `enforcing`：强制模式，代表 SELinux 运行中，且已经正确的开始限制 domain/type。
-* `permissive`：宽容模式：代表 SELinux 运行中，不过仅会有警告讯息并不会实际限制 domain/type 的存取，用来Debug。
+* `enforcing`：强制模式，代表 SELinux 运行中，且已经正确的开始限制 `domain/type`。
+* `permissive`：宽容模式：代表 SELinux 运行中，不过仅会有警告讯息并不会实际限制` domain/type` 的存取，用来Debug。
 * `disabled`：关闭，SELinux 并没有实际运行。
 
 `getenforce` 查询模式，`setenforce [0|1]`, `0` 为宽容模式，`1` 为 强制模式。
@@ -615,10 +615,10 @@ Identify:role:type
 * `object_r`：文件或目录等文件资源。
 * `system_r`：程序。
 
-3. `Type`：类型，默认targeted策略，主要使用该字段对比，是能不能访问资源的关键，根据策略中记录的type 和 domain 能匹配上则能访问。
+3. `Type`：类型，默认`targeted`策略，主要使用该字段对比，是能不能访问资源的关键，根据策略中记录的`type`和`domain`能匹配上则能访问。
 
-* `type`：对于文件资源 （Object）称为类型 （Type）。
-* `domain`：对于主体进程 （Subject）称为域 （domain）。
+* `type`：对于文件资源 （Object）称为类型 （`Type`）。
+* `domain`：对于主体进程 （Subject）称为域 （`domain`）。
 
 ### 查看安全文本
 
@@ -735,9 +735,9 @@ atd.service - Job spooling tools
 
 服务运行状态：
 
-* `active （running）` 正有一个或多个进程正在系统中执行
-* `active （exited）` 执行一次就正常结束，目前并没有任何程序在系统中执行。
-* `active （waiting`） 正在执行当中，不过还再等待其他的事件才能继续处理，例如 打印服务。
+* `active(running)` 正有一个或多个进程正在系统中执行
+* `active(exited)` 执行一次就正常结束，目前并没有任何程序在系统中执行。
+* `active(waiting)` 正在执行当中，不过还再等待其他的事件才能继续处理，例如 打印服务。
 * `inactive`  没有运行
   服务加载状态：
 * `enabled` 开机自启

@@ -160,7 +160,7 @@
   ```
 * 启动执行器。
 
-5. 访问 `http://localhost:8080/xxl-job-admin`,密码 admin/123456。
+5. 访问 `http://localhost:8080/xxl-job-admin`,密码 `admin/123456`。
 6. 添加执行器。
 7. 添加任务。
 
@@ -170,15 +170,15 @@
 
 ### 名称
 
-1. 调度中心：xxl-job-admin,完成负责任务调度和web管理。
-2. 执行器：xxl-job-core 中 XxlJobExecutor，负责具体任务的执行。
-3. 执行器组：具有相同 xxl.job.executor.appname 的多个执行器，可横向扩展，分片执行等。
+1. 调度中心：`xxl-job-admin`,完成负责任务调度和web管理。
+2. 执行器：`xxl-job-core` 中 `XxlJobExecutor`，负责具体任务的执行。
+3. 执行器组：具有相同 `xxl.job.executor.appname` 的多个执行器，可横向扩展，分片执行等。
 4. 时间轮(TimeWheel)：轮询线程不再负责遍历所有任务，而是仅仅遍历时间刻度。好比指针不断在时钟上旋转、遍历，如果发现某一时间刻度上有任务，那么就会将任务队列上的所有任务都执行一遍，解决了遍历所有任务效率低的问题，同时插入、删除任务时间复杂度降为 O(1)。
 5. 调度触发：任务提交到 执行线程池，等待 执行线程池 远程调用 执行器 执行。
 6. 任务执行：远程调用 执行器 执行。
 7. 已经完成的任务：包括成功任务和失败任务。
 8. 成功任务：回调状态码为 200 的任务，即使用`XxlJobHelper.handleSuccess`设置返回结果，`XxlJobHelper.handleFail`可以设置失败结果。
-9. 失败任务：xxl_job_log 中除了 回调状态码为200(handle_code = 200) 和 未调度任务或已经调度下发但未收到回调的任务((trigger_code in (0, 200) and handle_code = 0) 以外的任务都是失败任务。
+9. 失败任务：`xxl_job_log` 中除了 回调状态码为`200(handle_code = 200)` 和 未调度任务或已经调度下发但未收到回调的任务`((trigger_code in (0, 200) and handle_code = 0)` 以外的任务都是失败任务。
 
 ### 调度中心
 
@@ -186,27 +186,27 @@
 
 ##### JobRegistryHelper
 
-1. 负责管理执行器注册与注销，提供 /registry 和 /registryRemove 接口供执行器访问，执行器以每30秒一次的速率访问 /registry 接口,新增表 xxl_job_registry 数据或者更新 updateTime。
-2. 自动发现执行器地址，并移除过期的执行器，调度中心以每30秒一次的速率删除过去90秒内没有调用/registry的执行器，同时发现新注册的执行器，并加入到设置为自动注册类型的执行器组中。
+1. 负责管理执行器注册与注销，提供 `/registry` 和 `/registryRemove` 接口供执行器访问，执行器以每30秒一次的速率访问 `/registry` 接口,新增表 `xxl_job_registry` 数据或者更新 `updateTime`。
+2. 自动发现执行器地址，并移除过期的执行器，调度中心以每30秒一次的速率删除过去90秒内没有调用`/registry`的执行器，同时发现新注册的执行器，并加入到设置为自动注册类型的执行器组中。
 
 ##### JobScheduleHelper
 
 循环执行任务调度，单次调度流程如下：
 
-1. 开启事务并使用 MySQL X锁查询 xxl_job_lock 表中schedule_lock，防止调度中心集群时对同一任务重复调度。
-2. 从 xxl_job_info 获取 triggerNextTime 小于 当前时间+5s(预读时间) 的所有任务。
+1. 开启事务并使用 MySQL **X锁**查询 `xxl_job_lock` 表中`schedule_lock`，防止调度中心集群时对同一任务重复调度。
+2. 从 xxl_job_info 获取 `triggerNextTime < 当前时间+5s(预读时间)` 的所有任务。
    ![image.png](./assets/2001.png)
 3. 循环执行任务，任务主要分为3种类型：
-   1. 错过触发时间但还未触发的任务：triggerNextTime < 当前时间-5s，存在两种处理策略：放弃触发、立即触发，处理完成之后更新 triggerNextTime，该值为大于当前时间的下一次执行时间，更新后的 triggerNextTime 可能存在 3 种情况：
+   1. 错过触发时间但还未触发的任务：`triggerNextTime < 当前时间-5s`，存在两种处理策略：放弃触发、立即触发，处理完成之后更新 `triggerNextTime`，该值为大于当前时间的下一次执行时间，更新后的 `triggerNextTime` 可能存在 3 种情况：
       * 停止执行。
-      * 当前时间 和 当前时间+5s 之间，等待下一次调度。
-      * 大于 当前时间+5s，等待下一次调度。
-   2. 当前正在触发的任务：当前时间-5s < triggerNextTime < 当前时间，该类任务会直接触发，然后更新 triggerNextTime，更新后的 triggerNextTime 可能存在 3 种情况：
+      * `当前时间 和 当前时间+5s 之间`，等待下一次调度。
+      * `大于 当前时间+5s`，等待下一次调度。
+   2. 当前正在触发的任务：`当前时间-5s < triggerNextTime < 当前时间`，该类任务会直接触发，然后更新 `triggerNextTime`，更新后的 `triggerNextTime` 可能存在 3 种情况：
       * 停止执行。
-      * 当前时间 和 当前时间+5s 之间，加入到 时间轮 等待触发，并更新 triggerNextTime，该值为大于 当前triggerNextTime 的下一次执行时间。
-      * 大于 当前时间+5s，等待下一次调度。
-   3. 将要执行的任务：当前时间 < triggerNextTime < 当前时间+5s，加入到 时间轮 等待触发，并更新 triggerNextTime，该值为大于 当前triggerNextTime 的下一次执行时间。
-4. 更新最新的任务数据到 xxl_job_info ，并提交事务。
+      * `当前时间 和 当前时间+5s 之间`，加入到 时间轮 等待触发，并更新 `triggerNextTime`，该值为`大于 当前triggerNextTime` 的下一次执行时间。
+      * `大于 当前时间+5s`，等待下一次调度。
+   3. 将要执行的任务：`当前时间 < triggerNextTime < 当前时间+5s`，加入到 时间轮 等待触发，并更新 `triggerNextTime`，该值为`大于 当前triggerNextTime` 的下一次执行时间。
+4. 更新最新的任务数据到 `xxl_job_info` ，并提交事务。
 5. 跳过本秒剩余时间，当一次调度时间控制在1秒以内可以实现秒级调度，如果预读时间内没有任务，则之间跳过预读时间，防止空任务调度消耗资源。
 
 ###### 时间轮
@@ -218,23 +218,23 @@
 
 ##### JobTriggerPoolHelper
 
-负责任务异步执行，并记录日志 xxl_job_log，存在两个线程池：
+负责任务异步执行，并记录日志 `xxl_job_log`，存在两个线程池：
 
-* fastTriggerPool：默认的执行线程池。
-* slowTriggerPool：慢任务执行线程池，当一个任务在一分钟内 10次 远程调用时间超过 500ms,在这一分钟内则会被认为是慢任务，如果这一分钟内继续触发，则会使用该线程池执行。
+* `fastTriggerPool`：默认的执行线程池。
+* `slowTriggerPool`：慢任务执行线程池，当一个任务在一分钟内 10次 远程调用时间超过 500ms,在这一分钟内则会被认为是慢任务，如果这一分钟内继续触发，则会使用该线程池执行。
 
 远程调用路由策略，ExecutorRouter 子类：
 
-* 第一个：总是使用执行器组中第一个地址。
-* 最后一个：总是使用执行器组中最后一个地址。
-* 轮询：每天同一个job首次执行 或 同一天同一个job执行次数超过 1000000 时随机选出执行器组中一个地址，然后后续同一任务执行依次选取 地址，例如存在地址 A、B、C，当随机选举地址为 B，那么下一次选取的地址为C，再下次为A。
-* 随机：从执行器组中随机选取第一个地址。
-* 一致性HASH：首选获取 hash(jobId),hash(addresses)，然后取大于 hash(jobId) 的最小 hash(addresses)，若不存在取最小 hash(addresses)，保证分组下机器分配JOB平均且每个JOB固定调度其中一台机器。
-* 最不经常使用：每天同一个job首次执行 或 同一天同一个job同一地址执行次数超过 1000000 时，随机设置执行器组每个地址的执行次数，然后每次从中选出执行次数最少的地址。
-* 最近最久未使用：用 LinkedHashMap 的 AccessOrder 属性使元素按访问顺序排序，越早访问的key排在越前面，所以迭代时访问的第一个key就是最久未使用的。
-* 故障转移：顺序使用 /beat 接口轮询每个地址，使用第一个可以访问的地址。
-* 忙碌转移：顺序使用 /idleBeat 接口轮询每个地址，使用第一个不忙碌的地址。
-* 分片广播：对执行器组中的所有地址发送执行请求，并加上参数 分片Index 、分片总数，分片Index 为执行器 在 执行器组 中的索引，执行器可通过该值判断执行部分业务，获取方法`int shardIndex = XxlJobHelper.getShardIndex();` `int shardTotal = XxlJobHelper.getShardTotal();`
+* `第一个`：总是使用执行器组中第一个地址。
+* `最后一个`：总是使用执行器组中最后一个地址。
+* `轮询`：每天同一个job首次执行 或 同一天同一个job执行次数超过 1000000 时随机选出执行器组中一个地址，然后后续同一任务执行依次选取 地址，例如存在地址 A、B、C，当随机选举地址为 B，那么下一次选取的地址为C，再下次为A。
+* `随机`：从执行器组中随机选取第一个地址。
+* `一致性HASH`：首选获取 hash(jobId),hash(addresses)，然后取大于 hash(jobId) 的最小 hash(addresses)，若不存在取最小 hash(addresses)，保证分组下机器分配JOB平均且每个JOB固定调度其中一台机器。
+* `最不经常使用`：每天同一个job首次执行 或 同一天同一个job同一地址执行次数超过 1000000 时，随机设置执行器组每个地址的执行次数，然后每次从中选出执行次数最少的地址。
+* `最近最久未使用`：用 LinkedHashMap 的 AccessOrder 属性使元素按访问顺序排序，越早访问的key排在越前面，所以迭代时访问的第一个key就是最久未使用的。
+* `故障转移`：顺序使用 /beat 接口轮询每个地址，使用第一个可以访问的地址。
+* `忙碌转移`：顺序使用 /idleBeat 接口轮询每个地址，使用第一个不忙碌的地址。
+* `分片广播`：对执行器组中的所有地址发送执行请求，并加上参数 分片Index 、分片总数，分片Index 为执行器 在 执行器组 中的索引，执行器可通过该值判断执行部分业务，获取方法`int shardIndex = XxlJobHelper.getShardIndex();` `int shardTotal = XxlJobHelper.getShardTotal();`
 
 ##### JobCompleteHelper
 
@@ -250,36 +250,36 @@
 1. 如果任务设置了重试次数，发起重试，并将重试次数减1。
 2. 如果设置了警告邮箱，发送警告邮件。
 
-任务运行间隔为10s，处理失败任务时使用乐观锁 (UPDATE xxl_job_log SET alarm_status = #{newAlarmStatus} WHERE id = #{logId} AND alarm_status = #{oldAlarmStatus}) 将 alarm_status 更新为 -1 ，避免对失败任务进行多次处理。
+任务运行间隔为10s，处理失败任务时使用乐观锁 (`UPDATE xxl_job_log SET alarm_status = #{newAlarmStatus} WHERE id = #{logId} AND alarm_status = #{oldAlarmStatus}`) 将 `alarm_status` 更新为 -1 ，避免对失败任务进行多次处理。
 
 ##### JobLogReportHelper
 
 负责两部分功能：
 
-1. 统计最近3天每天的任务数量、失败数量、成功数量，保存到 xxl_job_log_report。
-2. 根据 xxl.job.logretentiondays 配置清理 xxl_job_log 日志。
+1. 统计最近3天每天的任务数量、失败数量、成功数量，保存到 `xxl_job_log_report`。
+2. 根据 `xxl.job.logretentiondays` 配置清理 `xxl_job_log` 日志。
 
 ### 执行器
 
-即 xxl-job-core 中 XxlJobExecutor，存在两个子类 XxlJobSimpleExecutor、XxlJobSpringExecutor，分别用于无框架和spring框架初始化。
+即 `xxl-job-core` 中 `XxlJobExecutor`，存在两个子类 `XxlJobSimpleExecutor`、`XxlJobSpringExecutor`，分别用于无框架和spring框架初始化。
 
 #### 核心组件
 
 ##### ExecutorRegistryThread
 
-以每30秒一次的速度调用 /registry 向调度中心注册，当执行器正常关闭时调用 /registryRemove 向调度中心注销。
+以每30秒一次的速度调用 `/registry` 向调度中心注册，当执行器正常关闭时调用 `/registryRemove` 向调度中心注销。
 
 ##### EmbedServer
 
-一个netty服务端，默认端口为9999，通过 XxlJobExecutor 的 port 属性配置，主要负责接受 调度中心 的任务执行请求，加入到对应的 jobId 的 JobThread，如果 JobThread 不存在则新建一个，例如 Glue(Java) 方式调用。
+一个netty服务端，默认端口为`9999`，通过 `XxlJobExecutor` 的 port 属性配置，主要负责接受 调度中心 的任务执行请求，加入到对应的 `jobId` 的 `JobThread`，如果 `JobThread` 不存在则新建一个，例如 Glue(Java) 方式调用。
 
 ##### JobThread
 
-XxlJobSimpleExecutor 或 XxlJobSpringExecutor 扫描 @XxlJob 的方法生成 IJobHandler类型 的Bean，然后给每个任务 bean 默认生成一个 JobThread。
+`XxlJobSimpleExecutor` 或 `XxlJobSpringExecutor` 扫描 `@XxlJob` 的方法生成 `IJobHandler`类型 的Bean，然后给每个任务 bean 默认生成一个 `JobThread`。
 
-JobThread中存在一个触发任务队列`LinkedBlockingQueue<TriggerParam>`,线程会循环从中获取任务出来执行，如果 3 * 30 秒没有任务则关闭该线程释放资源，等下次接收到调度中心请求时，由 EmbedServer 创建。
+`JobThread`中存在一个触发任务队列`LinkedBlockingQueue<TriggerParam>`,线程会循环从中获取任务出来执行，如果 3 * 30 秒没有任务则关闭该线程释放资源，等下次接收到调度中心请求时，由 EmbedServer 创建。
 
-对执行完成或者执行失败的线程使用 TriggerCallbackThread 进行回调，另外当执行器正常停止，触发任务队列中还有未执行完的任务，全部任务执行失败进行回调。
+对执行完成或者执行失败的线程使用 `TriggerCallbackThread` 进行回调，另外当执行器正常停止，触发任务队列中还有未执行完的任务，全部任务执行失败进行回调。
 
 ##### TriggerCallbackThread
 

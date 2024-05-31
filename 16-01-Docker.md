@@ -27,8 +27,7 @@ Linux操作系统由内核空间和用户空间组成，用户空间的文件系
 
 ## 构建镜像
 
-将现有容器保存为新镜像：`docker commit <container-id> <new-image-id>`,不推荐使用，推荐 Dockerfile 构建，底层也是 docker
-commit 一层层构建的。
+将现有容器保存为新镜像：`docker commit <container-id> <new-image-id>`,不推荐使用，推荐 `Dockerfile` 构建，底层也是 docker commit 一层层构建的。
 
 ### Dockerfile
 
@@ -81,8 +80,7 @@ build 时会创建缓存，如果 `Dockerfile` 中命令顺序一致且相同就
 
 可以通过`docker history <image-id> --no-trunc`查看构建历史。
 
-dockerfile 构建时某个中间节点失败，这个节点之前构建的中间镜像可以启动，可以在这个节点上调试，排查构建失败的原因。
-镜像名称分为两部分： `[image name] = [repository]:[tag]`,如果`[tag]`不指定默认为 `latest`，该值可以是任何字符串，`latest`并不一定代表最新版本。
+dockerfile 构建时某个中间节点失败，这个节点之前构建的中间镜像可以启动，可以在这个节点上调试，排查构建失败的原因。 镜像名称分为两部分： `[image name] = [repository]:[tag]`,如果`[tag]`不指定默认为 `latest`，该值可以是任何字符串，`latest`并不一定代表最新版本。
 
 ### 常用指令
 

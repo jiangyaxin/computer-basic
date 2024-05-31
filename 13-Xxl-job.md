@@ -231,9 +231,9 @@
 * `随机`：从执行器组中随机选取第一个地址。
 * `一致性HASH`：首选获取 `hash(jobId)`,`hash(addresses)`，然后取`大于 hash(jobId)` 的`最小 hash(addresses)`，若不存在取`最小 hash(addresses)`，保证分组下机器分配JOB平均且每个JOB固定调度其中一台机器。
 * `最不经常使用`：每天同一个job首次执行 或 同一天同一个job同一地址执行次数超过 1000000 时，随机设置执行器组每个地址的执行次数，然后每次从中选出执行次数最少的地址。
-* `最近最久未使用`：用 LinkedHashMap 的 AccessOrder 属性使元素按访问顺序排序，越早访问的key排在越前面，所以迭代时访问的第一个key就是最久未使用的。
-* `故障转移`：顺序使用 /beat 接口轮询每个地址，使用第一个可以访问的地址。
-* `忙碌转移`：顺序使用 /idleBeat 接口轮询每个地址，使用第一个不忙碌的地址。
+* `最近最久未使用`：用 `LinkedHashMap` 的 `AccessOrder` 属性使元素按访问顺序排序，越早访问的key排在越前面，所以迭代时访问的第一个key就是最久未使用的。
+* `故障转移`：顺序使用 `/beat` 接口轮询每个地址，使用第一个可以访问的地址。
+* `忙碌转移`：顺序使用 `/idleBeat` 接口轮询每个地址，使用第一个不忙碌的地址。
 * `分片广播`：对执行器组中的所有地址发送执行请求，并加上参数 分片Index 、分片总数，分片Index 为执行器 在 执行器组 中的索引，执行器可通过该值判断执行部分业务，获取方法`int shardIndex = XxlJobHelper.getShardIndex();` `int shardTotal = XxlJobHelper.getShardTotal();`
 
 ##### JobCompleteHelper
@@ -271,7 +271,7 @@
 
 ##### EmbedServer
 
-一个netty服务端，默认端口为`9999`，通过 `XxlJobExecutor` 的 port 属性配置，主要负责接受 调度中心 的任务执行请求，加入到对应的 `jobId` 的 `JobThread`，如果 `JobThread` 不存在则新建一个，例如 Glue(Java) 方式调用。
+一个netty服务端，默认端口为`9999`，通过 `XxlJobExecutor` 的 `port` 属性配置，主要负责接受 调度中心 的任务执行请求，加入到对应的 `jobId` 的 `JobThread`，如果 `JobThread` 不存在则新建一个，例如 Glue(Java) 方式调用。
 
 ##### JobThread
 

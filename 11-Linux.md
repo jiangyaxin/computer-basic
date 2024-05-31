@@ -139,11 +139,11 @@ Linux 中所有的文件都是有根目录(`/`)衍生形成目录树。
 
 读取`/etc/passwd`:
 
-1. `/` 的 inode： 通过挂载点的信息找到 inode 号码为 128 的根目录 inode，且 inode 规范的权限让我们可以读取该 block 的内容（有 r 与 x） ；
-2. `/` 的 block： 经过上个步骤取得 block 的号码，并找到该内容有 `etc/` 目录的 inode 号码 （33595521）；
-3. `etc/` 的 inode： 读取 33595521 号 inode 得知 `dmtsai` 具有 r 与 x 的权限，因此可以读取 `etc/` 的 block 内容；
-4. `etc/` 的 block： 经过上个步骤取得 block 号码，并找到该内容有 passwd 文件的 inode 号码 （36628004）；
-5. `passwd` 的 inode： 读取 36628004 号 inode 得知 `dmtsai` 具有 r 的权限，因此可以读取 passwd 的 block 内容；
+1. `/` 的 inode： 通过挂载点的信息找到 inode 号码为**128**的根目录 inode，且 inode 规范的权限让我们可以读取该 block 的内容（有 `r` 与 `x`） ；
+2. `/` 的 block： 经过上个步骤取得 block 的号码，并找到该内容有 `etc/` 目录的 inode 号码**33595521**
+3. `etc/` 的 inode： 读取**33595521**号 inode 得知 `dmtsai` 具有 `r` 与 `x` 的权限，因此可以读取 `etc/` 的 block 内容；
+4. `etc/` 的 block： 经过上个步骤取得 block 号码，并找到该内容有 passwd 文件的 inode 号码**36628004**
+5. `passwd` 的 inode： 读取**36628004**号 inode 得知 `dmtsai` 具有 `r` 的权限，因此可以读取 passwd 的 block 内容；
 6. `passwd` 的 block： 最后将该 block 内容的数据读出来。
 
 ### 新增文件流程

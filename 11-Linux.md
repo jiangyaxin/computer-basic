@@ -403,14 +403,14 @@ LVM可以建立快照，分为快照区和系统区，修改过的数据会被�
 `/etc/passwd` 每一行表示一个账号，例如：`root:x:0:0:root:/root:/bin/bash` 使用`:`分隔，总共7个字段：
 
 1. 用户名。
-2. 密码：由于密码存在 `/etc/shadow` ,这里显示x.
-3. UID：0 系统管理员 1-999 系统账号(比如nginx账号)  1000 - 60000 可登陆账号
+2. 密码：由于密码存在 `/etc/shadow` ,这里显示`x`.
+3. UID：`0` 系统管理员 `1-999` 系统账号(比如nginx账号)  `1000 - 60000` 可登陆账号
 4. GID
 5. 账号描述。
 6. home目录位置。
 7. 登陆后使用什么shell，当设置为 `/sbin/nologin` 将无法登陆。
 
-`/etc/shadow` 同样使用 :` 分隔,总共9个字段，例如 `root:$6$wtbCCce/PxMeE5wm$KE2IfSJr.YLP7Rcai6oa/T7KFhO...:16559:0:99999:7:::`
+`/etc/shadow` 同样使用 `:` 分隔,总共9个字段，例如 `root:$6$wtbCCce/PxMeE5wm$KE2IfSJr.YLP7Rcai6oa/T7KFhO...:16559:0:99999:7:::`
 
 1. 用户名。
 2. 密码。

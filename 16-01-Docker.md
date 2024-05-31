@@ -7,15 +7,14 @@
 
 Base 镜像：
 
-1. 不依赖其他镜像，从scratch创建。
+1. 不依赖其他镜像，从`scratch`创建。
 2. 其他镜像可以以之为基础进行扩展。
 
 通常都是各种Linux发行版的镜像，如 Ubuntu、Debian、CentOS。
 
-Linux操作系统由内核空间和用户空间组成，用户空间的文件系统是rootfs，对于Base镜像使用的是宿主机的Kernel，只需要提供rootfs，所以文件大小远小于操作系统。
+Linux操作系统由内核空间和用户空间组成，用户空间的文件系统是`rootfs`，对于Base镜像使用的是宿主机的Kernel，只需要提供`rootfs`，所以文件大小远小于操作系统。
 
-镜像分层:Docker 通过现有镜像创建新的镜像，镜像是分层结构的，这样可以让每一层的镜像共享。当某个容器修改了基础镜像的内容并不会影响其他镜像，因为使用了
-CopyOnWrite 特性，修改被限制在单个容器。
+镜像分层:Docker 通过现有镜像创建新的镜像，镜像是分层结构的，这样可以让每一层的镜像共享。当某个容器修改了基础镜像的内容并不会影响其他镜像，因为使用了`CopyOnWrite` 特性，修改被限制在单个容器。
 
 可写容器层：当容器启动时，一个新的可写层被加载到镜像层的顶部，只有容器层是可写的，容器层下的所有镜像层都是只读的，无论添加、删除、修改文件都只会发生在容器层。
 
@@ -70,8 +69,7 @@ ENV CLASSPATH $JAVA_HOME/lib/dt.jar:$JAVA_HOME/lib/tools.jar:$JRE_HOME/lib:$CLAS
 ENV PATH $JAVA_HOME/bin:$PATH
 ```
 
-5. 根据`Dockerfile`创建镜像。注意后面的空格和点不要省略,点表示 上下文环境为当前目录，docker 会从上下文环境中查找
-   Dockerfile。
+5. 根据`Dockerfile`创建镜像。注意后面的空格和点不要省略,点表示 上下文环境为当前目录，docker 会从上下文环境中查找 `Dockerfile`。
 
 ```bash
 docker build -t='jdk1.8:latest' .
@@ -79,40 +77,33 @@ docker build -t='jdk1.8:latest' .
 
 docker 会将 build context 中的所有文件发送给 Docker daemon，所以构建是应使用新建文件夹，并且不要放多余文件。
 
-build 时会创建缓存，如果 Dockerfile 中命令顺序一致且相同就会使用缓存，--no-cache 构建镜像时不使用镜像缓存。
+build 时会创建缓存，如果 `Dockerfile` 中命令顺序一致且相同就会使用缓存，`--no-cache` 构建镜像时不使用镜像缓存。
 
 可以通过`docker history <image-id> --no-trunc`查看构建历史。
 
 dockerfile 构建时某个中间节点失败，这个节点之前构建的中间镜像可以启动，可以在这个节点上调试，排查构建失败的原因。
-镜像名称分为两部分： [image name] = [repository]:[tag],如果[tag]不指定默认为 latest，该值可以是任何字符串，latest并不一定代表最新版本。
+镜像名称分为两部分： `[image name] = [repository]:[tag]`,如果`[tag]`不指定默认为 `latest`，该值可以是任何字符串，`latest`并不一定代表最新版本。
 
 ### 常用指令
 
-* FROM ： 指定 Base 镜像。
-* MAINTAINER ：镜像作者，任意字符串。
-* COPY ：将文件从 build context 复制到镜像，如 `COPY <src> <dest>` 或 `COPY ["<src>","<dest>"]`。
-* ADD ： 将文件从 build context 复制到镜像，如果src是归档文件(tar、zip、tgz、xz)等，会自动解压。
-* ENV ： 设置环境变量，环境变量可以被后面的指令使用。
-* EXPOSE ：声明容器中的进程会监听某个端口，不会自动在宿主机进行端口映射，可以使用 docker run -P 自动随机映射该端口。
-* VOLUME :
-  声明匿名挂载卷，无法指定对应的宿主机目录，会自动生成，可以使用 `docker run -it -v <宿主机路径>:<容器路径> <image-id>`
-  指定明确的宿主机路径进行覆盖
-* WORKDIR ：为后面的 RUN 、CMD 、ENTRYPOINT 、ADD 、COPY 设置镜像中的当前工作目录。
-* RUN ：容器中运行指定的命令，执行命令并创建新的镜像层，常常用于安装软件包。
-* CMD : 容器是进程，CMD是容器启动时运行的程序和参数，dockerfile 中可以有多个 CMD 指令，但只有最后一个生效，CMD 可以被 docker
-  run 后面的参数替换，如: ubuntu 镜像默认的 CMD 是 /bin/bash ，可以使用docker run -it ubuntu cat /etc/os-release 将 CMD
-  替换成 cat /etc/os-release 。
-* ENTRYPOINT ：dockerfile 中可以有多个 ENTRYPOINT 指令，但只有最后一个生效，当指定了 ENTRYPOINT 后，CMD
-  的含义就发生了改变，不再是直接的运行其命令，而是将 CMD 的内容作为参数传给 ENTRYPOINT 指令,实际变为 `ENTRYPOINT "<CMD>"`
-  ,例如：
+* `FROM` ： 指定 Base 镜像。
+* `MAINTAINER` ：镜像作者，任意字符串。
+* `COPY` ：将文件从 build context 复制到镜像，如 `COPY <src> <dest>` 或 `COPY ["<src>","<dest>"]`。
+* `ADD` ： 将文件从 build context 复制到镜像，如果`src`是归档文件(`tar`、`zip`、`tgz`、`xz`)等，会自动解压。
+* `ENV` ： 设置环境变量，环境变量可以被后面的指令使用。
+* `EXPOSE` ：声明容器中的进程会监听某个端口，不会自动在宿主机进行端口映射，可以使用 `docker run -P` 自动随机映射该端口。
+* `VOLUME` : 声明匿名挂载卷，无法指定对应的宿主机目录，会自动生成，可以使用 `docker run -it -v <宿主机路径>:<容器路径> <image-id>`指定明确的宿主机路径进行覆盖
+* `WORKDIR` ：为后面的 `RUN` 、`CMD` 、`ENTRYPOINT` 、`ADD` 、`COPY` 设置镜像中的当前工作目录。
+* `RUN` ：容器中运行指定的命令，执行命令并创建新的镜像层，常常用于安装软件包。
+* `CMD` : 容器是进程，`CMD`是容器启动时运行的程序和参数，`dockerfile` 中可以有多个 CMD 指令，但只有最后一个生效，CMD 可以被 `docker run` 后面的参数替换，如: ubuntu 镜像默认的 CMD 是 `/bin/bash` ，可以使用`docker run -it ubuntu cat /etc/os-release` 将 CMD 替换成 `cat /etc/os-release` 。
+* `ENTRYPOINT` ：dockerfile 中可以有多个 `ENTRYPOINT` 指令，但只有最后一个生效，当指定了 `ENTRYPOINT` 后，CMD 的含义就发生了改变，不再是直接的运行其命令，而是将 CMD 的内容作为参数传给 `ENTRYPOINT` 指令,实际变为 `ENTRYPOINT "<CMD>"`,例如：
 
   ```dockerfile
   ENTRYPOINT ["/bin/chamber", "exec", "production", "--"]
   CMD ["/bin/service", "-d"]
   ```
 
-  实际会变为 `["/bin/chamber", "exec", "production", "--", "/bin/service", "-d"]`，docker run 后面如果还有参数，会将 CMD
-  替换后拼接在后面。
+  实际会变为 `["/bin/chamber", "exec", "production", "--", "/bin/service", "-d"]`，docker run 后面如果还有参数，会将 CMD 替换后拼接在后面。
 
   Shell 格式：`<instruction> <command>` 实际调用 `/bin/sh -c <command>`。
 
@@ -122,59 +113,50 @@ dockerfile 构建时某个中间节点失败，这个节点之前构建的中间
 
 网络组件包括：
 
-1. Sandbox：容器的网络栈，包含interface、路由表和DNS。
-2. Endpoint：将 Sandbox 接入 Network，一个 Endpoint 只能属于一个Network，一个Sandbox 可以有多个 Endpoint。
-3. Network：Network 包含一组 Endpoint，同一个 Network 的 Endpoint 可以通信。
+1. `Sandbox`：容器的网络栈，包含`interface`、路由表和DNS。
+2. `Endpoint`：将 `Sandbox` 接入 `Network`，一个 `Endpoint` 只能属于一个`Network`，一个`Sandbox` 可以有多个 `Endpoint`。
+3. `Network`：`Network` 包含一组 `Endpoint`，同一个 `Network` 的 `Endpoint` 可以通信。
 
-docker 安装时会自动在 host 上创建三个网络，可通过 docker network ls 查看，docker run 时通过 --network 指定网络。
+docker 安装时会自动在 `host` 上创建三个网络，可通过 `docker network ls` 查看，`docker run` 时通过 `--network` 指定网络。
 
-none网络：不需要网络
+* `none`网络：不需要网络
+* `host`网络：与宿主机在同一个网络中，但没有独立IP地址，使用宿主机的IP和端口
 
-host网络：与宿主机在同一个网络中，但没有独立IP地址，使用宿主机的IP和端口
+`bridge`网络：docker 安装时会创建名为 `docker0` 的网桥，如果不指定 `--network`,容器中的虚拟网卡默认会挂到 `docker0`，容器中网络的网关即为`docker0`，所以多个容器在同一个网段下面，可以互相访问，可以通过 `docker network inspect <network-name>`查看。
 
-bridge网络：docker 安装时会创建名为 docker0 的网桥，如果不指定 --network,容器中的虚拟网卡默认会挂到 docker0
-，容器中网络的网关即为docker0，所以多个容器在同一个网段下面，可以互相访问，可以通过 `docker network inspect <network-name>`
-查看。
-
-自定义网络：通过 `docker network create <network-name>`创建网络，--driver 选择驱动，驱动有
-bridge、overly、macvlan，--subnet和--gateway 自定义网关和子网。
+自定义网络：通过 `docker network create <network-name>`创建网络，`--driver` 选择驱动，驱动有`bridge`、`overly`、`macvlan`，`--subnet`和`--gateway` 自定义网关和子网。
 
 网络通信：
 
 * 容器间通信需要有同属于同一网络的网卡。
-* 在自定义网络中容器间可以通过容器名称通信，docker daemon 内嵌了一个 DNS server，bridge网络不行。
+* 在自定义网络中容器间可以通过容器名称通信，docker daemon 内嵌了一个 DNS server，`bridge`网络不行。
 * 创建容器时可使用`--network=container:<container-name>` joined其他容器网络，他们会共享网络栈，使用相同 的ip。
 
-网络数据流经iptable规则：
+网络数据流经`iptable`规则：
 
 ![85](./assets/85.png)
 
-1. 当一个数据包进入网卡时，它首先进入PREROUTING链，内核根据数据包目的IP判断是否需要转送出去。
-2. 如果数据包就是进入本机的，它就会沿着图向下移动，到达INPUT链。数据包到了INPUT链后，任何进程都会收到它。本机上运行的程序可以发送数据包，这些数据包会经过OUTPUT链，然后到达POSTROUTING链输出。
-3. 如果数据包是要转发出去的，且内核允许转发，数据包就会如图所示向右移动，经过FORWARD链，然后到达POSTROUTING链输出。
+1. 当一个数据包进入网卡时，它首先进入`PREROUTING`链，内核根据数据包目的IP判断是否需要转送出去。
+2. 如果数据包就是进入本机的，它就会沿着图向下移动，到达`INPUT`链。数据包到了`INPUT`链后，任何进程都会收到它。本机上运行的程序可以发送数据包，这些数据包会经过`OUTPUT`链，然后到达`POSTROUTING`链输出。
+3. 如果数据包是要转发出去的，且内核允许转发，数据包就会如图所示向右移动，经过`FORWARD`链，然后到达`POSTROUTING`链输出。
 
-容器和外网之间的访问需要将/proc/sys/net/ipv4/ip_forward值改为1。
+容器和外网之间的访问需要将`/proc/sys/net/ipv4/ip_forward`值改为1。
 
 容器访问外网：
 
-docker 会在 iptable 规则表中添加 POSTROUTING
-规则`iptables -t nat -A POSTROUTING -o docker0 -s 192.168.1.0/24 -j MASQUERADE`，表示所有来自 192.168.1.0/24 子网，流出
-docker0 的数据包源地址交由系统伪装。
+docker 会在 `iptable` 规则表中添加 `POSTROUTING`规则`iptables -t nat -A POSTROUTING -o docker0 -s 192.168.1.0/24 -j MASQUERADE`，表示所有来自 `192.168.1.0/24` 子网，流出`docker0` 的数据包源地址交由系统伪装。
 
 外网访问容器：
 
-docker 会在 iptable 规则表中添加 PREROUTING
-规则`iptables -t nat -I PREROUTING -i eth0 -p tcp -m tcp --dport 7001 -j DNAT --to-destination 172.20.0.7:7001`
-，表示所有从eth0进入目的端口为7001的数据包都发送到 172.20.0.7:7001 去处理。
+docker 会在 `iptable` 规则表中添加 `PREROUTING`规则`iptables -t nat -I PREROUTING -i eth0 -p tcp -m tcp --dport 7001 -j DNAT --to-destination 172.20.0.7:7001`，表示所有从`eth0`进入目的端口为7001的数据包都发送到 `172.20.0.7:7001` 去处理。
 
 多主机网络共享：
 
-overlay方式：
+`overlay`方式：
 
-1. 在 host1 创建一个 overlay 类型网络，`docker network create -d verlay <network-name>`
-2. 在 host1 创建连接到 overlay 网络的容器，`docker run -d --network <network-name> <image-id>`,这时docker 会创建
-   docker_gwbridge 的网络，为所有连接到 overlay 网络的容器提供访问外网能力。
-3. 在 host2 创建连接到 overlay 网络的容器，可通过 host1 中容器名 访问 host1 中连接到 overlay网络的容器。
+1. 在 host1 创建一个 `overlay` 类型网络，`docker network create -d verlay <network-name>`
+2. 在 host1 创建连接到 `overlay` 网络的容器，`docker run -d --network <network-name> <image-id>`,这时docker 会创建`docker_gwbridge` 的网络，为所有连接到 `overlay` 网络的容器提供访问外网能力。
+3. 在 host2 创建连接到 `overlay` 网络的容器，可通过 host1 中容器名 访问 host1 中连接到 overlay网络的容器。
 
 不同名称的overlay网络互相隔离，可以通过`docker network connect <network-name> bbox3`来加入网络。
 
@@ -184,22 +166,19 @@ overlay方式：
 
 1. 由 storage driver 管理的镜像层和容器层，不同的文件系统使用不同的驱动，docker会选择合适的驱动使用。
 2. Data Volume：
-    * 是宿主机的目录或者文件，被 mount 到容器的文件系统，不是没有格式化的磁盘(块设备)。
-    * volume 可以被容器读写，容器销毁后也可以永久保存。
+    * 是宿主机的目录或者文件，被 `mount` 到容器的文件系统，不是没有格式化的磁盘(块设备)。
+    * `volume` 可以被容器读写，容器销毁后也可以永久保存。
 
 使用方法：
 
-1. docker run 时添加参数 `-v <host-path>:<container-path>`,可以挂载文件和目录，会隐藏`<container-path>`
-   中的文件，使用`<host-path>`目录中的文件。
-2. docker run 时添加参数 `-v <container-path>`
-   ，可以挂载目录，会自动挂载到宿主机 `/var/lib/docker/volumes/<container-id>/_data`,会将`<container-path>`
-   中的文件复制到该路径，这点与上面挂载不相同，可通过 `docker inspect <container-id>`查看
+1. `docker run` 时添加参数 `-v <host-path>:<container-path>`,可以挂载文件和目录，会隐藏`<container-path>`中的文件，使用`<host-path>`目录中的文件。
+2. `docker run` 时添加参数 `-v <container-path>`，可以挂载目录，会自动挂载到宿主机 `/var/lib/docker/volumes/<container-id>/_data`,会将`<container-path>`中的文件复制到该路径，这点与上面挂载不相同，可通过 `docker inspect <container-id>`查看
 
 删除没有使用的volume：`docker volume rm ${docker volume ls -q}`
 
 ### Volume数据共享
 
-1. 多个容器 mount 同一个目录。
+1. 多个容器 `mount` 同一个目录。
 2. volume container：专门为其他容器提供 volume 的容器。
 
    创建volume container：`docker create --name <name> -v <host-path>:<container-path> <image-id>`
@@ -208,7 +187,7 @@ overlay方式：
 
 ## 常用配置
 
-文件目录为：/etc/docker/daemon.json
+文件目录为：`/etc/docker/daemon.json`
 
 添加镜像仓库：
 
@@ -417,11 +396,11 @@ Docker组件分为 Docker client、Docker daemon、containerd、runc，Docker cl
 
 ### runc
 
-runc 是 OCI 规范的具体实现，它的作用是 创建容器，是独立的容器运行时。
+`runc` 是 OCI 规范的具体实现，它的作用是 创建容器，是独立的容器运行时。
 
 ### containerd
 
-containerd 负责管理容器的生命周期，start|stop|pause|rm。
+`containerd` 负责管理容器的生命周期，`start|stop|pause|rm`。
 
 ## DockerCompose
 
@@ -454,7 +433,7 @@ OpenSSL version: OpenSSL 1.1.0l  10 Sep 2019
 
 ### 配置文件
 
-Compose 文件的默认路径是 ./docker-compose.yml，即docker-compose命令需要在 docker-compose.yml 同层目录执行。
+Compose 文件的默认路径是 `./docker-compose.yml`，即`docker-compose`命令需要在 `docker-compose.yml` 同层目录执行。
 
 #### 文件结构
 
@@ -591,7 +570,7 @@ services:
     build: ./dir
 ```
 
-也可以使用context指定上下文路径，使用dockerfile基于上下文路径指定Dockerfile文件，使用args指定构建参数。例如：
+也可以使用context指定上下文路径，使用dockerfile基于上下文路径指定Dockerfile文件，使用`args`指定构建参数。例如：
 
 ```yaml
 version: "3.8"
@@ -617,7 +596,7 @@ build: ./dir
 image: webapp:tag
 ```
 
-Compose会在./dir目录下构建一个名为webapp，标签为tag的镜像。
+Compose会在`./dir`目录下构建一个名为`webapp`，标签为`tag`的镜像。
 
 ##### args详细
 
@@ -639,7 +618,7 @@ build:
     - gitcommithash=cdc3b19
 ```
 
-这时构建过程中使用的参数的值为args指定的值。在指定构建参数时也可以不指定值，在这种情况下，构建过程中使用的参数的值为运行Compose的环境中的值。例如：
+这时构建过程中使用的参数的值为`args`指定的值。在指定构建参数时也可以不指定值，在这种情况下，构建过程中使用的参数的值为运行Compose的环境中的值。例如：
 
 ```yaml
 args:

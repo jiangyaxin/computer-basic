@@ -337,7 +337,7 @@ echo "**Init dockerfile start: "${DOCKER_FILE}
 echo "FROM openjdk:8-jre-alpine" > ${DOCKER_FILE}
 
 #格式为maintainer ，指定维护者的信息
-echo "MAINTAINER wangzunbin <905192187@qq.com>" >> ${DOCKER_FILE}
+echo "MAINTAINER xxxxx <xxxxx@qq.com>" >> ${DOCKER_FILE}
 
 #指定一个环境变量，会被后续 RUN 指令使用，并在容器运行时保持
 echo "VOLUME /tmp" >> ${DOCKER_FILE}

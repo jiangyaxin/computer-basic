@@ -152,7 +152,7 @@ docker 会在 `iptable` 规则表中添加 `PREROUTING`规则`iptables -t nat -I
 
 `overlay`方式：
 
-1. 在 `host1` 创建一个 `overlay` 类型网络，`docker network create -d verlay <network-name>`
+1. 在 `host1` 创建一个 `overlay` 类型网络，`docker network create -d overlay <network-name>`
 2. 在 `host1` 创建连接到 `overlay` 网络的容器，`docker run -d --network <network-name> <image-id>`,这时docker 会创建`docker_gwbridge` 的网络，为所有连接到 `overlay` 网络的容器提供访问外网能力。
 3. 在 `host2` 创建连接到 `overlay` 网络的容器，可通过 `host1` 中容器名 访问 `host1` 中连接到 `overlay`网络的容器。
 

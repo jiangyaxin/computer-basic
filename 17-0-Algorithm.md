@@ -387,6 +387,37 @@ ListNode reverse(ListNode head) {
 }
 ```
 
+* 不要跳进递归，对于 `1->2->3->4->5->6` 经过  `ListNode last = reverse(head.next)` 即 `head -> 1 -> reverse(2->3->4->5->6->null)` 
+* 变为：
+
+    ```text
+    head                     last
+     |                        |
+     V                        V
+     1 -> 2 <- 3 <- 4 <- 5 <- 6
+          |
+          V
+         NULL
+    ```
+* `head.next.next = head`即：
+
+    ```text
+    head                      last
+     |                         |
+     V                         V
+     1 <-> 2 <- 3 <- 4 <- 5 <- 6
+
+         NULL
+    ```
+* `head.next = null`即：
+
+    ```text
+    head                            last
+     |                               |
+     V                               V
+    NULL <- 1 <- 2 <- 3 <- 4 <- 5 <- 6
+    ```
+
 ### 反转链表前 N 个节点
 
 ```java

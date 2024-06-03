@@ -294,9 +294,11 @@ ListNode mergeTwoLists(ListNode l1, ListNode l2) {
 
     if (p1 != null) {
         p.next = p1;
+        p1 = p1.next;
     }
     if (p2 != null) {
         p.next = p2;
+        p2 = p2.next;
     }
     return dummy.next;
 }
@@ -358,7 +360,7 @@ boolean hasCycle(ListNode head) {
 }
 ```
 
-若相遇 快指针走过 2k 个节点，慢指针走过 k 个节点，若求环起点 只需要将慢节点重置回头节点， 快慢节点以同样速度再走一次
+若相遇时，快指针走过 2k 个节点，慢指针走过 k 个节点，k值为环长度的整数倍，若求环起点，只需要将慢节点重置回头节点， 快慢节点以同样速度再走一次，再次相遇就是换的起点。
 
 ### 删除倒数第n个节点
 

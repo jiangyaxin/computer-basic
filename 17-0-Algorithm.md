@@ -21,7 +21,7 @@ for 状态1 in 状态1的所有取值：
 
 站在回溯树的一个节点上，你只需要思考 3 个问题：
 
-1、**路径**：也就是已经做出的选择，一般使用 `boolean[]` 标记已经走过的路径，`path[]` 标记当前走过的路径。
+1、**路径**：也就是已经做出的选择，一般使用 `boolean[]` 标记已经使用过的元素，避免重复使用，`path[]` 标记当前走过的路径。
 
 2、**选择列表**：也就是你当前可以做的选择，当前节点 可以到达的节点。
 
@@ -88,6 +88,26 @@ void traverse(int[] arr) {
 ```
 
 ### 滑动窗口
+
+**主要用来解决子数组问题，比如让你寻找符合某个条件的最长/最短子数组**。
+
+```text
+int left = 0, right = 0;
+
+while (right < nums.size()) {
+    // 增大窗口
+    window.add(nums[right]);
+    right++;
+    
+    while (window needs shrink) {
+        // 缩小窗口
+        window.remove(nums[left]);
+        left++;
+    }
+}
+```
+
+子串问题：
 
 ```text
 void slidingWindow(String s) {
@@ -159,7 +179,7 @@ class NumMatrix {
         for (int i = 1; i <= m; i++) {
             for (int j = 1; j <= n; j++) {
                 // 计算每个矩阵 [0, 0, i, j] 的元素和
-                preSum[i][j] = preSum[i-1][j] + preSum[i][j-1] + matrix[i - 1][j - 1] - preSum[i-1][j-1];
+                preSum[i][j] = preSum[i - 1][j] + preSum[i][j - 1] + matrix[i - 1][j - 1] - preSum[i - 1][j - 1];
             }
         }
     }
@@ -168,7 +188,7 @@ class NumMatrix {
     // 可以用绿色矩阵减去蓝色矩阵减去橙色矩阵最后加上粉色矩阵，而绿蓝橙粉这四个矩阵有一个共同的特点，就是左上角就是 (0, 0) 原点。
     public int sumRegion(int x1, int y1, int x2, int y2) {
         // 目标矩阵之和由四个相邻矩阵运算获得
-        return preSum[x2+1][y2+1] - preSum[x1][y2+1] - preSum[x2+1][y1] + preSum[x1][y1];
+        return preSum[x2 + 1][y2 + 1] - preSum[x1][y2 + 1] - preSum[x2 + 1][y1] + preSum[x1][y1];
     }
 }
 ```
@@ -288,7 +308,7 @@ ListNode mergeKLists(ListNode[] lists) {
     ListNode p = dummy;
     // 优先级队列，最小堆
     PriorityQueue<ListNode> pq = new PriorityQueue<>(
-        lists.length, (a, b)->(a.val - b.val));
+            lists.length, (a, b) -> (a.val - b.val));
     // 将 k 个链表的头结点加入最小堆
     for (ListNode head : lists) {
         if (head != null)
@@ -385,11 +405,11 @@ ListNode reverseN(ListNode head, int n) {
 
 ```java
 ListNode reverseBetween(ListNode head, int left, int right) {
-    if(left == 1){
-        return reverseN(head,right);
+    if (left == 1) {
+        return reverseN(head, right);
     }
 
-    head.next = reverseBetween(head.next,left-1,right-1);
+    head.next = reverseBetween(head.next, left - 1, right - 1);
 
     return head;
 }

@@ -245,7 +245,7 @@ x = a*4^4 + b*4^3 + c*4^2 + d*4^1 + e*4^0
 d[i]= opt(d[j]+ w(j,i)) 
 ```
 
-状态转移如图3-1-1所示（黄色块代表d[i]d[i]*d*[*i*]，绿色块代表d[j]d[j]*d*[*j*]）：
+状态转移如图3-1-1所示（黄色块代表d[i]，绿色块代表d[j]）：
 
 <div style="text-align: center"><img src="assets/363.png"/></div>
 <div style="text-align: center">图3-1-1</div>

@@ -51,36 +51,38 @@
 
 1. 内置属性（Maven预定义属性，用户可以直接使用）
 
-    * `${basedir}`表示项目的根路径，即包含pom.xml文件的目录
+    * `${basedir}`表示项目的根路径，即包含`pom.xml`文件的目录
     * `${version}`表示项目版本
-    * `${project.basedir}`同${basedir}
+    * `${project.basedir}`同`${basedir}`
     * `${project.baseUri}`表示项目文件地址
     * `${maven.build.timestamp}`表示项目构建开始时间
-    * `${maven.build.timestamp.format}`表示`${maven.build.timestamp}`的展示格式，默认值为yyyyMMdd-HHmm
+    * `${maven.build.timestamp.format}`表示`${maven.build.timestamp}`的展示格式，默认值为`yyyyMMdd-HHmm`
 
-2. pom属性（使用pom属性可以引用到pom.xml文件中对应元素的值)
+2. `pom`属性（使用`pom`属性可以引用到`pom.xml`文件中对应元素的值)
 
     * `${project.build.sourceDirectory}`表示主源码路径，默认为`src/main/java/`
     * `${project.build.testSourceDirectory}`表示测试源码路径，默认为`src/test/java/`
     * `${project.build.directory}`表示项目构建输出目录，默认为`target/`
     * `${project.outputDirectory}`表示项目测试代码编译输出目录，默认为`target/classes/`
-    * `${project.groupId}`表示项目的groupId
-    * `${project.artifactId}`表示项目的artifactId
-    * `${project.version}`表示项目的version，同`${version}`
+    * `${project.groupId}`表示项目的`groupId`
+    * `${project.artifactId}`表示项目的`artifactId`
+    * `${project.version}`表示项目的`version`，同`${version}`
     * `${project.build.finalName}`表示项目打包输出文件的名称,默认为`${project.artifactId}-${project.version}`
 
-3. 自定义属性（在pom.xml文件的<properties>标签下定义的Maven属性）
-4. setting.xml文件属性（与pom属性同理，用户可以用settings.开头的属性引用setting.xml文件的xml元素值）
+3. 自定义属性（在`pom.xml`文件的`<properties>`标签下定义的Maven属性）
+4. `setting.xml`文件属性（与`pom`属性同理，用户可以用`settings.`开头的属性引用`setting.xml`文件的xml元素值）
 
-    * ${settings.localRepository}表示本地仓库的地址
+    * `${settings.localRepository}`表示本地仓库的地址
 
 5. Java系统属性（所有的Java属性都可以使用Maven属性引用）
-   `mvn help:system` 可以查看所有的Java属性 即 System.getProperties() 可以得到所有的Java属性
-   `${user.home}` 表示用户目录
 
-6. 环境变量属性（所有的环境变量都可以以env.开头的Maven属性引用）
-   ` mvn help:system` 可查看所有的环境变量
-   `${env.JAVA_HOME}` 表示JAVA_HOME环境变量的值
+   * `mvn help:system` 可以查看所有的Java属性 即 `System.getProperties()` 可以得到所有的Java属性
+   * `${user.home}` 表示用户目录
+
+6. 环境变量属性（所有的环境变量都可以以`env.`开头的Maven属性引用）
+
+   * ` mvn help:system` 可查看所有的环境变量
+   * `${env.JAVA_HOME}` 表示`JAVA_HOME`环境变量的值
 
 # profile
 
@@ -116,7 +118,7 @@
 激活profile的方式：
 
 1. 命令行激活：`mvn clean install -Ptest1,test2`
-2. settings.xml 文件激活，属于全局配置,每个项目都会生效。
+2. `settings.xml` 文件激活，属于全局配置,每个项目都会生效。
 
    ```xml
    <activeProfiles>
@@ -164,9 +166,10 @@
 # classifier
 
 用于区分从同一POM构建的具有不同内容的构件（artifact）。它是可选的，任意的字符串，附加在版本号之后。
-classifier 不能直接定义，需通过 maven-jar-plugin 等插件生成。
 
-例如：通过profile可以打出两个不同的版本 aa.bb.cc-0.1.jar 和 aa.bb.cc-0.1-jdk15.jar
+`classifier` 不能直接定义，需通过 `maven-jar-plugin` 等插件生成。
+
+例如：通过`profile`可以打出两个不同的版本 `aa.bb.cc-0.1.jar` 和 `aa.bb.cc-0.1-jdk15.jar`
 
 ```xml
 
@@ -272,9 +275,9 @@ system范围的依赖时必须通过systemPath元素显式地指定依赖文件�
 
 ## 添加仓库和认证
 
-存在一个默认的id为central的重要仓库，如果repository命名为central会将其覆盖掉。
+存在一个默认的`id`为`central`的重要仓库，如果`repository`命名为`central`会将其覆盖掉。
 
-修改 maven 的 settings 文件：
+修改 `maven` 的 `settings` 文件：
 
 ```xml
 
@@ -326,52 +329,52 @@ system范围的依赖时必须通过systemPath元素显式地指定依赖文件�
 
 ## 生命周期
 
-maven 拥有三套互相独立的生命周期，clean、default、site,每个生命周期包含一些阶段 phase。
+maven 拥有三套互相独立的生命周期，`clean`、`default`、`site`,每个生命周期包含一些阶段 `phase`。
 
 clean: 清理项目
 
-* pre-clean: 执行一些清理前需要完成的工作。
-* clean: 清理上一次构建生成的文件。
-* post-clean: 执行一些清理后需要完成的工作。
+* `pre-clean`: 执行一些清理前需要完成的工作。
+* `clean`: 清理上一次构建生成的文件。
+* `post-clean`: 执行一些清理后需要完成的工作。
 
-default: 定义构建时锁需要执行的所有步骤
+`default`: 定义构建时锁需要执行的所有步骤
 
-* validate: 验证项目是否正确，所有必要信息是否可用（很少单独使用）
-* initialize
-* generate-sources
-* process-sources: 处理主资源文件，一般来说是对src/main/resources 目录内容进行变量替换等工作后，复制到输出的主classpath目录
-* generate-resources
-* process-resources
-* compile: 编译
-* process-classes
-* generate-test-sources
-* process-test-sources: 处理测试资源文件
-* generate-test-resources
-* process-test-resources
-* test-compile: 编译
-* process-test-classes
-* test: 使用单元测试框架运行测试，测试代码不会被打包或部署
-* prepare-package
-* package: 打包成可发布的格式
-* pre-integration-test
-* integration-test
-* post-integration-test
-* verify
-* install: 安装到本地仓库
-* deploy: 部署到远程仓库
+* `validate`: 验证项目是否正确，所有必要信息是否可用（很少单独使用）
+* `initialize`
+* `generate-sources`
+* `process-sources`: 处理主资源文件，一般来说是对`src/main/resources` 目录内容进行变量替换等工作后，复制到输出的主`classpath`目录
+* `generate-resources`
+* `process-resources`
+* `compile`: 编译
+* `process-classes`
+* `generate-test-sources`
+* `process-test-sources`: 处理测试资源文件
+* `generate-test-resources`
+* `process-test-resources`
+* `test-compile`: 编译
+* `process-test-classes`
+* `test`: 使用单元测试框架运行测试，测试代码不会被打包或部署
+* `prepare-package`
+* `package`: 打包成可发布的格式
+* `pre-integration-test`
+* `integration-test`
+* `post-integration-test`
+* `verify`
+* `install`: 安装到本地仓库
+* `deploy`: 部署到远程仓库
 
-site: 生命周期
+`site`: 生命周期
 
-* pre-site
-* site: 生成WEB站点HTML
-* post-site
-* site-deploy：WEB站点部署到服务器
+* `pre-site`
+* `site`: 生成WEB站点HTML
+* `post-site`
+* `site-deploy`：WEB站点部署到服务器
 
 ## 插件
 
-插件和生命周期互相绑定，用以描述在某个生命周期的某个阶段（phase）构建任务，一个插件有多个功能，每个功能就是一个插件目标(
-goal)。
-生命周期阶段与插件目标相互绑定， 例如：clean周期的clean阶段和 maven-clean-plugin:clean 目标绑定。
+插件和生命周期互相绑定，用以描述在某个生命周期的某个阶段（`phase`）构建任务，一个插件有多个功能，每个功能就是一个插件目标(`goal`)。
+
+生命周期阶段与插件目标相互绑定， 例如：`clean`周期的`clean`阶段和 `maven-clean-plugin:clean` 目标绑定。
 
 default 生命周期的内置插件绑定关系：
 
@@ -390,7 +393,7 @@ default 生命周期的内置插件绑定关系：
 
 #### maven-compiler-plugin
 
-有两个目标：compile、testCompile，参数配置文档: https://maven.apache.org/plugins/maven-compiler-plugin/compile-mojo.html
+有两个目标：`compile`、`testCompile`，参数配置文档: https://maven.apache.org/plugins/maven-compiler-plugin/compile-mojo.html
 
 常用参数：
 
@@ -433,7 +436,7 @@ default 生命周期的内置插件绑定关系：
 
 #### maven-jar-plugin
 
-有两个目标：jar、testJar，参数配置文档: https://maven.apache.org/plugins/maven-jar-plugin/jar-mojo.html
+有两个目标：`jar`、`testJar`，参数配置文档: https://maven.apache.org/plugins/maven-jar-plugin/jar-mojo.html
 
 常用参数：
 
@@ -491,9 +494,9 @@ default 生命周期的内置插件绑定关系：
 
 有三个目标：
 
-* resources：拷贝main resources到main output directory。绑定process-resources阶段，执行Compiler:compile插件目标前执行此阶段。
-* testResources：拷贝test resources到test output directory。绑定process-test-resources阶段，执行surefire:test插件目标前执行此阶段。
-* copy-resources：手动拷贝资源到输出目录
+* `resources`：拷贝`main resources`到`main output directory`。绑定`process-resources`阶段，执行`Compiler:compile`插件目标前执行此阶段。
+* `testResources`：拷贝`test resources`到`test output directory`。绑定`process-test-resources`阶段，执行`surefire:test`插件目标前执行此阶段。
+* `copy-resources`：手动拷贝资源到输出目录
 
 常用参数：
 
@@ -587,7 +590,8 @@ default 生命周期的内置插件绑定关系：
 
 #### maven-shade-plugin
 
-maven-shade-plugin 相较于 maven-jar-plugin，会将将依赖的jar包解压后打包到当前jar包，当class包名出现冲突的时候可以修改包路径。
+`maven-shade-plugin` 相较于 `maven-jar-plugin`，会将将依赖的jar包解压后打包到当前jar包，当class包名出现冲突的时候可以修改包路径。
+
 参数配置文档: https://maven.apache.org/plugins/maven-shade-plugin/shade-mojo.html
 
 常用参数：

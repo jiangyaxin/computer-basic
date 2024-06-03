@@ -22,7 +22,7 @@
 
 `To_Date()`：把字符串转换成日期。
 
-WHERE 和 HAVING 的区别：WHERE 发生在分组之前，HAVING 发生在分组之后。
+`WHERE` 和 `HAVING` 的区别：`WHERE` 发生在分组之前，`HAVING` 发生在分组之后。
 
 储存过程：
 

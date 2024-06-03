@@ -2,7 +2,7 @@
 
 **location 中的 proxy_pass 的 uri**
 
-如果 `proxy_pass` 的 `url` 不带 `uri`
+如果 `proxy_pass` 的 `url` 不带 `uri`,即只有ip加端口，后面没有其他路径
 
 如果尾部是`/`，则会截断匹配的`uri`
 

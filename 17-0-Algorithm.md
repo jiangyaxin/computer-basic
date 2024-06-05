@@ -380,14 +380,20 @@ boolean hasCycle(ListNode head) {
 ### 翻转链表
 
 ```java
-ListNode reverse(ListNode head) {
-    if (head == null || head.next == null) {
-        return head;
+public class Test {
+  ListNode reverse(ListNode p) {
+    if (p.next == null) {
+      // 返回的节点一定是翻转的最后一个节点，当只翻转部分的时候，需重点注意
+      return p;
     }
-    ListNode last = reverse(head.next);
-    head.next.next = head;
-    head.next = null;
+    ListNode last = reverse(p.next);
+    p.next.next = p;
+    p.next = null;
+
+    // 重点注意，如果进行了翻转，首尾节点已经转换，需返回 last 指针。
+    // 如果没有进行翻转，首尾节点没有转换，直接返回 p 指针。
     return last;
+  }
 }
 ```
 
@@ -425,56 +431,62 @@ ListNode reverse(ListNode head) {
 ### 反转链表前 N 个节点
 
 ```java
-ListNode successor = null; // 后驱节点
+public class Test {
+  ListNode successor = null; // 后驱节点
 
-// 反转以 head 为起点的 n 个节点，返回新的头结点
-ListNode reverseN(ListNode head, int n) {
+  // 反转以 head 为起点的 n 个节点，返回新的头结点
+  ListNode reverseN(ListNode p, int n) {
     if (n == 1) {
-        // 记录第 n + 1 个节点
-        successor = head.next;
-        return head;
+      // 记录第 n + 1 个节点
+      successor = p.next;
+      return p;
     }
     // 以 head.next 为起点，需要反转前 n - 1 个节点
-    ListNode last = reverseN(head.next, n - 1);
+    ListNode last = reverseN(p.next, n - 1);
 
-    head.next.next = head;
+    p.next.next = p;
     // 让反转之后的 head 节点和后面的节点连起来
-    head.next = successor;
+    p.next = successor;
     return last;
+  }
 }
 ```
 
 #### 翻转链表 n - m 中的节点
 
 ```java
-ListNode reverseBetween(ListNode head, int left, int right) {
+public class Test {
+  ListNode reverseBetween(ListNode p, int left, int right) {
     if (left == 1) {
-        return reverseN(head, right);
+      return reverseN(p, right);
     }
 
-    head.next = reverseBetween(head.next, left - 1, right - 1);
+    p.next = reverseBetween(p.next, left - 1, right - 1);
 
-    return head;
+    return p;
+  }
 }
 ```
 
 ### 是否是回文链表
 
 ```java
-ListNode left;
+public class Test {
+  ListNode left;
 
-boolean isPalindrome(ListNode head) {
-    left = head;
-    return traverse(head);
-}
+  boolean isPalindrome(ListNode p) {
+    left = p;
+    return traverse(p);
+  }
 
-boolean traverse(ListNode right) {
+  boolean traverse(ListNode right) {
     if (right == null) return true;
     boolean res = traverse(right.next);
     // 后序遍历代码
     res = res && (right.val == left.val);
     left = left.next;
     return res;
+  }
 }
 ```
 

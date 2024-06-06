@@ -427,6 +427,47 @@ public class Test {
      V                               V
     NULL <- 1 <- 2 <- 3 <- 4 <- 5 <- 6
     ```
+### K个一组进行翻转
+
+```java
+public class L25ReverseKGroup {
+
+    public ListNode reverseKGroup(ListNode head, int k) {
+        return recursionReverse(head, k, k);
+    }
+
+    private ListNode successor;
+
+    private boolean reverse = true;
+
+    private ListNode recursionReverse(ListNode point, int k, int i) {
+        if (point.next == null) {
+            if (i > 1) {
+                reverse = false;
+            }
+            return point;
+        }
+        if (i == 1) {
+            // 获取当前组的后继节点
+            successor = recursionReverse(point.next, k, k);
+            reverse = true;
+            // 一组的最后一个节点，不需要翻转，直接返回
+            return point;
+        }
+
+        ListNode last = recursionReverse(point.next, k, i - 1);
+
+        if (reverse) {
+            point.next.next = point;
+            point.next = successor;
+            return last;
+        } else {
+            // 剩余节点不满一组不需要翻转
+            return point;
+        }
+    }
+}
+```
 
 ### 反转链表前 N 个节点
 

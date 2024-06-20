@@ -489,11 +489,11 @@ Raft 使用心跳（heartbeat）触发Leader选举。当服务器启动时，初
 
 Follower将其当前term加一然后转换为Candidate。它首先给自己投票并且给集群中的其他服务器发送 RequestVote RPC,每次选举只能投一票,结果有以下三种情况：
 
-![303](assets/303.png)
-
 * 赢得了多数的选票，成功选举为Leader；
 * 收到了Leader的消息，表示有其它服务器已经抢先当选了Leader；
 * 没有服务器赢得多数的选票，Leader选举失败，等待选举时间超时后发起下一次选举。
+
+![303](assets/303.png)
 
 ![452.png](assets/452.png)
 

@@ -443,34 +443,35 @@ default 生命周期的内置插件绑定关系：
 ```xml
 
 <plugin>
-    <groupId>org.apache.maven.plugins</groupId>
-    <artifactId>maven-jar-plugin</artifactId>
-    <version>3.4.1</version>
+   <groupId>org.apache.maven.plugins</groupId>
+   <artifactId>maven-jar-plugin</artifactId>
+   <version>3.4.1</version>
 
-    <!-- 过滤掉不希望包含在jar中的文件  -->
-    <excludes>
-        <exclude>*.xml</exclude>
-        <exclude>spring/**</exclude>
-        <exclude>config/**</exclude>
-    </excludes>
-    <!-- 希望包含的文件 -->
-    <includes>
-        <!-- 打jar包时，打包class文件和config目录下面的 properties文件 -->
-        <!-- 有时候可能需要一些其他文件，这边可以配置，包括剔除的文件等等 -->
-        <include>**/*.class</include>
-        <include>**/*.properties</include>
-    </includes>
+   <configuration>
+      <!-- 过滤掉不希望包含在jar中的文件  -->
+      <excludes>
+         <exclude>*.xml</exclude>
+         <exclude>spring/**</exclude>
+         <exclude>config/**</exclude>
+      </excludes>
+      <!-- 希望包含的文件 -->
+      <includes>
+         <!-- 打jar包时，打包class文件和config目录下面的 properties文件 -->
+         <!-- 有时候可能需要一些其他文件，这边可以配置，包括剔除的文件等等 -->
+         <include>**/*.class</include>
+         <include>**/*.properties</include>
+      </includes>
 
-    <archive>
-        <!-- 默认生成的jar中，包含pom.xml和pom.properties这两个文件 -->
-        <addMavenDescriptor>true</addMavenDescriptor>
-        <!-- 默认压缩 -->
-        <compress>true</compress>
-        <!-- 默认强制重新创建存档 -->
-        <forced>true</forced>
+      <archive>
+         <!-- 默认生成的jar中，包含pom.xml和pom.properties这两个文件 -->
+         <addMavenDescriptor>true</addMavenDescriptor>
+         <!-- 默认压缩 -->
+         <compress>true</compress>
+         <!-- 默认强制重新创建存档 -->
+         <forced>true</forced>
 
-        <!-- 配置清单（MANIFEST）-->
-        <manifest>
+         <!-- 配置清单（MANIFEST）-->
+         <manifest>
             <!-- 默认false，添加 Class-Path 到 MANIFEST -->
             <addClasspath>true</addClasspath>
             <!-- 默认""，为classpath依赖包添加前缀 -->
@@ -479,12 +480,13 @@ default 生命周期的内置插件绑定关系：
             <mainClass>xxx</mainClass>
             <!-- 添加 Class-Path 时，带时间戳 -->
             <useUniqueVersions>true</useUniqueVersions>
-        </manifest>
-        <manifestEntries>
+         </manifest>
+         <manifestEntries>
             <!-- 在Class-Path下添加配置文件的路径 -->
             <Class-Path>../config/</Class-Path>
-        </manifestEntries>
-    </archive>
+         </manifestEntries>
+      </archive>
+   </configuration>
 </plugin>
 ```
 

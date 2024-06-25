@@ -473,25 +473,27 @@ SpringCloud 抽象了 `DiscoveryClient` 的接口，`NacosDiscoveryClient` 实�
 
 [raft_zh_cn.pdf](assets/raft_zh_cn.pdf)
 
-RAFT算法有三种基本的状态：`follower`、`candidate`、`leader`。
+`RAFT`是一个用来管理多副本日志的共识算法,Raft将共识问题分解成三个相对独立的子问题：领导选举、日志复制、安全性。除此之外还有：集群成员变更，日志压缩，线性一致性读，选举优化，一致性读优化等问题。
 
-* 处于follower状态的server不会发起任何的request，只是被动的响应leader和candidate。
+`RAFT`算法有三种基本的状态：`follower`、`candidate`、`leader`。
 
-* 处于leader状态的server会主动的发送心跳包给各个follower，并且接收client所有的request。
+* 处于`follower`状态的`server`不会发起任何的`request`，只是被动的响应`leader`和`candidate`。
 
-* candidate是一种过渡状态，只有整个cluster在进行新的选举的时候，才会出现此种状态的server。
+* 处于`leader`状态的`server`会主动的发送心跳包给各个`follower`，并且接收`client`所有的`request`。
 
-Raft系统在任意时刻最多只有一个Leader，正常工作期间只有Leader和Followers。
+* `candidate`是一种过渡状态，只有整个`cluster`在进行新的选举的时候，才会出现此种状态的`server`。
 
-Follower只响应其他服务器的请求。如果Follower超时没有收到Leader的消息，它会成为一个Candidate并且开始一次Leader选举。收到大多数服务器投票的Candidate会成为新的Leader。Leader在宕机之前会一直保持Leader的状态。
+`Raft`系统在任意时刻最多只有一个`Leader`，正常工作期间只有`Leader`和`Followers`。
 
-Raft 使用心跳（heartbeat）触发Leader选举。当服务器启动时，初始化为Follower。Leader向所有Followers周期性发送heartbeat。如果Follower在选举超时时间内没有收到Leader的heartbeat，就会等待一段随机的时间后发起一次Leader选举。
+`Follower`只响应其他服务器的请求。如果`Follower`超时没有收到`Leader`的消息，它会成为一个`Candidate`并且开始一次`Leader`选举。收到大多数服务器投票的`Candidate`会成为新的`Leader`。`Leader`在宕机之前会一直保持`Leader`的状态。
 
-Follower将其当前term加一然后转换为Candidate。它首先给自己投票并且给集群中的其他服务器发送 RequestVote RPC,每次选举只能投一票,结果有以下三种情况：
+`RAFT`使用心跳（heartbeat）触发Leader选举。当服务器启动时，初始化为`Follower`。`Leader`向所有`Followers`周期性发送heartbeat。如果`Follower`在选举超时时间内没有收到`Leader`的heartbeat，就会等待一段随机的时间后发起一次`Leader`选举。
 
-* 赢得了多数的选票，成功选举为Leader；
-* 收到了Leader的消息，表示有其它服务器已经抢先当选了Leader；
-* 没有服务器赢得多数的选票，Leader选举失败，等待选举时间超时后发起下一次选举。
+`Follower`将其当前term加一然后转换为`Candidate`。它首先给自己投票并且给集群中的其他服务器发送`RequestVote RPC`,每次选举只能投一票,结果有以下三种情况：
+
+* 赢得了多数的选票，成功选举为`Leader`；
+* 收到了`Leader`的消息，表示有其它服务器已经抢先当选了`Leader`；
+* 没有服务器赢得多数的选票，`Leader`选举失败，等待选举时间超时后发起下一次选举。
 
 ![303](assets/303.png)
 
@@ -499,15 +501,38 @@ Follower将其当前term加一然后转换为Candidate。它首先给自己投�
 
 ![453.png](assets/453.png)
 
+##### 选举优化
+
+* `Pre-Vote`：在增大`term`正式投票之前，先使用当前`term`进行一轮投票，只有达到`quorum`的节点才能发起正式投票，为了解决网络分区时，达不到`quorum`的分区会进行增大`term`并进行无效投票的问题，当网络分区恢复后，由于较大的`term`会导致当前`leader`的`step down`。
+* `Check Quorum`：每隔一段时间让`leader`通过心跳主动检查`follower`是否活跃，如果活跃的`follower`数量达不到`quorum`，那么说明该`leader`可能是分区前的旧`leader`，所以此时该`leader`会主动退位转为`follower`，一定程度上减小`stale read`的发生时间。`stale read` 即 当网络分区后，`旧leader`在小分区，大分区选出了`新leader`，`旧leader`不知道自己不再是`leader`继续提供`read`，导致读取到旧数据。
+* `Leader Lease`：当节点在选举超时前，如果收到`leader`的消息，那么它不会为其它发起投票或预投票请求的节点投票，`Leader Lease`需要依赖`Check Quorum`机制才能正常工作，当网络分区发生时，小分区`旧leader`通过`Check Quorum`退位为`follower`，如果不退位会导致大分区里能够和`旧leader`连通的节点由于`Leader Lease`不会为其他节点投票，导致大分区领导选举失败。
+
+优化引入新的问题：
+
+1. 当开启`Check Quorum/Leader Lease`、未开启`Pre-Vote`时，数量达不到`quorum`的分区中的`leader`会退位，该分区的节点永远都无法选举出`leader`,并且`term`不断增大。当网络恢复后，该分区中的节点有更大的`term`，由于开启`Check Quorum/Leader Lease`，它们的选举请求会被丢弃。同时该节点的`term`比`原分区的leader`的`term`大，因此它会丢弃`原分区的leader`的请求，该节点永远都无法重新加入集群。
+2. 当开启`Pre-Vote`时，假如发起预投票的节点，在预投票通过后正要发起正式投票的请求时出现网络分区，该节点的`term`会高于`原集群的term`,原集群因没有收到真正的投票请求，不会更新`term`，继续正常运行。在网络分区恢复后，`原集群的term`低于`分区节点的term`，但是日志比分区节点更新,该节点发起的预投票请求因没有日志落后会被丢弃，而`原集群leader`发给该节点的请求会因`term`比该节点小而被丢弃，该节点永远都无法重新加入集群。
+3. 在变更配置时，开启了原本没有开启的`Pre-Vote`机制，可能因`term`更高但是`log`更旧的节点的存在导致整个集群的死锁，所有节点都无法预投票成功。
+
+为了解决以上问题，节点在收到`term`比自己低的请求时：
+* 如果收到`term`比`当前节点term`低的`leader`的消息，且集群开启了`Check Quorum/Leader Lease`或`Pre-Vote`，那么发送一条`term`为`当前term`的消息，令`term`低的节点成为`follower`。（针对场景1、场景2）
+* 对于`term`比`当前节点term`低的**预投票请求**，无论是否开启了`Check Quorum/Leader Lease`或`Pre-Vote`，都要通过一条`term`为`当前term`的消息，迫使其转为`follower`并`更新term`。（针对场景3）
+
+##### 一致性读优化
+
+* `Log Read`：将读请求也作为一条普通的Raft日志，在应用该日志时将读取的状态返回给客户端，但需要达成一轮共识所需的开销，又有将这条Raft日志落盘的开销，为了优化只读请求的性能，需要想办法绕过Raft算法完整的日志机制，只有`leader`确认`quorum`才能被确认日志被提交,在一些情况下，`leader`可能无法及时发现其已经不是合法的`leader`可能会出现`stale read`问题。
+* `ReadIndex`：当`leader`收到只读请求时，记录当前的`commit index`，作为`read index`，向集群中的所有节点广播一次心跳，如果收到了数量达到`quorum`的心跳响应，`leader`可以确定自己是集群的合法`leader`，继续执行，直到`leader`本地的`apply index`大于等于之前记录的`read index`,再返回客户端。当`新leader`当选时，其`commit index`可能并不是集群的`commit index`，需要等到`新leader`至少提交一条日志时，才能保证其`commit index`反映集群的`commit index`，`新leader`当选时为了提交`非本term`的日志，会提交一条空日志。
+* `follower read`：通过`ReadIndex`机制，当`follower`收到只读请求后，可以给`leader`发送一条获取`read index`的消息，当`leader`通过心跳广播确认自己是合法的`leader`后，将其记录的`read index`返回给`follower`，`follower`等到自己的`apply index`大于等于其收到的`read index`后，即可以安全地提供满足线性一致性的只读服务。
+* `Lease Read`：依然通过`ReadIndex`机制，但确认`当前的leader`为`合法的leader`方式不一样，通过通过心跳与时钟来检查自身合法性设心跳广播前的时间戳为`start`，当`leader`收到至少`quorum`数量的节点的响应时，该`leader`认为其`lease`的有效期为`[start, start + election timeout/clock drift bound)`,由于不同节点的cpu时钟可能有不同程度的漂移,会导致很小的时间窗口内，即使`leader`认为其持有`lease`，但集群已经选举出`新的leader`。
+
 # 服务调用
 
-Ribbon：Netflix开源的基于HTTP和TCP等协议负载均衡组件，需要手动代码调用服务端。
+`Ribbon`：Netflix开源的基于HTTP和TCP等协议负载均衡组件，需要手动代码调用服务端。
 
-Feign：内置Ribbon，用来做客户端负载均衡，去调用服务注册中心的服务，不支持Spring MVC的注解，它有一套自己的注解，已不推荐使用。
+`Feign`：内置Ribbon，用来做客户端负载均衡，去调用服务注册中心的服务，不支持Spring MVC的注解，它有一套自己的注解，已不推荐使用。
 
-OpenFeign：在Feign的基础上支持了Spring MVC的注解，如`@RequesMapping`等等，可以使用@FeignClient解析SpringMVC的`@RequestMapping`注解下的接口，并通过动态代理的方式产生实现类，实现类中做负载均衡并调用其他服务。
+`OpenFeign`：在Feign的基础上支持了Spring MVC的注解，如`@RequesMapping`等等，可以使用@FeignClient解析SpringMVC的`@RequestMapping`注解下的接口，并通过动态代理的方式产生实现类，实现类中做负载均衡并调用其他服务。
 
-loadbalancer：用于替代Ribbon，负责负载均衡。
+`loadbalancer`：用于替代Ribbon，负责负载均衡。
 
 ## OpenFeign
 

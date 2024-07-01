@@ -399,7 +399,7 @@ public class HelloController {
 
 ## Bean 装配
 
-@ComponentScan：默认会扫描当前包，以及这个包下的子包。
+`@ComponentScan`：默认会扫描当前包，以及这个包下的子包。
 
 注入方式：
 
@@ -448,7 +448,7 @@ public class CDPlayerConfig {
 
 ## Profile 控制
 
-@Profile 可以作用于 使用@Configuration的类上、使用@Bean的方法上。
+`@Profile`可以作用于 使用`@Configuration`的类上、使用`@Bean`的方法上。
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
@@ -747,12 +747,12 @@ public class SpELTest {
    }
    ```
 
-相比于SpringRetry，提供更多的重试机制：
+相比于`SpringRetry`，提供更多的重试机制：
 
-* retryIfException : 对所有异常进行重试。
-* retryIfExceptionOfType : 对指定异常进行重试。
-* retryIfResult : 对不符合预期的返回结果进行重试。
-* retryIfRuntimeException : 对所有RuntimeException进行重试。
+* `retryIfException` : 对所有异常进行重试。
+* `retryIfExceptionOfType` : 对指定异常进行重试。
+* `retryIfResult` : 对不符合预期的返回结果进行重试。
+* `retryIfRuntimeException` : 对所有`RuntimeException`进行重试。
 
 # SpringReactor
 
@@ -809,13 +809,13 @@ public class FluxTest {
 
 * 并行处理 `Flux.just("A","B").flatMap(n -> Mono.just(n).map(mapFunction).subscribeOn(Schedulers.parallel()))`
 
-| Scheduler方法  | 描述                                                       |
-|--------------|----------------------------------------------------------|
-| .immediate() | 在当前线程中执行订阅                                               |
-| .single()    | 在单个可重用线程中执行订阅，对所有调用方重复使用同一线程                             |
-| .newSingle() | 在每个调用专用线程中执行订阅                                           |
-| .elastic()   | 在从无限弹性池中提取的工作进程中执行订阅，根据需要创建新的工作线程，并释放空闲的工作线程（默认情况下 60 秒） |
-| .parallel()  | 在从固定大小的池中提取的工作进程中执行订阅，该池的大小取决于 CPU 核心的数量。                |
+| Scheduler方法    | 描述                                                       |
+|----------------|----------------------------------------------------------|
+| `.immediate()` | 在当前线程中执行订阅                                               |
+| `.single()`    | 在单个可重用线程中执行订阅，对所有调用方重复使用同一线程                             |
+| `.newSingle()` | 在每个调用专用线程中执行订阅                                           |
+| `.elastic()`   | 在从无限弹性池中提取的工作进程中执行订阅，根据需要创建新的工作线程，并释放空闲的工作线程（默认情况下 60 秒） |
+| `.parallel()`  | 在从固定大小的池中提取的工作进程中执行订阅，该池的大小取决于 CPU 核心的数量。                |
 
 # SpringWebFlux
 
@@ -825,7 +825,7 @@ public class FluxTest {
 
 # 缓存
 
-@Cacheable 和 @CachePut 属性：
+`@Cacheable` 和 `@CachePut` 属性：
 
 | 属性        | 类型       | 描述                                      |
 |-----------|----------|-----------------------------------------|
@@ -847,7 +847,7 @@ public class FluxTest {
 | #result           | 方法调用的返回值（不能用在 @Cacheable 注解上）     |
 | #Argument         | 任意的方法参数名（如 #argName）或参数索引（如 #p0）  |
 
-@CacheEvict 属性：
+`@CacheEvict` 属性：
 
 | 属性               | 类型       | 描述                                                      |
 |------------------|----------|---------------------------------------------------------|
@@ -891,7 +891,7 @@ public class FluxTest {
 </dependencies>
 ```
 
-当使用 java -jar 命令启动时会自动禁用。
+当使用 `java -jar` 命令启动时会自动禁用。
 
 配置文件加载顺序：按优先级排序，使用优先级高的配置。
 
@@ -909,17 +909,17 @@ public class FluxTest {
 5. `java:comp/env` 的JNDI属性。
 6. `System.getProperties()` JVM系统属性。
 7. 操作系统环境变量。
-8. `RandomValuePropertySource`，例如 my.secret=${random.value}
+8. `RandomValuePropertySource`，例如 `my.secret=${random.value}`
 9. 读取配置文件：
 
-    * `jar`包外 优先 jar 包内。
+    * `jar`包外 优先 `jar` 包内。
     * `config`下 优先 根目录下。
     * `application-{profile}` 优先 application。
     * `properties` 优先 yml。
 10. `@PropertySource`
 11. `SpringApplication.setDefaultProperties`
 
-ymal传输到日志配置文件：
+yaml传输到日志配置文件：
 
 | Spring Environment                | System Property               | Comments                        |
 |-----------------------------------|-------------------------------|---------------------------------|

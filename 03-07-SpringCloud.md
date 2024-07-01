@@ -529,7 +529,7 @@ SpringCloud 抽象了 `DiscoveryClient` 的接口，`NacosDiscoveryClient` 实�
 
 `Feign`：内置Ribbon，用来做客户端负载均衡，去调用服务注册中心的服务，不支持Spring MVC的注解，它有一套自己的注解，已不推荐使用。
 
-`OpenFeign`：在Feign的基础上支持了Spring MVC的注解，如`@RequesMapping`等等，可以使用@FeignClient解析SpringMVC的`@RequestMapping`注解下的接口，并通过动态代理的方式产生实现类，实现类中做负载均衡并调用其他服务。
+`OpenFeign`：在Feign的基础上支持了Spring MVC的注解，如`@RequesMapping`等等，可以使用`@FeignClient`解析SpringMVC的`@RequestMapping`注解下的接口，并通过动态代理的方式产生实现类，实现类中做负载均衡并调用其他服务。
 
 `loadbalancer`：用于替代Ribbon，负责负载均衡。
 

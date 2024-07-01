@@ -155,12 +155,14 @@
 5. A半成品注入B代理对象。
 6. 从第二级缓存移除A代理对象，A代理对象加入第一级缓存。
 
-是否可以只用二级缓存：可以：解决循环依赖有两个方案：
+是否可以只用二级缓存：可以
+
+解决循环依赖有两个方案：
 
 1. 不管有没有循环依赖，都提前创建好代理对象，并将代理对象放入缓存，出现循环依赖时，其他对象直接就可以取到代理对象并注入。
 2. 不提前创建好代理对象，在出现循环依赖被其他对象注入时，才实时生成代理对象。这样在没有循环依赖的情况下，Bean就可以按着Spring设计原则的步骤来创建。
 
-那为什么Sping不选择二级缓存方式，而是要额外加一层缓存？
+那为什么Spring不选择二级缓存方式，而是要额外加一层缓存？
 
 * Spring 的设计原则是尽可能保证普通对象创建完成之后，再生成其 AOP 代理，如果要使用二级缓存解决循环依赖，意味着Bean在构造完后就创建代理对象。
 * SpringAOP 是在Bean创建完全之后通过`AnnotationAwareAspectJAutoProxyCreator`这个后置处理器来完成的，在这个后置处理的`postProcessAfterInitialization`方法中对初始化后的Bean完成AOP代理，如果出现了循环依赖，那没有办法，只有给Bean先创建代理。
@@ -179,7 +181,7 @@
 > * createRelative(): 创建此资源的相关资源
 > * getFilename(): 资源的文件名是什么 例如：最后一部分的文件名 myfile.txt
 
-Resource一般包括这些实现类：`UrlResource`、`ClassPathResource`、`FileSystemResource`、`ServletContextResource`、`InputStreamResource`、`ByteArrayResource`。
+`Resource`一般包括这些实现类：`UrlResource`、`ClassPathResource`、`FileSystemResource`、`ServletContextResource`、`InputStreamResource`、`ByteArrayResource`。
 
 平常使用可以使用 `ResourceLoader` 接口 ,可通过 `ResourceLoaderAware` 注入：
 

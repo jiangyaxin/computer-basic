@@ -55,12 +55,12 @@
 * `org.springframework.context.ApplicationListener`：2种方式调用，可以实现 `ApplicationListener` 或者 使用 `@EventListener`。
 
   Springboot 启动过程中事件：
-    1. `ApplicationStartingEvent`：Environment 未创建。
-    2. `ApplicationEnvironmentPreparedEvent`：Environment 已创建，环境变量、JVM参数、ServletContext 已加载。
-    3. `ApplicationContextInitializedEvent`：容器刚刚创建，`ApplicationContextInitializer`执行之后，还未load、refresh。
-    4. `ApplicationPreparedEvent`：已经完成load，BeanPostProcessor，入口类已完成加载，注解未完成扫描。
-    5. `ContextRefreshedEvent`：在refresh方法最后， refresh() 被调用时发生，所有的Bean被成功装载，后处理Bean被检测并激活，所有Singleton Bean 被预实例化。
-    6. `ApplicationStartedEvent`：容器已经完成refresh，所有bean都完成加载，`ApplicationRunner`、`CommandLineRunner`未执行。
+    1. `ApplicationStartingEvent`：`Environment` 未创建。
+    2. `ApplicationEnvironmentPreparedEvent`：`Environment` 已创建，环境变量、JVM参数、ServletContext 已加载。
+    3. `ApplicationContextInitializedEvent`：容器刚刚创建，`ApplicationContextInitializer`执行之后，还未`load`、`refresh`。
+    4. `ApplicationPreparedEvent`：已经完成`load`，`BeanPostProcessor`，入口类已完成加载，注解未完成扫描。
+    5. `ContextRefreshedEvent`：在`refresh`方法最后， `refresh()` 被调用时发生，所有的Bean被成功装载，后处理Bean被检测并激活，所有Singleton Bean 被预实例化。
+    6. `ApplicationStartedEvent`：容器已经完成`refresh`，所有bean都完成加载，`ApplicationRunner`、`CommandLineRunner`未执行。
     7. `ApplicationFailedEvent`：容器启动失败时触发。
     8. `ApplicationReadyEvent`：`ApplicationRunner`、`CommandLineRunner`已经执行，容器成功启动后触发。
 
@@ -84,28 +84,27 @@
 * `BeanDefinitionRegistry`：定义对 `BeanDefinition` 的各种增删改操作。
 * `HierarchicalBeanFactory`：增加 `BeanFactory` 对 `parentFactory` 的缓存。
 * `ListableBeanFactory`：获取bean的列表。
-* `ConfigurableBeanFactory`：可以配置 BeanFactory。
-* `AutowireCapableBeanFactory`：可以手动调用完成 bean 的注入、初始化、应用后处理器，这里的自动装配不是 @Autowired 注解，而是 xml方式 的注入，也叫传统注入方式，注解驱动注入是通过 `AutowiredAnnotationBeanPostProcessor#setAutowiredAnnotationType` 提供的。
+* `ConfigurableBeanFactory`：可以配置 `BeanFactory`。
+* `AutowireCapableBeanFactory`：可以手动调用完成 bean 的注入、初始化、应用后处理器，这里的自动装配不是 `@Autowired` 注解，而是 xml方式 的注入，也叫传统注入方式，注解驱动注入是通过 `AutowiredAnnotationBeanPostProcessor#setAutowiredAnnotationType` 提供的。
 * `ConfigurableListableBeanFactory`：继承 `ConfigurableBeanFactory` 和 `AutowireCapableBeanFactory`。
 
 ## XmlBeanDefinitionReader：
 
 ![98](assets/98.png)
 
-* `ResourceLoader`：根据给定资源文件地址返回对应的 Resource 。
-* `DocumentLoader`：从资源文件加载转换为 Document 。
-* `BeanDefinitionDocumentReader`：将 Document 转换为 BeanDefinition 。
-* `BeanDefinitionReader`：整合 `ResourceLoader`、`DocumentLoader`、`BeanDefinitionDocumentReader` 功能读取资源获得 BeanDefinition 。
+* `ResourceLoader`：根据给定资源文件地址返回对应的 `Resource` 。
+* `DocumentLoader`：从资源文件加载转换为 `Document` 。
+* `BeanDefinitionDocumentReader`：将 `Document` 转换为 `BeanDefinition` 。
+* `BeanDefinitionReader`：整合 `ResourceLoader`、`DocumentLoader`、`BeanDefinitionDocumentReader` 功能读取资源获得 `BeanDefinition` 。
 
 ## BeanDefinition：
 
-* `AnnotatedGenericBeanDefinition` ： 表示@Configuration注解注释的BeanDefinition类。
+* `AnnotatedGenericBeanDefinition` ： 表示`@Configuration`注解注释的`BeanDefinition`类。
 * `ScannedGenericBeanDefinition` ：表示`@Component`、`@Service`、`@Controller`等注解注释的Bean类。
 
 ## Bean的加载：
 
-当我们隐式或者显示的调用 `BeanFactory#getBean(...)` 时，会触发加载Bean阶段，这时，容器会首先检查所请求的对象是否已经初始化完成，如果没有，则会根据注册的
-Bean 信息实例化请求的对象，并为其注册依赖，然后将其返回给请求方。
+当我们隐式或者显示的调用 `BeanFactory#getBean(...)` 时，会触发加载Bean阶段，这时，容器会首先检查所请求的对象是否已经初始化完成，如果没有，则会根据注册的 Bean 信息实例化请求的对象，并为其注册依赖，然后将其返回给请求方。
 
 1. 首先从 alias 中获取 BeanName。 假设配置了一个 FactoryBean 的名字为 "abc" ，那么获取 FactoryBean 创建的 Bean 时，使用 "abc" ，如果获取 FactoryBean 本身，使用 "&abc" 。另外，`&`定义在 `BeanFactory.FACTORY_BEAN_PREFIX = "&"` 上。 FactoryBean 用于创建一些复杂的bean。
 2. 依次从缓存中获取bean，这里的bean有个可能是 FactoryBean 也有可能是普通bean，并且可能没有实例化，缓存有三个：
@@ -135,17 +134,17 @@ Bean 信息实例化请求的对象，并为其注册依赖，然后将其返回
    ```
 3. 如果从缓存中获取到bean，由于bean不是最终的bean，所以需要调用 `getObjectForBeanInstance(...)` 获取bean实例 或 `FactoryBean.getObject()` 的对象。
 4. 如果没有从缓存中获取到bean 先从 `parentBeanFactory` 获取 Bean。
-5. 如果没有从 `parentBeanFactory` 获取到，再获取 BeanDefinition ，先需要依赖，判断没有循环先创建依赖，再根据不同的作用域创建bean。
-6. 类型转换，例如name返回为String，requiredType 要求返回 Integer，这时候会使用 ConversionService 做转换。
+5. 如果没有从 `parentBeanFactory` 获取到，再获取 `BeanDefinition` ，先需要依赖，判断没有循环先创建依赖，再根据不同的作用域创建bean。
+6. 类型转换，例如name返回为String，requiredType 要求返回 Integer，这时候会使用 `ConversionService` 做转换。
 
 循环依赖处理：
 
-1. 首先，从一级缓存 singletonObjects 获取。
-2. 如果，没有且当前指定的 beanName 正在创建，就再从二级缓存 earlySingletonObjects 中获取。
-3. 如果，还是没有获取到且允许 singletonFactories 通过 `#getObject()` 获取，则从三级缓存 singletonFactories 获取。如果获取到，则通过其`#getObject()` 方法，获取对象，并将其加入到二级缓存 earlySingletonObjects 中，并从三级缓存 singletonFactories 删除，这里的`#getObject` 是ObjectFactory 的方法，不是 FactoryBean 的方法，不要搞混。
+1. 首先，从一级缓存 `singletonObjects` 获取。
+2. 如果，没有且当前指定的 `beanName` 正在创建，就再从二级缓存 `earlySingletonObjects` 中获取。
+3. 如果，还是没有获取到且允许 `singletonFactories` 通过 `#getObject()` 获取，则从三级缓存 `singletonFactories` 获取。如果获取到，则通过其`#getObject()` 方法，获取对象，并将其加入到二级缓存 `earlySingletonObjects` 中，并从三级缓存 `singletonFactories` 删除，这里的`#getObject` 是`ObjectFactory` 的方法，不是 `FactoryBean` 的方法，不要搞混。
 
-三级缓存这样升级到二级缓存，二级缓存存在的意义，就是缓存三级缓存中的 ObjectFactory 的 #getObject() 方法的执行结果，提早曝光的单例 Bean 对象。
-singletonFactories 中的数据来自于 doCreateBean 时使添加，添加的是刚创建但是没有填充属性、也没有初始化的对象，并对对象进行postProcessAfterInitialization处理，这个逻辑不会立马触发，是一个函数表达式，需要满足三个条件：单例、正在创建、可以运行提前暴露。 当创建单例完成后就 从singletonFactories移除。
+三级缓存这样升级到二级缓存，二级缓存存在的意义，就是缓存三级缓存中的 `ObjectFactory#getObject()` 方法的执行结果，提早曝光的单例 Bean 对象。
+`singletonFactories` 中的数据来自于 `doCreateBean` 时使添加，添加的是刚创建但是没有填充属性、也没有初始化的对象，并对对象进行`postProcessAfterInitialization`处理，这个逻辑不会立马触发，是一个函数表达式，需要满足三个条件：单例、正在创建、可以运行提前暴露。 当创建单例完成后就 从`singletonFactories`移除。
 
 如果对象A和对象B循环依赖，且都有代理的话:
 

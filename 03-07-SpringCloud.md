@@ -792,7 +792,7 @@ org.springframework.cloud.openfeign.loadbalancer.FeignLoadBalancerAutoConfigurat
 
 #### FeignLoadBalancerAutoConfiguration
 
-负责配置 LoadBalancer。
+负责配置 `LoadBalancer`。
 
 1. `HttpClientFeignLoadBalancerConfiguration` 处理 Apache HttpClient。
 2. `OkHttpFeignLoadBalancerConfiguration` 处理 okhttp。
@@ -815,9 +815,9 @@ org.springframework.cloud.openfeign.loadbalancer.FeignLoadBalancerAutoConfigurat
 
 ### 调用
 
-1. 调用 `FeignClientFactoryBean#getObject()` 生成 `feign.ReflectiveFeign.FeignInvocationHandler`，注入 FeignClient，其中`FeignClientFactoryBean#feign()` 负责注入配置在 configuration 的Bean，包括 `Decoder`、`Request.Options`等等。
-2. 每个`FeignInvocationHandler`中包含多个 `SynchronousMethodHandler` 对应 FeignClient 的方法。
-3. 最终由 `SynchronousMethodHandler` 执行，如果抛出IOException，会直接包装成`RetryableException`然后重试，如果正常返回则由`AsyncResponseHandler`负责处理 Response，值得注意的是状态码200 - 300 调用 Decoder 解码，其他状态码调用 ErrorCoder 解码，默认 ErrorCoder 会抛出 FeignException ，如果 reponse head 包含 Retry-After 会抛出 RetryableException 进行重试，另外默认情况下 404 状态码也是使用 ErrorCoder 解码，可通过配置 `decode404 = true` 来使其调用 Decoder 解码。
+1. 调用 `FeignClientFactoryBean#getObject()` 生成 `feign.ReflectiveFeign.FeignInvocationHandler`，注入 `FeignClient`，其中`FeignClientFactoryBean#feign()` 负责注入配置在 `configuration` 的Bean，包括 `Decoder`、`Request.Options`等等。
+2. 每个`FeignInvocationHandler`中包含多个 `SynchronousMethodHandler` 对应 `FeignClient` 的方法。
+3. 最终由 `SynchronousMethodHandler` 执行，如果抛出`IOException`，会直接包装成`RetryableException`然后重试，如果正常返回则由`AsyncResponseHandler`负责处理 `Response`，值得注意的是状态码`200 - 300` 调用 `Decoder` 解码，其他状态码调用 `ErrorCoder` 解码，默认 `ErrorCoder` 会抛出 `FeignException` ，如果 `reponse head` 包含 `Retry-After` 会抛出 `RetryableException` 进行重试，另外默认情况下 `404` 状态码也是使用 `ErrorCoder` 解码，可通过配置 `decode404 = true` 来使其调用 `Decoder` 解码。
 
 ##### 配置
 

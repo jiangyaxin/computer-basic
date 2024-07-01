@@ -422,21 +422,20 @@ spring:
 
 ### 配置
 
-nacos 配置管理将服务划分为 `Namespace + Group + Data ID`， Data ID 由 `${prefix}-${spring.profiles.active}.${file-extension}`
+nacos 配置管理将服务划分为 `Namespace + Group + Data ID`， `Data ID` 由 `${prefix}-${spring.profiles.active}.${file-extension}`
 构成：
 
-* prefix 默认为 `spring.application.name` 的值，也可以通过配置项 `spring.cloud.nacos.config.prefix`来配置。
+* `prefix` 默认为 `spring.application.name` 的值，也可以通过配置项 `spring.cloud.nacos.config.prefix`来配置。
 * `spring.profiles.active` 即为当前环境对应的 `profile`，当 `spring.profiles.active` 为空时，`dataId` 的拼接格式变成`${prefix}.${file-extension}`
 * `file-exetension` 为配置内容的数据格式，可以通过配置项 `spring.cloud.nacos.config.file-extension` 来配置，默认使用 `properties`。
 
-实际使用中可Namespace 区分不同的租户，比如深圳环境、佛山环境，使用 Group
-区分不同的开发者，也可用来在同一个Namespace分区不同的Group，例如在深圳环境下部署了两套系统。
+实际使用中可`Namespace`区分不同的租户，比如深圳环境、佛山环境，使用`Group`区分不同的开发者，也可用来在同一个`Namespace`分区不同的`Group`，例如在深圳环境下部署了两套系统。
 
 ### 原理
 
 #### 服务注册
 
-SpringCloud 抽象：在 `AutoServiceRegistrationAutoConfiguration` 中注入 `AutoServiceRegistration`。
+`SpringCloud` 抽象：在 `AutoServiceRegistrationAutoConfiguration` 中注入 `AutoServiceRegistration`。
 
 1. `AutoServiceRegistration` 的子类 `AbstractAutoServiceRegistration` 会监听 `WebServerInitializedEvent` 事件，服务启动后会调用`ServiceRegistry.register(Registration)` 向注册中心注册。
 2. 只需继承 `AbstractAutoServiceRegistration` ，实现 `ServiceRegistry` 、`Registration` 即可完成启动时注册。

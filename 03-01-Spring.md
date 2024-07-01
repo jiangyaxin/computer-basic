@@ -277,7 +277,7 @@ Spring 中容器存在父子关系，父容器不能访问子容器的资源，�
 
 * `Environment` 并且对 `Environment` 中的属性进行校验，`Environment` 可能是 `StandardEnvironment`(包含 系统环境和jvm属性) 也可能是 `StandardServletEnvironment`(继承 `StandardEnvironment`,另外包含 ServletContext 的属性)
 
-2. 获取 `BeanFactory`，对于 `XmlWebApplicationContext` 类型的会在这个时候创建，并加载`BeanDefinition`，对于 `AnnotationConfigWebApplicationContext` 类型的直接获取，并不会加载 BeanDefin，因为`AnnotationConfigWebApplicationContext`创建时就已经创建。
+2. 获取 `BeanFactory`，对于 `XmlWebApplicationContext` 类型的会在这个时候创建，并加载`BeanDefinition`，对于 `AnnotationConfigWebApplicationContext` 类型的直接获取，并不会加载 `BeanDefinition`，因为`AnnotationConfigWebApplicationContext`创建时就已经创建。
 3. 准备 `BeanFactory`
 
     * 填充 `SpelExpressionParser`。

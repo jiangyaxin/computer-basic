@@ -825,7 +825,7 @@ org.springframework.cloud.openfeign.loadbalancer.FeignLoadBalancerAutoConfigurat
 |--------------------------------------------|-----------------------------------------------|-----------------------------------------------------------------------------------|
 | feign.compression.request.enabled          | false                                         | 允许压缩Feign发送的请求                                                                    |
 | feign.compression.request.mime-types       | [text/xml, application/xml, application/json] | 支持的mime类型列表。                                                                      |
-| feign.compression.request.min-request-size | 2048	最小阈值内容大小。                                |                                                                                   |
+| feign.compression.request.min-request-size | 2048                                          | 最小阈值内容大小。                                                                         |
 | feign.compression.response.enabled         | false                                         | 允许压缩来自Feign的响应。                                                                   |
 | feign.compression.response.useGzipDecoder  | false                                         | 启用要使用的默认gzip解码器。                                                                  |
 | feign.httpclient.connection-timeout        | 2000                                          |                                                                                   |
@@ -890,9 +890,9 @@ org.springframework.cloud.openfeign.loadbalancer.FeignLoadBalancerAutoConfigurat
 
 ```
 
-3. 编写 .proto 文件。
+3. 编写 `.proto` 文件。
 4. 编译。
-5. 编写服务端：继承 xxxxImplBase,例如：
+5. 编写服务端：继承 `xxxxImplBase`,例如：
 
 ```java
 // 启动服务
@@ -962,8 +962,8 @@ public void test() {
 
 一元模式：客户端发起一次请求，服务端响应一个数据，每一次都是发起一个独立的tcp连接，走一次三次握手和四次挥手。
 
-* 客户端发送消息后会添加一个 EOS 标记，标记请求消息结束，客户端进入半关状态，客户端不能发送消息，但是可以监听服务端。
-* 服务端生成响应后，会发送带有状态详情的trailer头信息后，通信就会关闭。
+* 客户端发送消息后会添加一个 `EOS` 标记，标记请求消息结束，客户端进入半关状态，客户端不能发送消息，但是可以监听服务端。
+* 服务端生成响应后，会发送带有状态详情的`trailer`头信息后，通信就会关闭。
 
 ```text
 rpc simpleHello(Person) returns (Result) {}
@@ -971,7 +971,7 @@ rpc simpleHello(Person) returns (Result) {}
 
 客户端流式 RPC ：客户端传入多个请求对象，服务端返回一个响应结果，例如 物联网终端向服务器报送数据。
 
-* 客户端发送多条消息后才会发送 EOS。
+* 客户端发送多条消息后才会发送 `EOS`。
 
 ```text
 rpc clientStreamHello(stream Person) returns (Result) {}
@@ -979,7 +979,7 @@ rpc clientStreamHello(stream Person) returns (Result) {}
 
 服务端流式 RPC ： 客户端发出一个请求，但不会立即得到一个响应，而是在服务端与客户端之间建立一个单向的流，服务端可以随时向流中写入多个响应消息，最后主动关闭流，而客户端需要监听这个流，不断获取响应直到流关闭。
 
-* 服务端发送多条消息后才会发送 trailer。
+* 服务端发送多条消息后才会发送 `trailer`。
 
 场景： 客户端向服务端发送一个股票代码，服务端就把该股票的实时数据源源不断的返回给客户端。
 
@@ -989,8 +989,8 @@ rpc serverStreamHello(Person) returns (stream Result) {}
 
 双向流式 RPC ：可以传入多个对象，返回多个响应对象，例如：聊天应用
 
-* 客户端发送多条消息后才会发送 EOS。
-* 服务端发送多条消息后才会发送 trailer。
+* 客户端发送多条消息后才会发送 `EOS`。
+* 服务端发送多条消息后才会发送 `trailer`。
 
 ```text
 rpc biStreamHello(stream Person) returns (stream Result) {}
@@ -1348,7 +1348,7 @@ public void test() {
 
 拦截器：
 
-客户端：ClientInterceptor
+客户端：`ClientInterceptor`
 
 ```java
 
@@ -1383,7 +1383,7 @@ class CustomForwardingClientCall<ReqT, RespT> extends ClientInterceptors.Checked
 }
 ```
 
-服务端：ServerInterceptor
+服务端：`ServerInterceptor`
 
 ```java
 @Slf4j
@@ -1419,7 +1419,7 @@ class CustomServerCall<ReqT, RespT> extends ForwardingServerCall.SimpleForwardin
 
 优势：
 
-1. 基于HTTP2，使用 protobuf 协议，数据量量更小，能够进行高效的通信。
+1. 基于`HTTP2`，使用 `protobuf` 协议，数据量量更小，能够进行高效的通信。
 2. 具有简单且定义良好的服务接口，先定义接口再实现细节。
 3. 支持多语言。
 4. 支持全双工。
@@ -1428,18 +1428,18 @@ class CustomServerCall<ReqT, RespT> extends ForwardingServerCall.SimpleForwardin
 
 ### HTTP2
 
-HTTP1.x 队头阻塞：在持久连接上，客户端连续发送多条请求，服务端只能按请求顺序响应，由于HTTP请求和响应并没有序号标识，无法将乱序的响应与请求关联起来，如果有一个响应返回延迟，那么其后续的响应都会被延迟。
+`HTTP1.x `队头阻塞：在持久连接上，客户端连续发送多条请求，服务端只能按请求顺序响应，由于HTTP请求和响应并没有序号标识，无法将乱序的响应与请求关联起来，如果有一个响应返回延迟，那么其后续的响应都会被延迟。
 
 TCP 队头阻塞：一个TCP分片丢失，导致其后续分片不按序到达接收端的时候，后续分节将被接收端一直保持直到丢失的第一个分节被发送端重传并到达接收端为止，保证应用进程能够按照发送端的发送顺序接收数据。
 
 优势：
 
-1. 使用二进制分帧传输，分为 Headers 帧 和 Data帧，来自不同数据流的帧可以交错发送，每一个都有StreamID作为标识，可以根据stream id将frame再归属到各自不同的request里面，解决HTTP1.x 队头阻塞问题，请求之间互不影响，响应之间互不干扰。
+1. 使用二进制分帧传输，分为 `Headers帧` 和 `Data帧`，来自不同数据流的帧可以交错发送，每一个都有`StreamID`作为标识，可以根据`stream id`将frame再归属到各自不同的request里面，解决HTTP1.x 队头阻塞问题，请求之间互不影响，响应之间互不干扰。
 
 ![341](assets/341.png)
 
 2. 多路复用，使用一个连接并行发送多个请求和响应，减少每次请求都经历的三次握手和TCP慢启动。
-3. 头部使用HPACK压缩算法，减少需要传输的header大小，http1.X不支持首部压缩。
+3. 头部使用`HPACK`压缩算法，减少需要传输的header大小，http1.X不支持首部压缩。
 4. 服务端推送，服务器可以对一个客户端请求发送多个响应，服务器向客户端推送资源无需客户端明确地请求。
 
 瓶颈：所有的压力集中在底层一个TCP连接之上，TCP很可能就是下一个性能瓶颈，比如TCP分组的队首阻塞问题，单个TCP
@@ -1488,19 +1488,18 @@ message SearchRequest {
 }
 ```
 
-* tag：标识符，[1,15]之内的标识号在编码的时候会占用一个字节。[16,2047]
-  之内的标识号则占用2个字节，所以应该为那些频繁出现的消息元素保留 [1,15] 之内的标识号。
-* repeated：表示该字段可以任意重复多次，默认情况使用 packed 编码。
-* reserved：保留字段，以后还有可能使用。
+* `tag`：标识符，[1,15]之内的标识号在编码的时候会占用一个字节。[16,2047]之内的标识号则占用2个字节，所以应该为那些频繁出现的消息元素保留 [1,15] 之内的标识号。
+* `repeated`：表示该字段可以任意重复多次，默认情况使用 packed 编码。
+* `reserved`：保留字段，以后还有可能使用。
 * 默认值：
-    - 对于string，默认是一个空string
-    - 对于bytes，默认是一个空的bytes
-    - 对于bool，默认是false
+    - 对于`string`，默认是一个空string
+    - 对于`bytes`，默认是一个空的bytes
+    - 对于`bool`，默认是`false`
     - 对于数值类型，默认是0
     - 对于枚举，默认是第一个定义的枚举值，必须为0
     - 对于可重复域的默认值是空列表
-* oneof：表示最多一个字段被设置，最后一个被设置的字段有值，不支持 repeated。
-* map：顺序不确定，可以使用以下方式代替：
+* `oneof`：表示最多一个字段被设置，最后一个被设置的字段有值，不支持 `repeated`。
+* `map`：顺序不确定，可以使用以下方式代替：
 
 ```text
 message MapFieldEntry {
@@ -1512,18 +1511,18 @@ repeated MapFieldEntry map_field = N;
 
 ![335](assets/335.png)
 
-* int32、int64：有符号整数，负数效率较低。
-* uint32、uint64：无符号整数。
-* sint32、sint64：有符号整数，负数效率较高。
+* `int32`、`int64`：有符号整数，负数效率较低。
+* `uint32`、`uint64`：无符号整数。
+* `sint32`、`sint64`：有符号整数，负数效率较高。
 
-2. 导入其他 .proto 文件。
+2. 导入其他 `.proto` 文件。
 
 ```text
 import "myproject/other_protos.proto";
 import public "new.proto";
 ```
 
-import public 依赖性会通过任意导入包含import public声明的proto文件传递。如果移动一个.proto文件到一个新的位置，可以不直接移动.proto文件， 只需放入一个伪 .proto 文件在老的位置， 然后使用import public转向新的位置。
+`import public` 依赖性会通过任意导入包含`import public`声明的`proto`文件传递。如果移动一个`.proto`文件到一个新的位置，可以不直接移动`.proto`文件， 只需放入一个伪 `.proto` 文件在老的位置， 然后使用`import public`转向新的位置。
 
 3. 更新消息类型
 
@@ -1561,24 +1560,24 @@ option java_outer_classname = "Ponycopter";
 
 #### 编码规则
 
-Protobuf消息由字段（field）构成，每个字段有其规则（rule）、数据类型（type）、字段名（name）、tag，以及选项（option）。
+Protobuf消息由字段`field`构成，每个字段有其规则`rule`、数据类型`type`、字段名`name`、`tag`，以及选项`option`。
 
 ![336](assets/336.png)
 
-序列化时，消息字段会按照tag顺序，以key+val的格式，编码成二进制数据。可以划分为6个部分：MSB flag、tag、编码后数据类型（wire type）、长度（length）、字段值（value）、以及填充（padding），6部分不是顺序排列。
+序列化时，消息字段会按照`tag`顺序，以`key+val`的格式，编码成二进制数据。可以划分为6个部分：`MSB flag`、`tag`、编码后数据类型`wire type`、长度`length`、字段值`value`、以及填充`padding`，6部分不是顺序排列。
 
-每个字节最高位是 MSB flag ，1表示还会有更多字节出现，0表示用不到1个字节。
+每个字节最高位是 `MSB flag` ，1表示还会有更多字节出现，0表示用不到1个字节。
 
-key 由 数据类型 和 长度 组成，`key = tag << 3 | wire_type`，wire_type 有 `Varint（0）`、`64-bit（1）`、`Length-delimited（2）`和`32-bit（5）`几种，例如：
+`key` 由 数据类型 和 长度 组成，`key = tag << 3 | wire_type`，`wire_type` 有 `Varint（0）`、`64-bit（1）`、`Length-delimited（2）`和`32-bit（5）`几种，例如：
 
 ![337](assets/337.png)
-其中 灰色是MSB，黄色是tag，这里的tag值为16，蓝色是wire_type，绿色是value。
+其中 灰色是`MSB`，黄色是`tag`，这里的`tag`值为16，蓝色是`wire_type`，绿色是`value`。
 
 数据类型编码方法：
 
 ![338](assets/338.png)
 
-varint编码：`tag`、`length`、`int32`、`int64`等数据类型都是用Varint编码，使用小端字节序。
+`varint`编码：`tag`、`length`、`int32`、`int64`等数据类型都是用`Varint`编码，使用小端字节序。
 
 * 123456 用二进制表示为`1 11100010 01000000`，
 * 每次从低向高取 7位 变成`111 1000100 1000000`
@@ -1586,12 +1585,12 @@ varint编码：`tag`、`length`、`int32`、`int64`等数据类型都是用Varin
 * 然后加上最高有效位(即：最后一个字节高位补0，其余各字节高位补1)变成`11000000 11000100 00000111`
 * 最后再转成 10进制，所以经过 varint 编码后 123456 占用三个字节分别为`192 196 7`。
 
-varint是变长编码，不能表示负数，当数字较少时，varint较为划算，当数字较大时，varint会较为浪费，例如int32 大于`2^(4*7) - 1`的数，由于MSB位，需要5个字节才能表示。
+`varint`是变长编码，不能表示负数，当数字较少时，`varint`较为划算，当数字较大时，`varint`会较为浪费，例如int32 大于`2^(4*7) - 1`的数，由于MSB位，需要5个字节才能表示。
 
 对于较大数字可以使用 `64-bit（1）`、`32-bit（5）`
-两种定长编码类型。使用64-bit编码的数据类型包括`fixed64`、`sfixed64`和`double`，使用32-bit编码的数据类型包括fixed32、sfixed32和float。
+两种定长编码类型。使用64-bit编码的数据类型包括`fixed64`、`sfixed64`和`double`，使用32-bit编码的数据类型包括`fixed32`、`sfixed32`和`float`。
 
-Zigzag 编码: sint32 这种类型包含负数，采用 zigzag 编码，将所有整数映射成无符号整数，然后再采用 varint 编码方式编码。
+`Zigzag` 编码: `sint32` 这种类型包含负数，采用 `zigzag` 编码，将所有整数映射成无符号整数，然后再采用 `varint` 编码方式编码。
 
 ```text
 Zigzag(n) =(n <<1)^(n >>31),n 为sint32 时
@@ -1599,12 +1598,12 @@ Zigzag(n) =(n <<1)^(n >>31),n 为sint32 时
 Zigzag(n) =(n <<1)^(n >>63),n 为sint64 时
 ```
 
-Length-delimited编码：会将数据的length也编码进最终数据，使用`Length-delimited`编码格式的数据类型包括string、bytes和自定义消息，value使用大端字节序。
+`Length-delimited`编码：会将数据的`length`也编码进最终数据，使用`Length-delimited`编码格式的数据类型包括`string`、`bytes`和自定义消息，`value`使用大端字节序。
 
 ![339](assets/339.png)
-其中 灰色是MSB，黄色是tag，蓝色是wire_type，红色是length，绿色是value。
+其中 灰色是`MSB`，黄色是`tag`，蓝色是`wire_type`，红色是`length`，绿色是`value`。
 
-对于repeated字段默认使用 packed 选项，编码时多个val 共用一个 key，使用 Length-delimited 编码。
+对于`repeated`字段默认使用 `packed` 选项，编码时多个`val` 共用一个 `key`，使用 `Length-delimited` 编码。
 
 ![340](assets/340.png)
 

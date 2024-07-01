@@ -3,8 +3,8 @@
 ![100](assets/100.png)
 
 主要的对象：
-* TransactionManager：只是一个标识
-* PlatformTransactionManager：继承TransactionManager，定义事务的核心方法，提交和回滚，不建议直接使用，而是应该继承 AbstractPlatformTransactionManager，常用的子类是 DataSourceTransactionManager、JpaTransactionManager。
+* `TransactionManager`：只是一个标识
+* `PlatformTransactionManager`：继承`TransactionManager`，定义事务的核心方法，提交和回滚，不建议直接使用，而是应该继承 `AbstractPlatformTransactionManager`，常用的子类是 `DataSourceTransactionManager`、`JpaTransactionManager`。
 
 ```java
 public interface PlatformTransactionManager extends TransactionManager {
@@ -18,30 +18,30 @@ public interface PlatformTransactionManager extends TransactionManager {
 
 }
 ```
-* TransactionDefinition：定义事务的传播行为、隔离级别、超时时间、是否只读等属性，常用的子类是 DefaultTransactionDefinition。
+* `TransactionDefinition`：定义事务的传播行为、隔离级别、超时时间、是否只读等属性，常用的子类是 `DefaultTransactionDefinition`。
 
-| 事务传播行为类型          | 说明                                                                                                         | 使用场景                                                                                                                                                                             |
-| ------------------------- | ------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| PROPAGATION_REQUIRED      | 如果当前没有事务，就新建一个事务，如果已经存在一个事务中，加入到这个事务中。这是最常见的选择，也是默认行为。 | service2要至少保证在一个事物中运行                                                                                                                                                   |
-| PROPAGATION_SUPPORTS      | 支持当前事务，如果当前没有事务，就以非事务方式执行。                                                         | 适合查询方法。如果service1启动了一个事物，service2能够加入到这个事物中去，从而能够读取service1当前修改的数据，否则会由于事物未提交无法读取service1修改的数据（隔离级别大于未提交读） |
-| PROPAGATION_MANDATORY     | 使用当前的事务，如果当前没有事务，就抛出异常 。                                                              | service2需要事物支持但自身又不管理事务提交或回滚，即强制要求前面的方法创建并管理一个事物给它用                                                                                       |
-| PROPAGATION_REQUIRES_NEW  | 新建事务，如果当前存在事务，把当前事务挂起。                                                                 | service2事物的失败不想影响到service1事物的成功提交，可以使用这个行为                                                                                                                 |
-| PROPAGATION_NOT_SUPPORTED | 以非事务方式执行操作，如果当前存在事务，就把当前事务挂起。                                                   |                                                                                                                                                                                      |
-| PROPAGATION_NEVER         | 以非事务方式执行，如果当前存在事务，则抛出异常。                                                             |                                                                                                                                                                                      |
-| PROPAGATION_NESTED        | 如果当前存在事务，则在嵌套事务内执行。如果当前没有事务，则执行与PROPAGATION_REQUIRED类似的操作。             | 将一个大事物分解为多个小事物执行，根据小事物的执行状态决定大事物的执行流程                                                                                                           |
+| 事务传播行为类型                  | 说明                                                         | 使用场景                                                                                                       |
+|---------------------------|------------------------------------------------------------|------------------------------------------------------------------------------------------------------------|
+| PROPAGATION_REQUIRED      | 如果当前没有事务，就新建一个事务，如果已经存在一个事务中，加入到这个事务中。这是最常见的选择，也是默认行为。     | service2要至少保证在一个事物中运行                                                                                      |
+| PROPAGATION_SUPPORTS      | 支持当前事务，如果当前没有事务，就以非事务方式执行。                                 | 适合查询方法。如果service1启动了一个事物，service2能够加入到这个事物中去，从而能够读取service1当前修改的数据，否则会由于事物未提交无法读取service1修改的数据（隔离级别大于未提交读） |
+| PROPAGATION_MANDATORY     | 使用当前的事务，如果当前没有事务，就抛出异常 。                                   | service2需要事物支持但自身又不管理事务提交或回滚，即强制要求前面的方法创建并管理一个事物给它用                                                        |
+| PROPAGATION_REQUIRES_NEW  | 新建事务，如果当前存在事务，把当前事务挂起。                                     | service2事物的失败不想影响到service1事物的成功提交，可以使用这个行为                                                                 |
+| PROPAGATION_NOT_SUPPORTED | 以非事务方式执行操作，如果当前存在事务，就把当前事务挂起。                              |                                                                                                            |
+| PROPAGATION_NEVER         | 以非事务方式执行，如果当前存在事务，则抛出异常。                                   |                                                                                                            |
+| PROPAGATION_NESTED        | 如果当前存在事务，则在嵌套事务内执行。如果当前没有事务，则执行与PROPAGATION_REQUIRED类似的操作。 | 将一个大事物分解为多个小事物执行，根据小事物的执行状态决定大事物的执行流程                                                                      |
 
-* TransactionStatus：某一时间点上事务的状态信息：
+* `TransactionStatus`：某一时间点上事务的状态信息：
 
-| 名称                       | 说明               |
-| -------------------------- | ------------------ |
-| void flush()               | 刷新事务           |
+| 名称                         | 说明        |
+|----------------------------|-----------|
+| void flush()               | 刷新事务      |
 | boolean hasSavepoint()     | 获取是否存在保存点 |
-| boolean isCompleted()      | 获取事务是否完成   |
-| boolean isNewTransaction() | 获取是否是新事务   |
-| boolean isRollbackOnly()   | 获取是否回滚       |
-| void setRollbackOnly()     | 设置事务回滚       |
+| boolean isCompleted()      | 获取事务是否完成  |
+| boolean isNewTransaction() | 获取是否是新事务  |
+| boolean isRollbackOnly()   | 获取是否回滚    |
+| void setRollbackOnly()     | 设置事务回滚    |
 
-* TransactionTemplate：推荐使用的工具类。
+* `TransactionTemplate`：推荐使用的工具类。
 
 使用方法：
 

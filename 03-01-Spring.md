@@ -106,7 +106,7 @@
 
 当我们隐式或者显示的调用 `BeanFactory#getBean(...)` 时，会触发加载Bean阶段，这时，容器会首先检查所请求的对象是否已经初始化完成，如果没有，则会根据注册的 Bean 信息实例化请求的对象，并为其注册依赖，然后将其返回给请求方。
 
-1. 首先从 alias 中获取 BeanName。 假设配置了一个 FactoryBean 的名字为 "abc" ，那么获取 FactoryBean 创建的 Bean 时，使用 "abc" ，如果获取 FactoryBean 本身，使用 "&abc" 。另外，`&`定义在 `BeanFactory.FACTORY_BEAN_PREFIX = "&"` 上。 FactoryBean 用于创建一些复杂的bean。
+1. 首先从 `alias` 中获取 `BeanName`。 假设配置了一个 `FactoryBean` 的名字为`abc`，那么获取 `FactoryBean` 创建的 `Bean` 时，使用`abc` ，如果获取 `FactoryBean` 本身，使用 `&abc` 。另外，`&`定义在 `BeanFactory.FACTORY_BEAN_PREFIX = "&"` 上。 FactoryBean 用于创建一些复杂的bean。
 2. 依次从缓存中获取bean，这里的bean有个可能是 FactoryBean 也有可能是普通bean，并且可能没有实例化，缓存有三个：
 
    ```java
@@ -135,7 +135,7 @@
 3. 如果从缓存中获取到bean，由于bean不是最终的bean，所以需要调用 `getObjectForBeanInstance(...)` 获取bean实例 或 `FactoryBean.getObject()` 的对象。
 4. 如果没有从缓存中获取到bean 先从 `parentBeanFactory` 获取 Bean。
 5. 如果没有从 `parentBeanFactory` 获取到，再获取 `BeanDefinition` ，先需要依赖，判断没有循环先创建依赖，再根据不同的作用域创建bean。
-6. 类型转换，例如name返回为String，requiredType 要求返回 Integer，这时候会使用 `ConversionService` 做转换。
+6. 类型转换，例如name返回为String，`requiredType` 要求返回 `Integer`，这时候会使用 `ConversionService` 做转换。
 
 循环依赖处理：
 
@@ -163,7 +163,7 @@
 那为什么Sping不选择二级缓存方式，而是要额外加一层缓存？
 
 * Spring 的设计原则是尽可能保证普通对象创建完成之后，再生成其 AOP 代理，如果要使用二级缓存解决循环依赖，意味着Bean在构造完后就创建代理对象。
-* SpringAOP 是在Bean创建完全之后通过`AnnotationAwareAspectJAutoProxyCreator`这个后置处理器来完成的，在这个后置处理的postProcessAfterInitialization方法中对初始化后的Bean完成AOP代理，如果出现了循环依赖，那没有办法，只有给Bean先创建代理。
+* SpringAOP 是在Bean创建完全之后通过`AnnotationAwareAspectJAutoProxyCreator`这个后置处理器来完成的，在这个后置处理的`postProcessAfterInitialization`方法中对初始化后的Bean完成AOP代理，如果出现了循环依赖，那没有办法，只有给Bean先创建代理。
 
 ## Resource：
 
@@ -193,7 +193,7 @@ public interface ResourceLoader {
 }
 ```
 
-另外 Resource 可以直接接受 application.yml 中的路径，ResourcePatternResolver 可用来加载多个Resource,以及它的实现类`PathMatchingResourcePatternResolver`：
+另外 `Resource` 可以直接接受 `application.yml` 中的路径，`ResourcePatternResolver` 可用来加载多个`Resource`,以及它的实现类`PathMatchingResourcePatternResolver`：
 
 ```java
 public interface ResourcePatternResolver extends ResourceLoader {
@@ -215,7 +215,7 @@ Spring不仅支持`classpath:`、`file:`、`http:`等各种前缀开头的资源
 
 ## BeanWrapper
 
-可通过 BeanWrapper 对 Bean 进行操作,可通过 `PropertyAccessorFactory#forBeanPropertyAccess` 进行创建，可通过 ApplicationContext 获取 ConversionService。
+可通过 `BeanWrapper` 对 Bean 进行操作,可通过 `PropertyAccessorFactory#forBeanPropertyAccess` 进行创建，可通过 `ApplicationContext` 获取 `ConversionService`。
 
 ![101](assets/101.png)
 ![102](assets/102.png)
@@ -248,7 +248,7 @@ public class BeanWrapperTest {
 
 * `ServletContext`: 由 Servlet 容器初始化，为项目提供宿主环境，例如 Tomcat，在 web 项目启动的时候他就初始化这样的上下文环境，为后续的 Spring 容器，SpringMvc 容器提供宿主环境。
 * `WebApplicationContext`：Spring 上下文，也是根上下文，是 SpringMvc servlet 的父级上下文，当我们启动 Spring 的时候，那么就需要初始化 IOC 容器，而这个上下文就是用于管理这些 bean，把他们放到容器里。
-* `SpringMVC` 上下文 ：`DispatchServlet` 初始化的时候会创建自己的上下文，并从 ServletContext 中取出 WebApplicationContext 作为自己上下文的父容器。
+* `SpringMVC` 上下文 ：`DispatchServlet` 初始化的时候会创建自己的上下文，并从 `ServletContext` 中取出 `WebApplicationContext` 作为自己上下文的父容器。
 * 其他上下文：servlet 可以有多个，自然也存在多个上下文。
 
 Spring 中容器存在父子关系，父容器不能访问子容器的资源，而子容器可以访问父容器的资源。
@@ -259,9 +259,9 @@ Spring 中容器存在父子关系，父容器不能访问子容器的资源，�
 `ApplicationContext` 是对 `BeanFactory` 的扩展，`Application` 有两个直接子类：`WebApplicationContext`和`ConfigurableApplicationContext`：
 
 * `WebApplicationContext`：可以获取ServletContext。
-* `ConfigurableApplicationContext`：包含主要的方法，其中就包含refresh()方法，它是 ApplicationContext 对 BeanFactory 最主要的扩展。
+* `ConfigurableApplicationContext`：包含主要的方法，其中就包含`refresh()`方法，它是 `ApplicationContext` 对 `BeanFactory` 最主要的扩展。
 
-`ApplicationContext` 继承 `ResourcePatternResolver` 的 getResources() 方法可以供日常使用。
+`ApplicationContext` 继承 `ResourcePatternResolver` 的 `getResources()` 方法可以供日常使用。
 
 * `AnnotationConfigApplicationContext`：从一个或多个基于Java的配置类中加载Spring应用上下文。
 * `AnnotationConfigWebApplicationContext`：从一个或多个基于Java的配置类中加载Spring Web应用上下文。
@@ -311,9 +311,9 @@ Spring 中容器存在父子关系，父容器不能访问子容器的资源，�
 1. `Expression` 表达式（“干什么”）：SpEL的核心，所以表达式语言都是围绕表达式进行的
 2. `ExpressionParser` 解析器（“谁来干”）：用于将字符串表达式解析为表达式对象
 3. `EvaluationContext` 上下文（“在哪干”）：表达式对象执行的环境，该环境可能定义变量、定义自定义函数、提供类型转换等等
-4. root根对象及活动上下文对象（“对谁干”）：root根对象是默认的活动上下文对象，活动上下文对象表示了当前表达式操作的对象，例如 application.yml 所生成的root对象，表示表达式在这个跟对象取数据。
+4. root根对象及活动上下文对象（“对谁干”）：root根对象是默认的活动上下文对象，活动上下文对象表示了当前表达式操作的对象，例如 `application.yml` 所生成的root对象，表示表达式在这个跟对象取数据。
 
-表达的变量可能从 EvaluationContext 和 rootObject 取。
+表达的变量可能从 `EvaluationContext` 和 `rootObject` 取。
 
 ```java
 public class SpelExpressionParserTest {

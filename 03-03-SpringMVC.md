@@ -1,12 +1,12 @@
 # SpringMVC
 
 扩展点：
-* 实现 javax.servlet.Filter 接口。
-* 实现 HandlerInterceptor 接口。
-* 实现 HandlerMethodArgumentResolver 接口，方便扩展请求参数处理。
-* 继承 AbstractHttpMessageConverter 转换参数。
-* @ControllerAdvice 定义异常处理。
-* 实现 HandlerMethodReturnValueHandler ，统一处理返回值。
+* 实现 `javax.servlet.Filter` 接口。
+* 实现 `HandlerInterceptor` 接口。
+* 实现 `HandlerMethodArgumentResolver` 接口，方便扩展请求参数处理。
+* 继承 `AbstractHttpMessageConverter` 转换参数。
+* `@ControllerAdvice` 定义异常处理。
+* 实现 `HandlerMethodReturnValueHandler` ，统一处理返回值。
 
 ```java
 @Configuration
@@ -57,49 +57,49 @@ class HandlerMethodReturnValueHandlerProxy implements HandlerMethodReturnValueHa
 
 常用的配置：
 
-| 属性                                      | 描述                                               | 默认值                                                                                          |
-| ----------------------------------------- | -------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| spring.mvc.format.date                    | 要使用的日期格式，例如“dd/MM/yyyy”。               |                                                                                                 |
+| 属性                                        | 描述                                   | 默认值                                                                                             |
+|-------------------------------------------|--------------------------------------|-------------------------------------------------------------------------------------------------|
+| spring.mvc.format.date                    | 要使用的日期格式，例如“dd/MM/yyyy”。             |                                                                                                 |
 | spring.mvc.format.date-time               | 要使用的日期时间格式，例如 'yyyy-MM-dd HH:mm:ss'。 |                                                                                                 |
-| spring.mvc.format.time                    | 要使用的时间格式，例如“HH:mm:ss”。                 |                                                                                                 |
-| spring.mvc.static-path-pattern            | 用于静态资源的路径模式。                           | /**                                                                                             |
-| spring.web.resources.static-locations     | 静态资源的位置。                                   | [classpath:/META-INF/resources/, classpath:/resources/, classpath:/static/, classpath:/public/] |
-| spring.mvc.view.prefix                    | Spring MVC 视图前缀。                              |                                                                                                 |
-| spring.mvc.view.suffix                    | Spring MVC 视图后缀。                              |                                                                                                 |
-| spring.servlet.multipart.max-file-size    | 最大文件大小。                                     | 1MB                                                                                             |
-| spring.servlet.multipart.max-request-size | 最大请求大小。                                     | 10MB                                                                                            |
+| spring.mvc.format.time                    | 要使用的时间格式，例如“HH:mm:ss”。               |                                                                                                 |
+| spring.mvc.static-path-pattern            | 用于静态资源的路径模式。                         | /**                                                                                             |
+| spring.web.resources.static-locations     | 静态资源的位置。                             | [classpath:/META-INF/resources/, classpath:/resources/, classpath:/static/, classpath:/public/] |
+| spring.mvc.view.prefix                    | Spring MVC 视图前缀。                     |                                                                                                 |
+| spring.mvc.view.suffix                    | Spring MVC 视图后缀。                     |                                                                                                 |
+| spring.servlet.multipart.max-file-size    | 最大文件大小。                              | 1MB                                                                                             |
+| spring.servlet.multipart.max-request-size | 最大请求大小。                              | 10MB                                                                                            |
 
 WebMvcConfigurer提供的功能如下表所示：
 
-| 配置接口                           | 接口说明                                                                                                        |
-| ---------------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| addResourceHandlers                | 增加处理静态资源的Handler                                                                                       |
-| addInterceptors                    | 增加拦截器                                                                                                      |
-| addCorsMappings                    | 配置跨域请求相关参数                                                                                            |
-| addFormatters                      | 增加额外的Converter和Formatter                                                                                  |
-| addReturnValueHandlers             | 添加支持个性化处理Controller返回数据类型的处理器；                                                              |
-| configureMessageConverters         | 配置消息转换器；                                                                                                |
-| configurePathMatch                 | 配置HandlerMapping路径匹配参数                                                                                  |
-| configureContentNegotiation        | 配置路径到请求内容类型转换的相关参数，如.pdf结尾的请求解析成PDF类型或者其它等                                   |
-| configureAsyncSupport              | 配置异步请求处理相关参数                                                                                        |
+| 配置接口                               | 接口说明                                                                        |
+|------------------------------------|-----------------------------------------------------------------------------|
+| addResourceHandlers                | 增加处理静态资源的Handler                                                            |
+| addInterceptors                    | 增加拦截器                                                                       |
+| addCorsMappings                    | 配置跨域请求相关参数                                                                  |
+| addFormatters                      | 增加额外的Converter和Formatter                                                    |
+| addReturnValueHandlers             | 添加支持个性化处理Controller返回数据类型的处理器；                                              |
+| configureMessageConverters         | 配置消息转换器；                                                                    |
+| configurePathMatch                 | 配置HandlerMapping路径匹配参数                                                      |
+| configureContentNegotiation        | 配置路径到请求内容类型转换的相关参数，如.pdf结尾的请求解析成PDF类型或者其它等                                  |
+| configureAsyncSupport              | 配置异步请求处理相关参数                                                                |
 | configureDefaultServletHandling    | 配置是否需要以下功能：如果一个请求没有被任何Handler处理，那是否使用DefaultServletHttpRequestHandler来进行处理？ |
-| addViewControllers                 | 使用特殊的Controller来处理指定的URL请求;                                                                        |
-| configureViewResolvers             | 配置将Controller返回的视图名称转换成视图的视图解析器; 以便进行视图渲染                                          |
-| addArgumentResolvers               | 添加支持个性化配置Controller的方法参数类型的Resolver。                                                          |
-| extendMessageConverters            | 扩展消息转换器                                                                                                  |
-| configureHandlerExceptionResolvers | 配置异常处理器                                                                                                  |
-| extendHandlerExceptionResolvers    | 扩展异常处理器                                                                                                  |
+| addViewControllers                 | 使用特殊的Controller来处理指定的URL请求;                                                 |
+| configureViewResolvers             | 配置将Controller返回的视图名称转换成视图的视图解析器; 以便进行视图渲染                                   |
+| addArgumentResolvers               | 添加支持个性化配置Controller的方法参数类型的Resolver。                                        |
+| extendMessageConverters            | 扩展消息转换器                                                                     |
+| configureHandlerExceptionResolvers | 配置异常处理器                                                                     |
+| extendHandlerExceptionResolvers    | 扩展异常处理器                                                                     |
 
 
 ![104](assets/104.png)
 
 ![103](assets/103.png)
-* HttpServletBean：负责将 ServletConfig 设置到当前 Servlet 对象中，ServletConfig 包含 ServletContext、InitParameter。
-* FrameworkServlet：负责初始化 Spring Servlet WebApplicationContext 容器。
-* DispatcherServlet：负责初始化 Spring MVC 的各个组件，以及处理客户端的请求。
+* `HttpServletBean`：负责将 `ServletConfig` 设置到当前 Servlet 对象中，`ServletConfig` 包含 `ServletContext`、`InitParameter`。
+* `FrameworkServlet`：负责初始化 Spring Servlet `WebApplicationContext` 容器。
+* `DispatcherServlet`：负责初始化 Spring MVC 的各个组件，以及处理客户端的请求。
 
-SpringMVC的9个组件：可通过 RequestContextUtils 获取。
-* org.springframework.web.multipart.MultipartResolver：负责解析 Content-Type 为 multipart/* 的请求，将 HttpServletRequest 封装成 MultipartHttpServletRequest ，MultipartHttpServletRequest 可通过 getFile() 、getFileMap() 方法获得上传的文件。
+SpringMVC的9个组件：可通过 `RequestContextUtils` 获取。
+* `org.springframework.web.multipart.MultipartResolver`：负责解析 `Content-Type` 为 `multipart/*` 的请求，将 `HttpServletRequest` 封装成 `MultipartHttpServletRequest` ，`MultipartHttpServletRequest` 可通过 `getFile()` 、`getFileMap()` 方法获得上传的文件。
 
 ```java
 public interface MultipartResolver {
@@ -121,9 +121,9 @@ public interface MultipartResolver {
 }
 ```
 
-* org.springframework.web.servlet.LocaleResolver：从 Request 中解析出 Locale。
-* org.springframework.web.servlet.ThemeResolver：从 Request 中解析出 Theme。
-* org.springframework.web.servlet.HandlerMapping：通过匹配request 获取 handler 和 interceptorList
+* `org.springframework.web.servlet.LocaleResolver`：从 `Request` 中解析出 `Locale`。
+* `org.springframework.web.servlet.ThemeResolver`：从 `Request` 中解析出 `Theme`。
+* `org.springframework.web.servlet.HandlerMapping`：通过匹配`request` 获取 `handler` 和 `interceptorList`
 
 ```java
 public interface HandlerMapping {
@@ -142,7 +142,7 @@ public class HandlerExecutionChain {
 }
 ```
 
-* org.springframework.web.servlet.HandlerAdapter：负责调用 Controller 处理业务。
+* `org.springframework.web.servlet.HandlerAdapter`：负责调用 `Controller` 处理业务。
 
 
 ```java
@@ -164,20 +164,20 @@ public interface HandlerAdapter {
 }
 ```
 
-* org.springframework.web.servlet.HandlerExceptionResolver：负责处理 handler 产生的异常，并转换成 ModleAndView。
-* org.springframework.web.servlet.RequestToViewNameTranslator：负责从 request 中获取视图名。
-* org.springframework.web.servlet.ViewResolver：根据视图名和国际化，获得最终的视图 View 对象。
-* org.springframework.web.servlet.FlashMapManager：负责重定向时，保存参数到临时存储，使用非常少。
+* `org.springframework.web.servlet.HandlerExceptionResolver`：负责处理 `handler` 产生的异常，并转换成 `ModleAndView`。
+* `org.springframework.web.servlet.RequestToViewNameTranslator`：负责从 `request` 中获取视图名。
+* `org.springframework.web.servlet.ViewResolver`：根据视图名和国际化，获得最终的视图 View 对象。
+* `org.springframework.web.servlet.FlashMapManager`：负责重定向时，保存参数到临时存储，使用非常少。
 
 ## Controller 拦截
 
-这几个注解用于对 controller 进行拦截：
+这几个注解用于对 `controller` 进行拦截：
 
-@ControllerAdvice：注释在类上，对定义对哪些controller进行拦截
+`@ControllerAdvice`：注释在类上，对定义对哪些controller进行拦截
 
-@ExceptionHandler：对controller进行统一异常处理
+`@ExceptionHandler`：对controller进行统一异常处理
 
-@InitBinder：自定义转换器，转换前端的数据，例如：
+`@InitBinder`：自定义转换器，转换前端的数据，例如：
 
 ```java
 @ControllerAdvice(basePackages = "com.kevin.tool")
@@ -190,7 +190,7 @@ public class ExceptionHandlerController {
 }
 ```
 
-@ModelAttribute：给传入controller的数据加一下属性，例如：
+`@ModelAttribute`：给传入controller的数据加一下属性，例如：
 
 ```java
 @ControllerAdvice(basePackages = "com.kevin.tool")
@@ -222,9 +222,9 @@ public class ControllerAdviceDemoController {
 
 处理参数：
 
-* GET、DELETE方法：使用 @RequestParam 或者 POJO 对象。
-* POST、PUT方法：使用 @RequestBody + POJO 对象。
-* 路径参数：使用 @PathVariable、 @MatrixVariable。
+* `GET`、`DELETE`方法：使用 `@RequestParam` 或者 POJO 对象。
+* `POST`、`PUT`方法：使用 `@RequestBody` + POJO 对象。
+* 路径参数：使用 `@PathVariable`、 `@MatrixVariable`。
 
 ```java
 // @MatrixVariable 用于扩展 路径参数
@@ -258,27 +258,27 @@ public class MatrixVariableTest {
 
 参数校验：
 
-* @AssertFalse：所注解的元素必须是Boolean类型，并且值为false
-* @AssertTrue：所注解的元素必须是Boolean类型，并且值为true
-* @Max：所注解的元素必须是数字，并且它的值要小于或等于给定的值
-* @Min：所注解的元素必须是数字，并且它的值要大于或等于给定的值
-* @DecimalMax：所注解的元素必须是数字，并且它的值要小于或等于给定的BigDecimalString值
-* @DecimalMin：所注解的元素必须是数字，并且它的值要大于或等于给定的BigDecimalString值
-* @Digits：所注解的元素必须是数字，并且它的值必须有指定的位数
-* @Negative：负数（不包括0）
-* @NegativeOrZero：负数或0
-* @PositiveOrZero：正数或0
-* @Future：所注解的元素的值必须是一个将来的日期
-* @Past：所注解的元素的值必须是一个已过期的日期
-* @FutureOrPresent：当前或将来时间
-* @PastOrPresent：必须是过去的时间，包含现在
-* @NotNull：所注解的元素的值必须不能为Null
-* @Null：所注解的元素的值必须为Null
-* @NotBlank：不为null并且包含至少一个非空白字符,用在String上面
-* @NotEmpty：不为null并且不为空,用在集合类上面
-* @Size：所注解的元素的值必须是String、集合或数组，并且它的长度要符合给定的范围
-* @Pattern：所直接的元素的值必须匹配给定的正则表达式
-* @Email：校验是否符合Email格式
+* `@AssertFalse`：所注解的元素必须是Boolean类型，并且值为false
+* `@AssertTrue`：所注解的元素必须是Boolean类型，并且值为true
+* `@Max`：所注解的元素必须是数字，并且它的值要小于或等于给定的值
+* `@Min`：所注解的元素必须是数字，并且它的值要大于或等于给定的值
+* `@DecimalMax`：所注解的元素必须是数字，并且它的值要小于或等于给定的BigDecimalString值
+* `@DecimalMin`：所注解的元素必须是数字，并且它的值要大于或等于给定的BigDecimalString值
+* `@Digits`：所注解的元素必须是数字，并且它的值必须有指定的位数
+* `@Negative`：负数（不包括0）
+* `@NegativeOrZero`：负数或0
+* `@PositiveOrZero`：正数或0
+* `@Future`：所注解的元素的值必须是一个将来的日期
+* `@Past`：所注解的元素的值必须是一个已过期的日期
+* `@FutureOrPresent`：当前或将来时间
+* `@PastOrPresent`：必须是过去的时间，包含现在
+* `@NotNull`：所注解的元素的值必须不能为Null
+* `@Null`：所注解的元素的值必须为Null
+* `@NotBlank`：不为null并且包含至少一个非空白字符,用在String上面
+* `@NotEmpty`：不为null并且不为空,用在集合类上面
+* `@Size`：所注解的元素的值必须是String、集合或数组，并且它的长度要符合给定的范围
+* `@Pattern`：所直接的元素的值必须匹配给定的正则表达式
+* `@Email`：校验是否符合Email格式
 
 ## 上传文件
 
@@ -289,7 +289,7 @@ spring.servlet.multipart.max-request-size=10MB
 spring.servlet.multipart.max-file-size=10MB
 ```
 
-接收参数可使用 MultipartFile(依赖于org.springframework.web.multipart.commons.CommonsMultipartResolver) 或 Part 来接收。
+接收参数可使用 `MultipartFile`(依赖于`org.springframework.web.multipart.commons.CommonsMultipartResolver`) 或 Part 来接收。
 
 ```java
 public class UploadTest {
@@ -331,12 +331,12 @@ public class DownloadTest {
 ## 异常处理
 
 * 特定的Spring异常将会自动映射为指定的HTTP状态码；
-* 异常上可以添加@ResponseStatus注解，从而将其映射为某一个HTTP状态码,可使用在自定义注解异常类上。
-* 使用 @ControllerAdvice 在方法上可以添加@ExceptionHandler注解，使其捕获异常并用该方法来处理异常。
+* 异常上可以添加`@ResponseStatus`注解，从而将其映射为某一个HTTP状态码,可使用在自定义注解异常类上。
+* 使用 `@ControllerAdvice` 在方法上可以添加`@ExceptionHandler`注解，使其捕获异常并用该方法来处理异常。
 
 
-| Spring异常                              | HTTP状态码                   |
-| ----------------------------------------- | ------------------------------ |
+| Spring异常                                | HTTP状态码                      |
+|-----------------------------------------|------------------------------|
 | BindException                           | 400 - Bad Request            |
 | ConversionNotSupportedException         | 500 - Internal Server Error  |
 | HttpMediaTypeNotAcceptableException     | 406 - Not Acceptable         |

@@ -129,15 +129,15 @@ public @interface Transactional {
 ```
 
 事务失效：
-* 方法必须是 public 。
-* 方法不能被 final 修饰，由于 CGLIB 是创建子类。
+* 方法必须是 `public` 。
+* 方法不能被 `final` 修饰，由于 `CGLIB` 是创建子类。
 * 实例必须通过 容器注入，因为依赖AOP，同一个类中，非事务方法A调用事务方法B，事务失效，可使用 `((ServiceA)AopContext.currentProxy()).B()` 来调用。
 * 实例必须被 容器 管理。
 * 使用多线程时每个线程事务都不是同一个。
 * 表不支持事务。
-* 错误的传播特性，REQUIRED，REQUIRES_NEW，NESTED 才会创建新事务。
+* 错误的传播特性，`REQUIRED`，`REQUIRES_NEW`，`NESTED` 才会创建新事务。
 * 异常未抛出。
-* 抛出异常错误，默认只会处理 RuntimeException、Error。
+* 抛出异常错误，默认只会处理 `RuntimeException`、`Error`。
 * 嵌套事务回滚多了，例如：
 
 ```java

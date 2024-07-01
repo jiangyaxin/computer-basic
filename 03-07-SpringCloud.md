@@ -651,7 +651,7 @@ feign:
 
 #### 配置configruation
 
-注意 `DefaultFeignConfig` 不需要 `@Configuration` 注释,`@Configuration` 表示给所有FeignCLient配置
+注意 `DefaultFeignConfig` 不需要 `@Configuration` 注释,`@Configuration` 表示给所有`FeignClient`配置
 
 ```java
 public class DefaultFeignConfig {
@@ -678,7 +678,7 @@ public interface DemoService {
 
 ```
 
-OpenFeign 默认配置在 FeignClientsConfiguration：
+`OpenFeign` 默认配置在 `FeignClientsConfiguration`：
 
 * `Decoder`：`new OptionalDecoder(new ResponseEntityDecoder(new SpringDecoder(messageConverters, customizers)));`
 * `Encoder`：`new SpringEncoder(new SpringFormEncoder(), messageConverters, encoderProperties, customizers);`
@@ -752,21 +752,21 @@ Retryer.Default 的三个参数：
 
 #### @FeignClient详解
 
-* `contextId` : 当 name 相同时，可通过 contextId 区分。
-* `name` ：指定FeignClient的名称，name属性会作为微服务的名称，用于服务发现。
-* `url` ：一般用于调试，可以手动指定@FeignClient调用的地址。
-* `decode404` ：当发生http 404错误时，如果该字段位true，会调用Decoder进行解码，默认调用 `ErrorCoder` 解码。
-* `configuration`: Feign配置类，可以自定义Feign的`Encoder`、`Decoder`、`LogLevel`、`Contract`。
-* `fallback`: 定义容错的处理类，当调用远程接口失败或超时，会调用对应接口的容错逻辑，fallback指定的类必须实现`@FeignClient`标记的接口。在使用fallback属性时，需要使用`@Component`注解，保证fallback类被Spring容器扫描到。
-* `fallbackFactory`：工厂类，用于生成fallback类示例，通过这个属性我们可以实现每个接口通用的容错逻辑，减少重复的代码。
-* `path`：定义当前FeignClient的统一前缀，例如controller上有加接口前缀的话就要写在这里。
+* `contextId` : 当 `name` 相同时，可通过 `contextId` 区分。
+* `name` ：指定`FeignClient`的名称，`name`属性会作为微服务的名称，用于服务发现。
+* `url` ：一般用于调试，可以手动指定`@FeignClient`调用的地址。
+* `decode404` ：当发生`http 404`错误时，如果该字段位true，会调用`Decoder`进行解码，默认调用 `ErrorCoder` 解码。
+* `configuration`: Feign配置类，可以自定义`Feign`的`Encoder`、`Decoder`、`LogLevel`、`Contract`。
+* `fallback`: 定义容错的处理类，当调用远程接口失败或超时，会调用对应接口的容错逻辑，`fallback`指定的类必须实现`@FeignClient`标记的接口。在使用fallback属性时，需要使用`@Component`注解，保证fallback类被Spring容器扫描到。
+* `fallbackFactory`：工厂类，用于生成`fallback`类示例，通过这个属性我们可以实现每个接口通用的容错逻辑，减少重复的代码。
+* `path`：定义当前`FeignClient`的统一前缀，例如`controller`上有加接口前缀的话就要写在这里。
 
 `fallback` 、`fallbackFactory` 需要 `feign.circuitbreaker.enabled = true` 配置。
 
 ### 启动
 
 1. `@EnableFeignClients` 导入 `FeignClientsRegistrar` ，`FeignClientsRegistrar` 实现 `ImportBeanDefinitionRegistrar`，`ImportBeanDefinitionRegistrar` 由 `ConfigurationClassPostProcessor` 调用。
-2. 使用 `@EnableFeignClients` 中 `defaultConfiguration` 设置为所有 Feign 的默认 Configuration。
+2. 使用 `@EnableFeignClients` 中 `defaultConfiguration` 设置为所有 `Feign` 的默认 `Configuration`。
 3. 扫描所有的 `@FeignClient` 组装为 `FeignClientFactoryBean` ，注入到容器里。
 4. 自动装配。
 

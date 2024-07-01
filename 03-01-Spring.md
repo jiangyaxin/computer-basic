@@ -209,11 +209,11 @@ public interface ResourcePatternResolver extends ResourceLoader {
 
 Spring不仅支持`classpath:`、`file:`、`http:`等各种前缀开头的资源文件解析，而且对于也支持Ant(路径匹配表达式)风格的通配符解析.
 
-| Pattern | Description  | Example                                           | Remark                                                                                                                                                 |
-|---------|--------------|---------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------|
-| ?       | 匹配任何的单个字符    | example/?ork                                      | 可以匹配:example/fork;example/work                                                                                                                         |
-| *       | 匹配0或者任意数量的字符 | file:C:/some/path/*.xml                           | 可以匹配C:/some/path下的所有xml文件                                                                                                                              |
-| **      | 匹配0个或者更多的目录  | classpath:com/mycompany/**/applicationContext.xml | 可以匹配mycompany和applicationContext.xml的任意目录，例如: classpath:com/mycompany/test/applicationContext.xml;classpath:com/mycompany/work/applicationContext.xml. |
+| Pattern | Description  | Example                                             | Remark                                                                                                                                                         |
+|---------|--------------|-----------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `?`     | 匹配任何的单个字符    | `example/?ork`                                      | 可以匹配:`example/fork`;`example/work`                                                                                                                             |
+| `*`     | 匹配0或者任意数量的字符 | `file:C:/some/path/*.xml`                           | 可以匹配`C:/some/path`下的所有xml文件                                                                                                                                    |
+| `**`    | 匹配0个或者更多的目录  | `classpath:com/mycompany/**/applicationContext.xml` | 可以匹配`mycompany`和`applicationContext.xml`的任意目录，例如:` classpath:com/mycompany/test/applicationContext.xml`;`classpath:com/mycompany/work/applicationContext.xml`. |
 
 ## BeanWrapper
 

@@ -1089,7 +1089,7 @@ IO任务 和 普通任务根据 ioRatio 进行分配执行时间，默认 50%。
 使用：
 
 * 使用 `BossEventLoopGroup` 和 `WorkEventLoopGroup` ，`BossEventLoopGroup`数量大小通常设置为 1。
-* 解码放在解码器中进行，使用`DirectBytebuf`，减少内存复制，可以在解码器中使用`retain`增加引用，在后续的`ChannelHandler`使用`release`减少引用回收，注意手动创建的`bytebuf`需要在`ChannelHandler#unregister`中释放。
+* 解码放在解码器中进行，使用`slice`，减少内存复制，可以在解码器中使用`retain`增加引用，在后续的`ChannelHandler`使用`release`减少引用回收，注意手动创建的`bytebuf`需要在`ChannelHandler#unregister`中释放。
 * EventLoop 线程不能阻塞，任务应该派发到业务线程中执行。
 
 #### Reactor 线程模型

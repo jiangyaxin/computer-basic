@@ -2282,9 +2282,9 @@ spring:
 
 除此之外还可以进行扩展配置：
 
-> spring.cloud.nacos.config.ext-config[n].data-id </br>
-> spring.cloud.nacos.config.ext-config[n].group </br>
-> spring.cloud.nacos.config.ext-config[n].refresh </br>
+> spring.cloud.nacos.config.ext-config[n].data-id <br>
+> spring.cloud.nacos.config.ext-config[n].group <br>
+> spring.cloud.nacos.config.ext-config[n].refresh <br>
 
 这里 data-id 需要带文件的扩展名,refresh 表示是否需要动态刷新，n 的值越大优先级越高。
 

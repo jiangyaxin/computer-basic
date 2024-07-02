@@ -1657,7 +1657,7 @@ Dubbo 的容错模式: 通过 `@DubboService(cluster = "failfast")` 配置。
 5. `ForkingCluster`：并行调用多个服务，只要其中一个成功就返回，通过 fork = 2 设置最大并行数。
 6. `BroadcastCluster`：广播调用所有的服务提供者，任意一个服务报错则表示调用失败，常用于通知所有的服务提供者更新缓存或本地资源信息。
 
-Dubbo 的负载均衡算法：默认策略时 random , 可通过 Dubbo 的 SPI 机制来扩展，示例：`@Service(cluster = "failfast",loadBalance = "roundrobin")`
+Dubbo 的负载均衡算法：默认策略时 `random` , 可通过 Dubbo 的 SPI 机制来扩展，示例：`@Service(cluster = "failfast",loadBalance = "roundrobin")`
 
 1. `Random LoadBalance`：随机算法，可以针对性能较好的服务器设置较大的权重值。
 2. `RoundRobin LoadBalance`：轮询，按照权重设置轮询比例。
@@ -1678,7 +1678,7 @@ Dubbo 的主机绑定规则：
 ![307](assets/307.png)
 
 1. Dubbo 服务启动时，向 `Zookeeper` 服务器 注册 `service` 节点，并且在 `/providers` 节点下注册 url 节点，这个节点时临时节点。
-2. 当消费者启动时，会向 `service` 节点下 `/consumers` 注册自己的url节点，并且会 对 /providers 注册子节点监听，这样当服务方发生变化时，消费方能够动态感知。
+2. 当消费者启动时，会向 `service` 节点下 `/consumers` 注册自己的url节点，并且会 对 `/providers` 注册子节点监听，这样当服务方发生变化时，消费方能够动态感知。
 3. 服务调用时， 获取 `/providers` 下所有子节点，通过负载均衡算法计算出一个地址进行远程访问。
 
 ## 原理

@@ -1677,7 +1677,7 @@ Dubbo 的主机绑定规则：
 
 ![307](assets/307.png)
 
-1. Dubbo 服务启动时，向 `Zookeeper` 服务器 注册 `service` 节点，并且在 `/providers` 节点下注册 url 节点，这个节点时临时节点。
+1. Dubbo 服务启动时，向 `Zookeeper` 服务器 注册 `service` 节点，并且在 `/providers` 节点下注册 url 节点，这个节点是临时节点。
 2. 当消费者启动时，会向 `service` 节点下 `/consumers` 注册自己的url节点，并且会 对 `/providers` 注册子节点监听，这样当服务方发生变化时，消费方能够动态感知。
 3. 服务调用时， 获取 `/providers` 下所有子节点，通过负载均衡算法计算出一个地址进行远程访问。
 
@@ -1723,7 +1723,7 @@ public class RestTemplateConfig {
 ```
 
 * `ladbalancer-provider` 服务使用的负载均衡策略是 `RandomLoadBalancer` 随机负载均衡。
-* l`oadbalancer-log` 使用的是 `RoundRobinLoadBalancer` 轮训策略。
+* `loadbalancer-log` 使用的是 `RoundRobinLoadBalancer` 轮训策略。
 * 其他没有标识的则使用默认的配置 `LoadBalancerClientConfiguration`（轮询）。
 
 创建负载均衡客户端：`@LoadBalanced `通过将拦截器设置到 `RestTemplate`，实现负载均衡
@@ -1737,7 +1737,7 @@ public RestTemplate restTemplate() {
 }
 ```
 
-常用配置：重试配置对 openfeign 不生效，需要使用 Retryer 编码实现。
+常用配置：重试配置对 `openfeign` 不生效，需要使用 `Retryer` 编码实现。
 
 ```yaml
 spring:

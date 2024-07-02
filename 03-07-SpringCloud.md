@@ -1650,7 +1650,7 @@ dubbo:
 
 Dubbo 的容错模式: 通过 `@DubboService(cluster = "failfast")` 配置。
 
-1. `FailoverCluster`：失败自动切换，当服务调用失败后，会切换到集群 的其他机器重试，默认重试次数为 2 次，常用于 读操作，写操作可能会造成重复数据，通过 retries = 2 来配置
+1. `FailoverCluster`：失败自动切换，当服务调用失败后，会切换到集群 的其他机器重试，默认重试次数为 2 次，常用于 读操作，写操作可能会造成重复数据，通过 `retries = 2` 来配置
 2. `FailfastCluster`：快速失败，当服务调用失败后，立即报错，只会调用一次，常用于幂等的写操作。
 3. `FailsafeCluster`：出现异常直接忽略。
 4. `FailbackCluster`：服务调用失败时，后台记录并定时重发，适用于消息通知操作，保证请求一定成功。

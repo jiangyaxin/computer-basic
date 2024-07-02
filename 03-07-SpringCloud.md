@@ -1489,11 +1489,11 @@ message SearchRequest {
 ```
 
 * `tag`：标识符，`[1,15]` 之内的标识号在编码的时候会占用一个字节。 `[16,2047]` 之内的标识号则占用2个字节，所以应该为那些频繁出现的消息元素保留 `[1,15]` 之内的标识号。
-* `repeated`：表示该字段可以任意重复多次，默认情况使用 packed 编码。
+* `repeated`：表示该字段可以任意重复多次，默认情况使用 `packed` 编码。
 * `reserved`：保留字段，以后还有可能使用。
 * 默认值：
-    - 对于`string`，默认是一个空string
-    - 对于`bytes`，默认是一个空的bytes
+    - 对于`string`，默认是一个空`string`
+    - 对于`bytes`，默认是一个空的`bytes`
     - 对于`bool`，默认是`false`
     - 对于数值类型，默认是0
     - 对于枚举，默认是第一个定义的枚举值，必须为0
@@ -1529,7 +1529,7 @@ import public "new.proto";
 * 不要更改任何已有的字段的数值标识。
 * `int32`, `uint32`, `int64`, `uint64`,和`bool`是全部兼容。
 * `sint32`和`sint64`是互相兼容的，但是它们与其他整数类型不兼容。
-* `string`和`bytes`是兼容的——只要bytes是有效的UTF-8编码。
+* `string`和`bytes`是兼容的——只要bytes是有效的`UTF-8`编码。
 * `fixed32`与`sfixed32`是兼容的，`fixed64`与`sfixed64`是兼容的。
 * 枚举类型与`int32`，`uint32`，`int64`和`uint64`相兼容。
 

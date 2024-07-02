@@ -2138,7 +2138,7 @@ Springboot加载配置文件：`SpringApplication` 使用 `ConfigFileApplication
 * `EnvironmentChangeEvent`：`ContextRefresher` 刷新完成之后会发布该事件，事件中包含keys集合，储存改变的数据。
 * `@RefreshScope`：被该注解修饰的示例在收到 `RefreshEvent` 后会被销毁，再次获取该实例的时候会重新构造，意味着会重新解析表达式。
 
-值得注意的是 发布`RefreshEvent` 和`@RefreshScope` 不能存在同一个类总，否则会造成死锁。
+值得注意的是 发布`RefreshEvent` 和`@RefreshScope` 不能存在同一个类中，否则会造成死锁。
 
 * `@ConfigurationProperties` 修饰的类会在 `EnvironmentChangeEvent` 触发时重新绑定，通过 `ConfigurationPropertiesRebinder` 实现。
 

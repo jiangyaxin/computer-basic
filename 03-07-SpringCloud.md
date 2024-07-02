@@ -2006,7 +2006,7 @@ spring:
 
 3. 定义资源，有以下几种方式：
 
-* 所有的Controller RequestMapping 都会默认配置。
+* 所有的`Controller RequestMapping`都会默认配置。
 * 对于特定的方法可以使用 `@SentinelResource` 来定义。
 * 通过 `SphU.entry()` `SphO.entry()` 来进行硬编码定义。
 
@@ -2107,16 +2107,16 @@ public void test() {
 
 ## SpringCloud启动流程
 
-Springboot加载配置文件：SpringApplication 使用 `ConfigFileApplicationListener` 根据 Environment 中 `spring.config.name`加载配置文件 PropertySource 到 Environment。
+Springboot加载配置文件：`SpringApplication` 使用 `ConfigFileApplicationListener` 根据 Environment 中 `spring.config.name`加载配置文件 `PropertySource` 到 `Environment`。
 
-所有配置文件存在于 Environment 中。
+所有配置文件存在于 `Environment` 中。
 
 ![296](assets/296.png)
 
 1. SpringBoot 发布 `ApplicationEnvironmentPreparedEvent` 触发 SpringCloud 的 `BootstrapApplicationListener` 监听。
-2. 通过判断 `spring.cloud.bootstrap.enabled` 和 environment中是否存在bootstrap的PropertySource 来决定是否创建 `BootstrapContext` 。
-3. 将 spring.config.name = bootstrap 设置到 Environment。
-4. 使用 `SpringApplicationBuilder` 创建 SpringApplication，由 `ConfigFileApplicationListener` 加载 `bootstrap.yml` 到 Environment，创建 `BootstrapContext`，并添加 `AncestorInitializer` 监听 `ApplicationContext` 的创建，在 `ApplicationContext`创建之后将 `BootstrapContext` 设置为 `ApplicationContext` 的父上下文。
+2. 通过判断 `spring.cloud.bootstrap.enabled` 和 `environment`中是否存在`bootstrap`的`PropertySource` 来决定是否创建 `BootstrapContext` 。
+3. 将 `spring.config.name = bootstrap` 设置到 `Environment`。
+4. 使用 `SpringApplicationBuilder` 创建 SpringApplication，由 `ConfigFileApplicationListener` 加载 `bootstrap.yml` 到 `Environment`，创建 `BootstrapContext`，并添加 `AncestorInitializer` 监听 `ApplicationContext` 的创建，在 `ApplicationContext`创建之后将 `BootstrapContext` 设置为 `ApplicationContext` 的父上下文。
 
 ![297](assets/297.png)
 
@@ -2127,10 +2127,10 @@ Springboot加载配置文件：SpringApplication 使用 `ConfigFileApplicationLi
 ![298](assets/298.png)
 
 1. 通过 `RefreshAutoConfiguration` 配置 `ContextRefresher`。
-2. 通过 `RefreshEndpointAutoConfiguration` 配置 refresh 端点。
-3. refresh 端点 被触发时调用 `ContextRefresher` 刷新，可通过 `SpringCloudBus` 的 `bus-refresh` 端点来达到多节点配置动态刷新的目的。
+2. 通过 `RefreshEndpointAutoConfiguration` 配置 `refresh` 端点。
+3. `refresh` 端点 被触发时调用 `ContextRefresher` 刷新，可通过 `SpringCloudBus` 的 `bus-refresh` 端点来达到多节点配置动态刷新的目的。
 
-`ContextRefresher` 使用 `SpringApplicationBuilder` 创建临时 context ，再从临时 context 的 Environment 中取出 `PropertySource`，覆盖当前 context 的 PropertySource。
+`ContextRefresher` 使用 `SpringApplicationBuilder` 创建临时 `context` ，再从临时 `context` 的 `Environment` 中取出 `PropertySource`，覆盖当前 `context` 的 `PropertySource`。
 
 ## SpringCloudContext 扩展点
 
@@ -2177,7 +2177,7 @@ spring:
 #          password: ${CODING_PASSWORD}
 ```
 
-git.uri 可以使用 file://xxxx/xx 来配置本地仓库，方便开发调试。
+`git.uri `可以使用 `file://xxxx/xx` 来配置本地仓库，方便开发调试。
 
 当 `spring.active.profiles=native` 时，使用本地文件系统，默认路径和Springboot一样。
 

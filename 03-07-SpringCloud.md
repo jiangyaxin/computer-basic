@@ -2304,7 +2304,7 @@ Nacos 使用的是 Pull 模式，但不是简单的 Pull，而是建立一种长
 1. 在等待29.5s 后触发自动检查机制，不管配置有没有发生变化，都会返回，29.5s 就是长连接的保存时间。
 2. 在29.5s内配置发生变化，触发监听机制，将变更的数据返回。
 
-nacos 配置文件的获取由 NacosPropertySourceLocator 完成。
+nacos 配置文件的获取由 `NacosPropertySourceLocator` 完成。
 
 # 网关
 
@@ -2362,10 +2362,10 @@ Object run();
 
 1. filterType：该函数需要返回一个字符串来代表过滤器的类型，而这个类型就是在HTTP请求过程中定义的各个阶段。在Zuul中默认定义了四种不同生命周期的过滤器类型，具体如下：
 
-* pre：可以在请求被路由之前调用。
-* routing：在路由请求时候被调用,负责转发。
-* post：在routing和error过滤器之后被调用。
-* error：处理请求时发生错误时被调用。
+* `pre`：可以在请求被路由之前调用。
+* `routing`：在路由请求时候被调用,负责转发。
+* `post`：在routing和error过滤器之后被调用。
+* `error`：处理请求时发生错误时被调用。
 
 2. filterOrder：通过int值来定义过滤器的执行顺序，数值越小优先级越高。
 3. shouldFilter：返回一个boolean类型来判断该过滤器是否要执行。我们可以通过此方法来指定过滤器的有效范围。
@@ -2432,7 +2432,7 @@ public RouteLocator customRouteLocator(RouteLocatorBuilder builder) {
 }
 ```
 
-多个 Predicate 可以通过 and 逻辑进行组合，内置提供很多 RoutePredicateFactory。
+多个 `Predicate` 可以通过 `and` 逻辑进行组合，内置提供很多 `RoutePredicateFactory`。
 
 | 规则      | 实例                                                                                                    | 说明                                           | 工厂                           |
 |---------|-------------------------------------------------------------------------------------------------------|----------------------------------------------|------------------------------|
@@ -2445,7 +2445,7 @@ public RouteLocator customRouteLocator(RouteLocatorBuilder builder) {
 | Host    | - Host=www.hd123.com                                                                                  | 主机名匹配 www.hd123.com                          | HostRoutePredicateFactory    |
 | Method  | - Method=GET                                                                                          | 匹配GET方法                                      | MethodRoutePredicateFactory  |
 
-Filter：
+`Filter`：
 
 | 过滤规则                | 实例                                    | 说明                         |
 |---------------------|---------------------------------------|----------------------------|
@@ -2468,8 +2468,7 @@ spring:
         - PrefixPath=/httpbin
 ```
 
-限流Filter：令牌桶算法，需要 redis 配置，底层调用 `ReactiveRedisTemplate` ,由 `RequestRateLimiterGatewayFilterFactory`
-实现，是分布式的。
+限流Filter：令牌桶算法，需要 redis 配置，底层调用 `ReactiveRedisTemplate` ,由 `RequestRateLimiterGatewayFilterFactory`实现，是分布式的。
 
 ```xml
 
@@ -2511,10 +2510,10 @@ filters:
       series: SERVER_ERROR(5)
 ```
 
-GlobalFilter：
+`GlobalFilter`：
 
-* `LoadBalancerClientFilter`：如果 uri 配置的是 lb:// 会使用该过滤器。
-* `ForwardRoutingFilter`：如果 uri 配置有 forward:// 会使用该过滤器，示例 uri: forward:///b 注意三个斜杠
+* `LoadBalancerClientFilter`：如果 uri 配置的是 `lb://` 会使用该过滤器。
+* `ForwardRoutingFilter`：如果 uri 配置有 `forward://` 会使用该过滤器，示例 `uri: forward:///b` 注意三个斜杠
 
 熔断降级：
 
@@ -2536,7 +2535,7 @@ hystrix:
             timeoutInMilliseconds: 3000
 ```
 
-采用 SEMAPHORE 策略，超时时间 3s，如果下游服务不可达调用本地 /fallback 处理
+采用 `SEMAPHORE` 策略，超时时间 3s，如果下游服务不可达调用本地 `/fallback` 处理
 
 跨域配置：
 

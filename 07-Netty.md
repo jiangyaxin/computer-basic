@@ -1341,9 +1341,7 @@ public ChannelFuture bind() {
 * `ChannelInactive`：当Channel与远程节点断开，不再处于活动状态时调用此方法
 * `ChannelReadComplete`：当Channel的某一个读操作完成时调用此方法
 * `ChannelRead`：当Channel有数据可读时调用此方法
-*
-
-`ChannelWritabilityChanged`：当Channel的可写状态发生改变时调用此方法，可以调用Channel的isWritable方法检测Channel的可写性，还可以通过ChannelConfig来配置write操作相关的属性。例如 对方 Socket 接收很慢，`ChannelOutboundBuffer` 就会积累很多的数据，一旦超过默认的高水位阈值，Channel的可写状态将会改变，同时调用该方法。
+* `ChannelWritabilityChanged`：当Channel的可写状态发生改变时调用此方法，可以调用Channel的isWritable方法检测Channel的可写性，还可以通过ChannelConfig来配置write操作相关的属性。例如 对方 Socket 接收很慢，`ChannelOutboundBuffer` 就会积累很多的数据，一旦超过默认的高水位阈值，Channel的可写状态将会改变，同时调用该方法。
 
 * `userEventTriggered`：当`ChannelInboundHandler`的`fireUserEventTriggered`方法被调用时才调用此方法。
 

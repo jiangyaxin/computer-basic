@@ -1374,8 +1374,8 @@ public ChannelFuture bind() {
 
 `ByteToMessageDecoder`有几个重点：
 
-* `decode(ctx, in, out)` 中 in 不用担心释放，只需使用 `skipByte` 即可，父类通过 `MERGE_CUMULATOR` 将 in 剩余未读字节 和 新从socket读取字节 复制到一个新 ByteBuf ，并释放 in。
-* `ByteBuf.readBytes(int)` 等一些返回 ByteBuf 的方法如果没有添加到 out list 需要主动释放，可以使用 `ByteBuf.readSlice(int)`来避免这种问题，或者使用 getXX ，但要注意 index 位置，防止 超出边界值。
+* `decode(ctx, in, out)` 中 in 不用担心释放，只需使用 `skipByte` 即可，父类通过 `MERGE_CUMULATOR` 将 in 剩余未读字节 和 新从socket读取字节 复制到一个新 `ByteBuf` ，并释放 in。
+* `ByteBuf.readBytes(int)` 等一些返回 `ByteBuf` 的方法如果没有添加到 `out list` 需要主动释放，可以使用 `ByteBuf.readSlice(int)`来避免这种问题，或者使用 `getXX` ，但要注意 index 位置，防止 超出边界值。
 * 不得使用 `@Sharable` 注解。
 * `out` 会在 `channelRead` 最后回收。
 
@@ -1390,10 +1390,10 @@ public ChannelFuture bind() {
     * `maxFrameLength`：最大帧长度，如果超过，此次数据会被丢弃。
     * `lengthFieldOffset`：长度域偏移。如果数据开始的几个字节可能不是表示数据长度，所以需要后移几个字节才是长度域。
     * `lengthFieldLength`：长度域字节数。用几个字节来表示数据长度。
-    * `lengthAdjustment`：长度域后实际长度 - 长度域长度，因为长度域长度可能包含 head 长度，需要 减去
-    * `initialBytesToStrip`：将本帧跳过几个字节，添加到 out。
+    * `lengthAdjustment`：长度域后实际长度 - 长度域长度，因为长度域长度可能包含 `head` 长度，需要 减去
+    * `initialBytesToStrip`：将本帧跳过几个字节，添加到 `out`。
 
-常用 MessageToByteEncoder：
+常用 `MessageToByteEncoder`：
 
 * `LengthFieldPrepender`：
     * `byteOrder`：表示Length字段本身占用的字节数使用的是大端还是小端编码

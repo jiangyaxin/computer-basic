@@ -173,7 +173,7 @@ public class zookeeper {
     // 同步请求，使用创建Zookeeper时的Watcher监听
     Stat exists(String path, boolean watch);
 
-    // 异步请求，使用创建Zookeeper时的Watcher监听
+    // 异步请求，使用创建Zookeeper时的Watcher监听,可以监听不存在的节点，可能导致资源泄漏，可使用 getData() 避免问题
     void exists(String path, boolean watch, StatCallback cb, Object ctx);
 
     Stat exists(final String path, Watcher watcher);

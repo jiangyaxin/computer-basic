@@ -252,8 +252,8 @@ public class EurekaServerAutoConfiguration implements WebMvcConfigurer {
 </project>
 ```
 
-2. 使用 @EnableDiscoveryClient 注解连接注册中心。
-3. 向 application.yml 添加配置。
+2. 使用 `@EnableDiscoveryClient` 注解连接注册中心。
+3. 向 `application.yml` 添加配置。
 
 单机模式:
 

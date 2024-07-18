@@ -1983,7 +1983,7 @@ grant replication slave,replication client on *.* to <user>@<ip> identified by <
 1. 主从复制的方法设置，然后在从数据库执行 `SET @@GLOBAL.READ_ONLY=ON`。
 2. 在从库上执行 `SHOW MASTER STATUS`。
 3. 在主库上执行 `CHANGE MASTER TO MASTER_HOST=<master-ip>,MASTER_USER=<user>,MASTER_PASSWORD=<password>,MASTER_LOG_FILE=<log-file>,MASTER_LOG_POS=<position>;`
-4. 在主库上执行 `START SLAV`E。
+4. 在主库上执行 `START SLAVE`。
 5. 在从库上执行 `SET @@GLOBAL.READ_ONLY=OFF` 。
 
 多源复制：一个从库从多个主库复制。

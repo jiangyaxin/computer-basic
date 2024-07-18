@@ -88,7 +88,7 @@
 * `AutowireCapableBeanFactory`：可以手动调用完成 bean 的注入、初始化、应用后处理器，这里的自动装配不是 `@Autowired` 注解，而是 xml方式 的注入，也叫传统注入方式，注解驱动注入是通过 `AutowiredAnnotationBeanPostProcessor#setAutowiredAnnotationType` 提供的。
 * `ConfigurableListableBeanFactory`：继承 `ConfigurableBeanFactory` 和 `AutowireCapableBeanFactory`。
 
-## XmlBeanDefinitionReader：
+## XmlBeanDefinitionReader
 
 ![98](assets/98.png)
 
@@ -97,12 +97,12 @@
 * `BeanDefinitionDocumentReader`：将 `Document` 转换为 `BeanDefinition` 。
 * `BeanDefinitionReader`：整合 `ResourceLoader`、`DocumentLoader`、`BeanDefinitionDocumentReader` 功能读取资源获得 `BeanDefinition` 。
 
-## BeanDefinition：
+## BeanDefinition
 
 * `AnnotatedGenericBeanDefinition` ： 表示`@Configuration`注解注释的`BeanDefinition`类。
 * `ScannedGenericBeanDefinition` ：表示`@Component`、`@Service`、`@Controller`等注解注释的Bean类。
 
-## Bean的加载：
+## Bean的加载
 
 当我们隐式或者显示的调用 `BeanFactory#getBean(...)` 时，会触发加载Bean阶段，这时，容器会首先检查所请求的对象是否已经初始化完成，如果没有，则会根据注册的 Bean 信息实例化请求的对象，并为其注册依赖，然后将其返回给请求方。
 

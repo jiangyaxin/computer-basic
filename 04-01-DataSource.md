@@ -34,6 +34,8 @@ spring:
       # minimumIdle 
       # 连接池达到的最大大小，包括空闲和使用中的连接，默认值：10。高版本改为：maxPoolSize
       maximumPoolSize: 20
+      # 启用泄漏检测的最低可接受值为 2000（2 秒）。默认值：0
+      leak-detection-threshold: 60000
 ```
 
 `maximumPoolSize = ((core_count * 2)+ effective_spindle_count)`,effective_spindle_count为磁盘阵列的硬盘数。

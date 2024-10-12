@@ -534,7 +534,7 @@ KiB Swap:  1048572 total,  1048572 free,        0 used.  2318680 avail Mem
 6. 查看内存使用情况：`free`
 7. 查看内核信息：`uname -a`
 8. 查看系统启动时间以及负载：`uptime`,也可通过`top`查看。
-9. 查看tcp、udp、unix连接：`netstat` ，常用：`netstat -tnlp`
+9. 查看tcp、udp、unix连接：`netstat` ，常用：`netstat -tnlp` `ss -tnlp`
 
 * `-a` 显示所有连接
 * `-n` 显示端口号
@@ -562,7 +562,10 @@ KiB Swap:  1048572 total,  1048572 free,        0 used.  2318680 avail Mem
 * `st`：被虚拟机 （virtual machine） 所盗用的 CPU 使用状态。
 
 11. 查找使用文件、目录、端口的进程：`fuser -uv [文件/目录]`,`fuser -v -n tcp [端口]`
-12. 列出进程使用的文件名称：`lsof`。
+12. 列出进程使用的文件名称：`lsof`
+13. 流量测试工具：`iftop`
+14. 查看磁盘占用：`df -h`
+15. 查看磁盘IO：`iostat -x`
 
 ## SELinux
 
